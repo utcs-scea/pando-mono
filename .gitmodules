@@ -1,0 +1,3 @@
+[submodule "pando-rt"]
+	path = pando-rt
+	url = https://github.com/AMDResearch/pando-rt.git

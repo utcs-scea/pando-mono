@@ -1,0 +1,99 @@
+name: Bug Report
+description: Create a report to make our code more robust
+title: '[BUG]: '
+labels: ['Bug']
+body:
+  - type: dropdown
+    id: bug-type
+    attributes:
+      label: Type of Bug
+      description: What kind of bug are you running into?
+      multiple: false
+      options:
+        - Runtime Error
+        - Compile-time Error
+        - Performance
+        - Correctness issue
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what problem you are running into.
+      placeholder: "Attempting to use a global pointer in `pando::executeOn(pando::Place{}, &reproducer, globalPtr)` fails to compile."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to Reproduce
+      description: Steps used to reproduce the bug.
+      placeholder: |
+        0. Code example:
+        ```
+        void reproducer(pando::GlobalPtr<void> globalPtr) {
+        }
+
+        int main(int, char**) {
+          PANDO_CHECK(pando::initialize());
+          pando::GlobalPtr<void> globalPtr;
+          PANDO_CHECK(pando::executeOn(pando::Place{}, &reproducer, globalPtr));
+          pando::waitAll();
+          pando::finalize();
+        }
+        ```
+        1. CMake output:
+        ```
+        -- The CXX compiler identification is GNU 9.4.0
+        -- Detecting CXX compiler ABI info
+        -- Detecting CXX compiler ABI info - done
+        -- Check for working CXX compiler: /usr/bin/c++ - skipped
+        -- Detecting CXX compile features
+        -- Detecting CXX compile features - done
+        -- Setting build type to default 'Release' as none was specified.
+        ```
+        2. Make output:
+        ```
+        make -j
+        [  2%] Building CXX object _deps/spdlog-build/CMakeFiles/spdlog.dir/src/bundled_fmtlib_format.cpp.o
+        [  5%] Building CXX object _deps/spdlog-build/CMakeFiles/spdlog.dir/src/stdout_sinks.cpp.o
+        [  8%] Building CXX object _deps/spdlog-build/CMakeFiles/spdlog.dir/src/spdlog.cpp.o
+        [ 11%] Building CXX object _deps/googletest-build/googletest/CMakeFiles/gtest.dir/src/gtest-all.cc.o
+        [ 14%] Building CXX object _deps/spdlog-build/CMakeFiles/spdlog.dir/src/color_sinks.cpp.o
+        [ 17%] Building CXX object _deps/spdlog-build/CMakeFiles/spdlog.dir/src/cfg.cpp.o
+        [ 23%] Building CXX object _deps/spdlog-build/CMakeFiles/spdlog.dir/src/async.cpp.o
+        [ 23%] Building CXX object _deps/spdlog-build/CMakeFiles/spdlog.dir/src/file_sinks.cpp.o
+        ```
+        3. Compilation fails with the error message:
+        ```
+        error message
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: "Passing a `pando::GlobalPtr<void>` as an argument to a pando::executeOn(pando::Place{}, &reproducer, globalPtr) should compile."
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: '# System information'
+
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating System
+      description:
+        If applicable, the OS version where this bug occurs.
+      placeholder: Ubuntu Linux 22.04
+    validations:
+      required: true

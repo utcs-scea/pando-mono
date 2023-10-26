@@ -1,0 +1,44 @@
+# Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+# Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+ARG BUILD_IMAGE=pando-rt:latest
+FROM ${BUILD_IMAGE} AS dev
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update -y \
+&&  apt install -y \
+      vim \
+      gdb \
+      universal-ctags \
+      powerline \
+      zsh \
+      valgrind \
+      sudo \
+      doxygen \
+      texlive-latex-extra \
+      texlive-font-utils \
+&&  apt clean \
+&&  update-locale
+
+ARG SRC_DIR=/pando
+ARG BUILD_DIR=/pando/dockerbuild
+ARG UNAME
+ARG UID
+ARG GID
+
+RUN if [ "${UNAME}" != "root" ] ; then groupadd -g ${GID} ${UNAME} \
+&&  useradd -ms /bin/bash  -u "${UID}" -g "${GID}" ${UNAME} ; fi
+
+RUN mkdir -p /home/${UNAME} \
+&& chown ${UNAME}:${UNAME} /home/${UNAME}
+
+USER ${UNAME}
+WORKDIR /home/${UNAME}
+ENV BUILD_DIR=${BUILD_DIR}
+
+RUN pip3 install compdb pre-commit cpplint "clang-format>=12.0.1"
+
+RUN echo "export SRC_DIR=${SRC_DIR}" >> /home/${UNAME}/.profile
+RUN echo "export BUILD_DIR=${BUILD_DIR}" >> /home/${UNAME}/.profile
+
+RUN echo "PATH=/home/${UNAME}/.local/bin/:\$PATH" >> /home/${UNAME}/.zshenv
+WORKDIR ${SRC_DIR}

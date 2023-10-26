@@ -1,0 +1,31 @@
+### Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. ###
+
+include(${PROJECT_SOURCE_DIR}/cmake/PANDOCompilerOptions.cmake)
+
+#
+# pando-lib-galois target
+#
+
+target_include_directories(pando-lib-galois
+    PUBLIC
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include/pando-lib-galois>"
+)
+
+target_sources(pando-lib-galois
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/loops.cpp
+)
+
+pando_compiler_options(pando-lib-galois)
+pando_compiler_warnings(pando-lib-galois)
+
+# link pando-rt
+target_include_directories(pando-lib-galois
+    PUBLIC
+        ${CMAKE_BINARY_DIR}/pando-rt/include
+)
+target_link_libraries(pando-lib-galois
+    PUBLIC
+        pando-rt::pando-rt
+)

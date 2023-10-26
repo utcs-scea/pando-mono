@@ -1,0 +1,13 @@
+name: Documentation Request
+description: Suggest an idea to improve our documentation
+title: '[DOC]: '
+labels: ['Doc']
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Describe the incorrect/future/missing documentation
+      placeholder: "Example: The documentation of the function `Status executeOn(Place place, Task task);` does not mention if the function is a blocking or a non-blocking one."
+    validations:
+      required: true
