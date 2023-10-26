@@ -59,7 +59,7 @@ function(pando_add_driver_test TARGET SOURCEFILE)
   else ()
     set(DRIVER_DISCOVERY_TIMEOUT ${PANDO_TEST_DISCOVERY_TIMEOUT})
   endif ()
-  set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/scripts/preprun.sh)
+  set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
   set(NUM_PXNS 2)
   set(NUM_CORES 4)
 

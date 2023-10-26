@@ -34,15 +34,6 @@ hooks:
 pre-commit:
 	@pre-commit run -a
 
-docker-ci-image:
-	@mkdir -p dockerbuild
-	@docker --context ${CONTAINER_CONTEXT} build \
-	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
-	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
-  -t pando-rt:latest \
-	--file pando-rt/docker/Dockerfile \
-	./pando-rt/docker
-
 docker-image:
 	@mkdir -p dockerbuild
 	@docker --context ${CONTAINER_CONTEXT} build \
@@ -54,7 +45,6 @@ docker-image:
 	@docker --context ${CONTAINER_CONTEXT} build \
 	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
 	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
-	--build-arg VERSION=${VERSION} \
 	--build-arg UNAME=$(shell whoami) \
   --build-arg UID=$(shell id -u) \
   --build-arg GID=$(shell id -g) \
@@ -67,12 +57,6 @@ docker:
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} --privileged \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -it \
 	${IMAGE_NAME}:${VERSION} ${CONTAINER_CMD}
-
-docker-ci:
-	@docker --context ${CONTAINER_CONTEXT} run --rm \
-	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} --privileged \
-	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -it \
-	pando-rt:latest ${CONTAINER_CMD}
 
 setup:
 	@echo "Must be run from inside the dev Docker container"
@@ -89,3 +73,11 @@ setup:
 
 run-tests:
 	@cd ${BUILD_DIR} && ctest
+
+# this command is slow since hooks are not stored in the container image
+# this is mostly for CI use
+docker-pre-commit:
+	@docker --context ${CONTAINER_CONTEXT} run --rm \
+	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} --privileged \
+	--workdir=${CONTAINER_WORKDIR} -it \
+	${IMAGE_NAME}:${VERSION} bash -lc "make hooks && make pre-commit"

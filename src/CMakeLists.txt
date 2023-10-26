@@ -23,7 +23,7 @@ pando_compiler_warnings(pando-lib-galois)
 # link pando-rt
 target_include_directories(pando-lib-galois
     PUBLIC
-        ${CMAKE_BINARY_DIR}/pando-rt/include
+        ${CMAKE_CURRENT_BINARY_DIR}/../pando-rt/include
 )
 target_link_libraries(pando-lib-galois
     PUBLIC

@@ -7,12 +7,12 @@ Other workflow repos are expected to submodule this repo and use this
 repo's `pando-rt` submodule for using root.
 
 Before developing make sure you have initialized the `pando-rt` submodule
-with `git submodule init && git submodule update [--recursive]`.
+with `git submodule update --init --recursive`.
 
 Quick Setup:
 
 ```shell
-git submodule init && git submodule update --recursive
+git submodule update --init --recursive
 make dependencies
 make hooks
 make docker-image
@@ -52,9 +52,10 @@ make pre-commit
 
 ### Further tooling
 
-For tooling used by `pando-rt` see their [docs](pando-rt/docs/developer.md).
+For tooling used by `pando-rt` see their
+[docs](https://github.com/AMDResearch/pando-rt/blob/main/docs/developer.md).
 This includes `clang-format` and `cpplint`.
 
 ### [PANDO Runtime System](https://amdresearch.github.io/pando-rt)
 
-Please see [pando-rt's README](pando-rt/README.md).
+Please see [pando-rt's README](https://github.com/AMDResearch/pando-rt/blob/main/README.md).

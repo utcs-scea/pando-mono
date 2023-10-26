@@ -5,7 +5,7 @@ FROM ${BUILD_IMAGE} AS dev
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update -y \
-&&  apt install -y \
+      &&  apt install -y \
       vim \
       gdb \
       universal-ctags \
@@ -16,8 +16,9 @@ RUN apt update -y \
       doxygen \
       texlive-latex-extra \
       texlive-font-utils \
-&&  apt clean \
-&&  update-locale
+      shfmt \
+      &&  apt clean \
+      &&  update-locale
 
 ARG SRC_DIR=/pando
 ARG BUILD_DIR=/pando/dockerbuild
@@ -26,10 +27,10 @@ ARG UID
 ARG GID
 
 RUN if [ "${UNAME}" != "root" ] ; then groupadd -g ${GID} ${UNAME} \
-&&  useradd -ms /bin/bash  -u "${UID}" -g "${GID}" ${UNAME} ; fi
+      &&  useradd -ms /bin/bash  -u "${UID}" -g "${GID}" ${UNAME} ; fi
 
 RUN mkdir -p /home/${UNAME} \
-&& chown ${UNAME}:${UNAME} /home/${UNAME}
+      && chown ${UNAME}:${UNAME} /home/${UNAME}
 
 USER ${UNAME}
 WORKDIR /home/${UNAME}

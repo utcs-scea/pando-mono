@@ -3,9 +3,11 @@
 
 #include <cstdint>
 
+#include "export.h"
+
 namespace galois {
 
-uint64_t dummy();
+PANDO_LIB_GALOIS_EXPORT uint64_t dummy();
 
 } // namespace galois
 

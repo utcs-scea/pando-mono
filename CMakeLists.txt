@@ -20,7 +20,7 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/pando-rt/cmake/Modules
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # helper functions
-include(pando-rt/cmake/PANDOCompilerOptions.cmake)
+include(cmake/PANDOCompilerOptions.cmake)
 
 # disable in-source builds to avoid source tree corruption
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")

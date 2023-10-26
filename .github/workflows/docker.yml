@@ -17,7 +17,9 @@ jobs:
     name: gcc / ${{ matrix.build-type }}
     runs-on: ubuntu-22.04
     env:
-      IMAGE_NAME: pando-rt
+      ROOT_IMAGE_NAME: pando-rt
+      ROOT_IMAGE_VERSION: latest
+      IMAGE_NAME: pando
       IMAGE_VERSION: ${{ matrix.build-type }}
       CONTAINER_SRC_DIR: "/pando"
       CONTAINER_BUILD_DIR: "/pando/dockerbuild"
@@ -31,25 +33,52 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
       with:
         driver-opts: network=host
 
-    - name: Build Docker image
+    - name: Build root Docker image
       uses: docker/build-push-action@v4
       with:
         context: docker
         push: false
         load: true
-        file: pando-rt/docker/Dockerfile
-        tags: "${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}"
+        file: ./pando-rt/docker/Dockerfile
+        tags: "${{ env.ROOT_IMAGE_NAME }}:${{ env.ROOT_IMAGE_VERSION }}"
         build-args: |
           "SRC_DIR=${{ env.CONTAINER_SRC_DIR }}"
           "BUILD_DIR=${{ env.CONTAINER_BUILD_DIR }}"
         cache-from: type=gha
         cache-to: type=gha,mode=max
+
+    - name: Build development Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: docker
+        push: false
+        load: true
+        file: ./Dockerfile.dev
+        tags: "${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}"
+        build-args: |
+          "SRC_DIR=${{ env.CONTAINER_SRC_DIR }}"
+          "BUILD_DIR=${{ env.CONTAINER_BUILD_DIR }}"
+          "UNAME=$(whoami)"
+          "UID=$(id -u)"
+          "GID=$(id -g)"
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Check pre-commit
+      timeout-minutes: 10
+      run: |
+        IMAGE_NAME="${{ env.IMAGE_NAME }}" \
+          VERSION="${{ env.IMAGE_VERSION }}" \
+          SRC_DIR="$GITHUB_WORKSPACE" \
+          make docker-pre-commit
 
     - name: Configure
       timeout-minutes: 10
@@ -59,7 +88,7 @@ jobs:
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           SRC_DIR="$GITHUB_WORKSPACE" \
-          make docker-ci
+          make docker
 
     - name: Build
       timeout-minutes: 10
@@ -71,7 +100,7 @@ jobs:
           VERSION="${{ env.IMAGE_VERSION }}" \
           CONTAINER_WORKDIR="${{ env.CONTAINER_BUILD_DIR }}" \
           SRC_DIR="$GITHUB_WORKSPACE" \
-          make docker-ci
+          make docker
 
     - name: Run Smoke Test
       timeout-minutes: 10
@@ -82,7 +111,7 @@ jobs:
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           SRC_DIR="$GITHUB_WORKSPACE" \
-          make docker-ci
+          make docker
 
     - name: Run Tests
       timeout-minutes: 10
@@ -93,4 +122,4 @@ jobs:
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           SRC_DIR="$GITHUB_WORKSPACE" \
-          make docker-ci
+          make docker
