@@ -3,6 +3,8 @@
 
 #include <gtest/gtest.h>
 
+#include <variant>
+
 #include "pando-rt/export.h"
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
@@ -28,7 +30,9 @@ TEST(DistArrayCSR, FullyConnected) {
     }
 
     galois::doAll(
-        vec, +[](pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
+        std::monostate(), vec,
+        +[](std::monostate _s, pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
+          (void)_s;
           pando::Vector<std::uint64_t> inner = innerRef;
           for (std::uint64_t i = 0; i < SIZE; i++) {
             EXPECT_EQ(inner.pushBack(i), pando::Status::Success);
@@ -38,7 +42,9 @@ TEST(DistArrayCSR, FullyConnected) {
     galois::DistArrayCSR<std::uint64_t> graph;
     graph.initialize(vec);
     auto err = galois::doAll(
-        vec, +[](pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
+        std::monostate(), vec,
+        +[](std::monostate _s, pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
+          (void)_s;
           pando::Vector<std::uint64_t> inner = innerRef;
           inner.deinitialize();
           innerRef = inner;

@@ -13,7 +13,7 @@ CONTAINER_CMD ?= bash -l
 
 BUILD_TYPE ?= Release
 
-VIM ?= "-v ~/.vim/:/home/${USER}/.vim"
+VIM ?= -v /home/${USER}/.vim/:/home/${USER}/.vim
 
 dependencies: dependencies-asdf
 
