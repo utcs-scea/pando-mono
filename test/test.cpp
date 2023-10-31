@@ -2,9 +2,10 @@
 
 #include <gtest/gtest.h>
 
-#include "pando-lib-galois/loops.hpp"
+#include "export.h"
 #include "pando-rt/export.h"
 #include "pando-rt/pando-rt.hpp"
+#include <pando-lib-galois/loops.hpp>
 
 TEST(Init, CP) {
   auto place = pando::getCurrentPlace();

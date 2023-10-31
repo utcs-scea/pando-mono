@@ -13,6 +13,8 @@ CONTAINER_CMD ?= bash -l
 
 BUILD_TYPE ?= Release
 
+VIM ?= "-v ~/.vim/:/home/${USER}/.vim"
+
 dependencies: dependencies-asdf
 
 dependencies-asdf:
@@ -54,7 +56,9 @@ docker-image:
 
 docker:
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
-	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} --privileged \
+	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
+	${VIM} \
+	--privileged \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -it \
 	${IMAGE_NAME}:${VERSION} ${CONTAINER_CMD}
 

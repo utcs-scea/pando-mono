@@ -50,6 +50,7 @@ generate_export_header(pando-lib-galois EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_
 target_include_directories(pando-lib-galois
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/pando-rt/include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pando-lib-galois>"
         "$<INSTALL_INTERFACE:include>"
     PRIVATE
