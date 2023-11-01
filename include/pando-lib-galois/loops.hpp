@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+
 #ifndef PANDO_LIB_GALOIS_LOOPS_HPP_
 #define PANDO_LIB_GALOIS_LOOPS_HPP_
 

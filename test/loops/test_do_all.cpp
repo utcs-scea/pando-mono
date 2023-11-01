@@ -1,4 +1,7 @@
 
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+
 #include <gtest/gtest.h>
 
 #include <pando-rt/export.h>

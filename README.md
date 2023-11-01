@@ -1,3 +1,8 @@
+<!--
+  ~ SPDX-License-Identifier: MIT
+  ~ Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+  -->
+
 # Pando Lib Galois
 
 This repo holds the common data structures and algorithms used by other

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+
 # https://github.com/actions/cache/blob/v3/tips-and-workarounds.md#force-deletion-of-caches-overriding-default-cache-eviction-policy
 name: Cleanup cache upon closing PR
 run-name: PR ${{ github.event.pull_request.number }}

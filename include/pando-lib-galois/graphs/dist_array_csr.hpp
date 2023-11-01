@@ -1,5 +1,5 @@
-/* Copyright (c) 2023. University of Texas at Austin. All rights reserved. */
-/* Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. */
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
 #ifndef PANDO_LIB_GALOIS_GRAPHS_DIST_ARRAY_CSR_HPP_
 #define PANDO_LIB_GALOIS_GRAPHS_DIST_ARRAY_CSR_HPP_
