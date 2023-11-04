@@ -20,7 +20,7 @@ repos:
         exclude: ^scripts/|Makefile
         args: [--whitespaces-count, '2']
       - id: insert-license
-        files: .*\.sh$|.*\.yml$|.*\.yaml$|.*\.txt$|.*\.py|.*\.cmake|.*\.cfg$|.*\.ok$|.*\.el$|Dockerfile.*|Makefile.*|.clang-format|.tool-versions
+        files: .*\.sh$|.*\.yml$|.*\.yaml$|.*\.txt$|.*\.py|.*\.cmake|.*\.cfg$|Dockerfile.*|Makefile.*|.clang-format|.tool-versions
         exclude: LICENSE.txt
         args:
           - --detect-license-in-X-top-lines=10
