@@ -8,18 +8,18 @@
 #include <pando-rt/memory/memory_utilities.hpp>
 #include <pando-rt/sync/atomic.hpp>
 
-namespace pando {
+namespace galois {
 /**
  * @brief This is a termination detection mechanism that is used for detecting nested parallelism
  */
 class WaitGroup {
   ///@brief This is a pointer to the counter used by everyone
-  GlobalPtr<std::uint64_t> m_count = nullptr;
+  pando::GlobalPtr<std::uint64_t> m_count = nullptr;
 
 public:
   class HandleType {
-    GlobalPtr<std::uint64_t> m_count = nullptr;
-    explicit HandleType(GlobalPtr<std::uint64_t> countPtr) : m_count(countPtr) {}
+    pando::GlobalPtr<std::uint64_t> m_count = nullptr;
+    explicit HandleType(pando::GlobalPtr<std::uint64_t> countPtr) : m_count(countPtr) {}
     friend WaitGroup;
 
   public:
@@ -36,19 +36,19 @@ public:
      * @param[in] delta the amount of things to wait on
      */
     void add(std::uint32_t delta) {
-      atomicFetchAdd(m_count, static_cast<std::uint64_t>(delta), std::memory_order_release);
+      pando::atomicFetchAdd(m_count, static_cast<std::uint64_t>(delta), std::memory_order_release);
     }
     /**
      * @brief adds to the barrier to represent one more done to wait on
      */
     void addOne() {
-      atomicFetchAdd(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
+      pando::atomicFetchAdd(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
     }
     /**
      * @brief Signals that one of the things in the WaitGroup has completed.
      */
-    void arrive() {
-      atomicFetchSub(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
+    void done() {
+      pando::atomicFetchSub(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
     }
   };
 
@@ -69,12 +69,13 @@ public:
    *
    * @warning one of the initialize methods must be called before use
    */
-  [[nodiscard]] Status initialize(std::uint32_t initialCount, Place place, MemoryType memoryType) {
-    Status status;
-    std::tie(m_count, status) = allocateMemory<std::uint64_t>(place, 1, memoryType);
-    if (status == Status::Success) {
+  [[nodiscard]] pando::Status initialize(std::uint32_t initialCount, pando::Place place,
+                                         pando::MemoryType memoryType) {
+    pando::Status status;
+    std::tie(m_count, status) = pando::allocateMemory<std::uint64_t>(place, 1, memoryType);
+    if (status == pando::Status::Success) {
       *m_count = initialCount;
-      atomicThreadFence(std::memory_order_release);
+      pando::atomicThreadFence(std::memory_order_release);
     }
     return status;
   }
@@ -86,8 +87,8 @@ public:
    *
    * @warning one of the initialize methods must be called before use
    */
-  [[nodiscard]] Status initialize(std::uint32_t initialCount) {
-    return initialize(initialCount, getCurrentPlace(), MemoryType::Main);
+  [[nodiscard]] pando::Status initialize(std::uint32_t initialCount) {
+    return initialize(initialCount, pando::getCurrentPlace(), pando::MemoryType::Main);
   }
 
   /**
@@ -97,7 +98,7 @@ public:
    */
   void deinitialize() {
     if (m_count != nullptr) {
-      deallocateMemory(m_count, 1);
+      pando::deallocateMemory(m_count, 1);
       m_count = nullptr;
     }
   }
@@ -110,12 +111,12 @@ public:
    * @brief Waits until the number of items to wait on is zero.
    */
   void wait() {
-    waitUntil([this] {
+    pando::waitUntil([this] {
       const bool ready = *m_count == static_cast<std::uint64_t>(0);
       return ready;
     });
-    atomicThreadFence(std::memory_order_acquire);
+    pando::atomicThreadFence(std::memory_order_acquire);
   }
 };
-} // namespace pando
+} // namespace galois
 #endif // PANDO_LIB_GALOIS_SYNC_WAIT_GROUP_HPP_
