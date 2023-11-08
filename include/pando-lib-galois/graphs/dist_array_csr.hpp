@@ -11,7 +11,7 @@ namespace galois {
 /**
  * @brief This is a csr built upon a distributed arrays
  */
-template <typename NodeType>
+template <typename NodeType, typename EdgeType>
 struct DistArrayCSR {
   ///@brief Stores the vertex offsets
   galois::DistArray<std::uint64_t> nodeIndex;
@@ -19,6 +19,8 @@ struct DistArrayCSR {
   galois::DistArray<std::uint64_t> edgeIndex;
   ///@brief Stores the data for each node
   galois::DistArray<NodeType> nodeData;
+  //@brief Stores the data for each edge
+  galois::DistArray<EdgeType> edgeData;
 
   /**
    * @brief Creates a DistArrayCSR from an edgeList
@@ -32,15 +34,18 @@ struct DistArrayCSR {
     if (err != pando::Status::Success) {
       return err;
     }
+
     for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
       vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                          pando::MemoryType::Main};
     }
+
     err = nodeIndex.initialize(vec.begin(), vec.end(), edgeList.size());
     if (err != pando::Status::Success) {
       vec.deinitialize();
       return err;
     }
+
     err = nodeData.initialize(vec.begin(), vec.end(), edgeList.size());
     if (err != pando::Status::Success) {
       vec.deinitialize();
@@ -52,6 +57,7 @@ struct DistArrayCSR {
     for (pando::Vector<std::uint64_t> bucket : edgeList) {
       edgeNums += bucket.size();
     }
+
     err = edgeIndex.initialize(vec.begin(), vec.end(), edgeNums);
     if (err != pando::Status::Success) {
       vec.deinitialize();
@@ -59,6 +65,16 @@ struct DistArrayCSR {
       nodeData.deinitialize();
       return err;
     }
+
+    err = edgeData.initialize(vec.begin(), vec.end(), edgeNums);
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      nodeIndex.deinitialize();
+      nodeData.deinitialize();
+      edgeIndex.deinitialize();
+      return err;
+    }
+
     std::uint64_t edgeCurr = 0;
     for (std::uint64_t nodeCurr = 0; nodeCurr < edgeList.size(); nodeCurr++) {
       pando::Vector<std::uint64_t> edges = edgeList[nodeCurr];
@@ -77,6 +93,7 @@ struct DistArrayCSR {
     nodeIndex.deinitialize();
     edgeIndex.deinitialize();
     nodeData.deinitialize();
+    edgeData.deinitialize();
   }
 
   /**
@@ -96,8 +113,24 @@ struct DistArrayCSR {
   /**
    * @brief gets the value of the node provided
    */
-  NodeType getValue(std::uint64_t node) {
-    return static_cast<NodeType>(nodeData[node]);
+  pando::GlobalRef<NodeType> getValue(std::uint64_t node) {
+    return nodeData[node];
+  }
+
+  /**
+   * @brief Sets the value of the edge provided
+   */
+  void setEdgeValue(std::uint64_t node, std::uint64_t off, EdgeType data) {
+    std::uint64_t beg = (node == 0) ? 0 : nodeIndex[node - 1];
+    edgeData[beg + off] = data;
+  }
+
+  /**
+   * @brief gets the value of the node provided
+   */
+  pando::GlobalRef<EdgeType> getEdgeValue(std::uint64_t node, std::uint64_t off) {
+    std::uint64_t beg = (node == 0) ? 0 : nodeIndex[node - 1];
+    return edgeData[beg + off];
   }
 
   /**

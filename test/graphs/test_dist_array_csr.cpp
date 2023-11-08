@@ -13,6 +13,26 @@
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
 
+pando::Vector<pando::Vector<std::uint64_t>> generateFullyConnectedGraph(std::uint64_t SIZE) {
+  pando::Vector<pando::Vector<std::uint64_t>> vec;
+  EXPECT_EQ(vec.initialize(SIZE), pando::Status::Success);
+  for (pando::GlobalRef<pando::Vector<std::uint64_t>> edges : vec) {
+    pando::Vector<std::uint64_t> inner;
+    EXPECT_EQ(inner.initialize(0), pando::Status::Success);
+    edges = inner;
+  }
+
+  galois::doAll(
+      SIZE, vec, +[](std::uint64_t size, pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
+        pando::Vector<std::uint64_t> inner = innerRef;
+        for (std::uint64_t i = 0; i < size; i++) {
+          EXPECT_EQ(inner.pushBack(i), pando::Status::Success);
+        }
+        innerRef = inner;
+      });
+  return vec;
+}
+
 TEST(DistArrayCSR, FullyConnected) {
   // This paradigm is necessary because the CP system is not part of the PGAS system
   pando::Notification necessary;
@@ -20,31 +40,12 @@ TEST(DistArrayCSR, FullyConnected) {
 
   auto f = +[](pando::Notification::HandleType done) {
     constexpr std::uint64_t SIZE = 100;
-    galois::DistArray<std::uint64_t> array;
-    pando::Vector<pando::Vector<std::uint64_t>> vec;
-    EXPECT_EQ(vec.initialize(SIZE), pando::Status::Success);
-    for (pando::GlobalRef<pando::Vector<std::uint64_t>> edges : vec) {
-      pando::Vector<std::uint64_t> inner;
-      EXPECT_EQ(inner.initialize(0), pando::Status::Success);
-      edges = inner;
-    }
-
-    galois::doAll(
-        std::monostate(), vec,
-        +[](std::monostate _s, pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
-          (void)_s;
-          pando::Vector<std::uint64_t> inner = innerRef;
-          for (std::uint64_t i = 0; i < SIZE; i++) {
-            EXPECT_EQ(inner.pushBack(i), pando::Status::Success);
-          }
-          innerRef = inner;
-        });
-    galois::DistArrayCSR<std::uint64_t> graph;
+    constexpr std::uint64_t value = 0xDEADBEEF;
+    galois::DistArrayCSR<std::uint64_t, std::uint64_t> graph;
+    auto vec = generateFullyConnectedGraph(SIZE);
     graph.initialize(vec);
     auto err = galois::doAll(
-        std::monostate(), vec,
-        +[](std::monostate _s, pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
-          (void)_s;
+        vec, +[](pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
           pando::Vector<std::uint64_t> inner = innerRef;
           inner.deinitialize();
           innerRef = inner;
@@ -53,8 +54,18 @@ TEST(DistArrayCSR, FullyConnected) {
     EXPECT_EQ(err, pando::Status::Success);
     for (std::uint64_t i = 0; i < SIZE; i++) {
       EXPECT_EQ(graph.getNumEdges(i), SIZE);
+      graph.setValue(i, value);
       for (std::uint64_t j = 0; j < SIZE; j++) {
         EXPECT_EQ(graph.getEdgeDst(i, j), j);
+        graph.setEdgeValue(i, j, value);
+      }
+    }
+    for (std::uint64_t i = 0; i < SIZE; i++) {
+      EXPECT_EQ(graph.getNumEdges(i), SIZE);
+      EXPECT_EQ(graph.getValue(i), value);
+      for (std::uint64_t j = 0; j < SIZE; j++) {
+        EXPECT_EQ(graph.getEdgeDst(i, j), j);
+        EXPECT_EQ(graph.getEdgeValue(i, j), value);
       }
     }
     graph.deinitialize();

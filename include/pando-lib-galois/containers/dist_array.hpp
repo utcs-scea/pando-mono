@@ -163,7 +163,7 @@ public:
       return;
     }
     for (auto array : m_data) {
-      static_cast<pando::Array<std::uint64_t>>(array).deinitialize();
+      static_cast<pando::Array<T>>(array).deinitialize();
     }
     m_data.deinitialize();
   }
