@@ -162,8 +162,8 @@ public:
     if (m_data.data() == nullptr) {
       return;
     }
-    for (auto array : m_data) {
-      static_cast<pando::Array<T>>(array).deinitialize();
+    for (pando::Array<T> array : m_data) {
+      array.deinitialize();
     }
     m_data.deinitialize();
   }

@@ -151,7 +151,7 @@ struct DistArrayCSR {
   }
 
   /**
-   * Get the locality of a particular node
+   * @brief Get the locality of a particular node
    */
   pando::Place getLocalityNode(std::uint64_t node) {
     std::uint64_t beg = (node == 0) ? 0 : nodeIndex[node - 1];

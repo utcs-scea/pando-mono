@@ -87,3 +87,12 @@ function(pando_add_driver_test TARGET SOURCEFILE)
     )
   endif ()
 endfunction()
+
+function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
+  set(DRIVER_SCRIPT ${pando-rt_SOURCE_DIR}/scripts/preprun.sh)
+  set(NUM_PXNS 3)
+  set(NUM_CORES 4)
+
+  add_test(NAME ${TARGET}-${INPUTFILE}-${OKFILE}
+    COMMAND bash -c "diff -Z <(${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE}) ${OKFILE}")
+endfunction()

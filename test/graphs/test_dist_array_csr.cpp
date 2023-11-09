@@ -44,13 +44,14 @@ TEST(DistArrayCSR, FullyConnected) {
     galois::DistArrayCSR<std::uint64_t, std::uint64_t> graph;
     auto vec = generateFullyConnectedGraph(SIZE);
     graph.initialize(vec);
+
     auto err = galois::doAll(
         vec, +[](pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
           pando::Vector<std::uint64_t> inner = innerRef;
           inner.deinitialize();
-          innerRef = inner;
         });
     vec.deinitialize();
+
     EXPECT_EQ(err, pando::Status::Success);
     for (std::uint64_t i = 0; i < SIZE; i++) {
       EXPECT_EQ(graph.getNumEdges(i), SIZE);

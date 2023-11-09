@@ -166,7 +166,7 @@ pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func)
   return DoAll::doAll<State, R, F>(wgh, s, range, func);
 }
 template <typename R, typename F>
-static pando::Status doAll(WaitGroup::HandleType wgh, R& range, const F& func) {
+pando::Status doAll(WaitGroup::HandleType wgh, R& range, const F& func) {
   return DoAll::doAll<R, F>(wgh, range, func);
 }
 template <typename State, typename R, typename F>
@@ -174,7 +174,7 @@ pando::Status doAll(State s, R& range, const F& func) {
   return DoAll::doAll<State, R, F>(s, range, func);
 }
 template <typename R, typename F>
-static pando::Status doAll(R& range, const F& func) {
+pando::Status doAll(R& range, const F& func) {
   return DoAll::doAll<R, F>(range, func);
 }
 } // namespace galois
