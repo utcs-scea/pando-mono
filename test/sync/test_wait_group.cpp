@@ -77,3 +77,28 @@ TEST(WaitGroup, Add) {
   EXPECT_EQ(*ptr, goodVal);
   wg.deinitialize();
 }
+
+TEST(WaitGroup, RemoteUsage) {
+  auto dims = pando::getPlaceDims();
+  constexpr std::uint64_t goodVal = 0xDEADBEEF;
+  galois::WaitGroup wg;
+  pando::GlobalPtr<std::uint64_t> ptr;
+  pando::LocalStorageGuard ptrGuard(ptr, dims.node.id);
+  EXPECT_EQ(wg.initialize(dims.node.id), pando::Status::Success);
+  auto func = +[](galois::WaitGroup::HandleType wg, pando::GlobalPtr<std::uint64_t> ptr,
+                  std::uint64_t goodVal) {
+    ptr[pando::getCurrentPlace().node.id] = goodVal;
+    wg.done();
+  };
+  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    EXPECT_EQ(
+        pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
+                         func, wg.getHandle(), ptr, goodVal),
+        pando::Status::Success);
+  }
+  wg.wait();
+  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    EXPECT_EQ(*ptr, goodVal);
+  }
+  wg.deinitialize();
+}

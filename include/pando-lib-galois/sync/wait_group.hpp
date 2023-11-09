@@ -6,7 +6,21 @@
 
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/memory/memory_utilities.hpp>
+#include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/atomic.hpp>
+#include <pando-rt/sync/notification.hpp>
+
+static void addLocal(pando::GlobalPtr<std::uint64_t> countPtr, std::uint32_t delta,
+                     pando::NotificationHandle handle) {
+  pando::atomicFetchAdd(countPtr, static_cast<std::uint64_t>(delta), std::memory_order_release);
+  handle.notify();
+}
+
+static void subLocal(pando::GlobalPtr<std::uint64_t> countPtr, std::uint32_t delta,
+                     pando::NotificationHandle handle) {
+  pando::atomicFetchSub(countPtr, static_cast<std::uint64_t>(delta), std::memory_order_release);
+  handle.notify();
+}
 
 namespace galois {
 /**
@@ -36,19 +50,50 @@ public:
      * @param[in] delta the amount of things to wait on
      */
     void add(std::uint32_t delta) {
-      pando::atomicFetchAdd(m_count, static_cast<std::uint64_t>(delta), std::memory_order_release);
+      if (isSubsetOf(pando::getCurrentPlace(), pando::localityOf(m_count))) {
+        pando::atomicFetchAdd(m_count, static_cast<std::uint64_t>(delta),
+                              std::memory_order_release);
+      } else {
+        bool notifier;
+        pando::Notification notify;
+
+        if (pando::getCurrentPlace().core == pando::anyCore) {
+          PANDO_CHECK(notify.init());
+        } else {
+          PANDO_CHECK(notify.init(&notifier));
+        }
+
+        PANDO_CHECK(pando::executeOn(pando::localityOf(m_count), &addLocal, m_count, delta,
+                                     notify.getHandle()));
+        notify.wait();
+      }
     }
     /**
      * @brief adds to the barrier to represent one more done to wait on
      */
     void addOne() {
-      pando::atomicFetchAdd(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
+      add(static_cast<std::uint32_t>(1));
     }
     /**
      * @brief Signals that one of the things in the WaitGroup has completed.
      */
     void done() {
-      pando::atomicFetchSub(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
+      if (isSubsetOf(pando::getCurrentPlace(), pando::localityOf(m_count))) {
+        pando::atomicFetchSub(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
+      } else {
+        bool notifier;
+        pando::Notification notify;
+
+        if (pando::getCurrentPlace().core == pando::anyCore) {
+          PANDO_CHECK(notify.init());
+        } else {
+          PANDO_CHECK(notify.init(&notifier));
+        }
+
+        PANDO_CHECK(pando::executeOn(pando::localityOf(m_count), &subLocal, m_count,
+                                     static_cast<std::uint32_t>(1), notify.getHandle()));
+        notify.wait();
+      }
     }
   };
 
