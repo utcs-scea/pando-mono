@@ -4,6 +4,8 @@
 #ifndef PANDO_LIB_GALOIS_SYNC_WAIT_GROUP_HPP_
 #define PANDO_LIB_GALOIS_SYNC_WAIT_GROUP_HPP_
 
+#include <pando-rt/export.h>
+
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/memory/memory_utilities.hpp>
 #include <pando-rt/pando-rt.hpp>
@@ -16,10 +18,8 @@ static void addLocal(pando::GlobalPtr<std::uint64_t> countPtr, std::uint32_t del
   handle.notify();
 }
 
-static void subLocal(pando::GlobalPtr<std::uint64_t> countPtr, std::uint32_t delta,
-                     pando::NotificationHandle handle) {
+static void subLocalNoNotify(pando::GlobalPtr<std::uint64_t> countPtr, std::uint32_t delta) {
   pando::atomicFetchSub(countPtr, static_cast<std::uint64_t>(delta), std::memory_order_release);
-  handle.notify();
 }
 
 namespace galois {
@@ -78,21 +78,12 @@ public:
      * @brief Signals that one of the things in the WaitGroup has completed.
      */
     void done() {
-      if (isSubsetOf(pando::getCurrentPlace(), pando::localityOf(m_count))) {
+      if (pando::isSubsetOf(pando::getCurrentPlace(), pando::localityOf(m_count))) {
         pando::atomicFetchSub(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
       } else {
-        bool notifier;
-        pando::Notification notify;
-
-        if (pando::getCurrentPlace().core == pando::anyCore) {
-          PANDO_CHECK(notify.init());
-        } else {
-          PANDO_CHECK(notify.init(&notifier));
-        }
-
-        PANDO_CHECK(pando::executeOn(pando::localityOf(m_count), &subLocal, m_count,
-                                     static_cast<std::uint32_t>(1), notify.getHandle()));
-        notify.wait();
+        pando::atomicThreadFence(std::memory_order_release);
+        PANDO_CHECK(pando::executeOn(pando::localityOf(m_count), &subLocalNoNotify, m_count,
+                                     static_cast<std::uint32_t>(1)));
       }
     }
   };
