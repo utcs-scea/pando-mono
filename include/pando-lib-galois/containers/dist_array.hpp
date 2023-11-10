@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "pando-rt/export.h"
+#include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-rt/containers/array.hpp>
 #include <pando-rt/memory/address_translation.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
@@ -24,18 +25,23 @@ struct PlaceType {
   pando::MemoryType memType;
 };
 
+template <typename T>
+struct DAIterator;
+
 /**
  * @brief This is an array like container that spans multiple hosts
  */
 template <typename T>
 class DistArray {
+public:
   /// @brief The data structure storing the data
   pando::Array<pando::Array<T>> m_data;
 
+private:
   /**
    * @brief Returns a pointer to the given index
    */
-  pando::GlobalPtr<T> get(std::uint64_t i) {
+  pando::GlobalPtr<T> get(std::uint64_t i) noexcept {
     if (m_data.size() == 0 || i >= m_data.size() * static_cast<pando::Array<T>>(m_data[0]).size()) {
       return nullptr;
     }
@@ -48,59 +54,25 @@ class DistArray {
   }
 
   /**
-   * @brief an iterator that stores the DistArray and the current position to provide random access
-   * iterator semantics
+   * @brief Returns a pointer to the given index
    */
-  template <typename Y>
-  struct DAIterator {
-  private:
-    DistArray<Y>& m_arr;
-    std::uint64_t m_pos;
+  pando::GlobalPtr<const T> get(std::uint64_t i) const noexcept {
+    if (m_data.size() == 0 || i >= m_data.size() * static_cast<pando::Array<T>>(m_data[0]).size()) {
+      return nullptr;
+    }
+    pando::Array<T> arr = m_data[0];
+    const std::uint64_t index = i % arr.size();
+    const std::uint64_t blockId = i / arr.size();
+    pando::Array<T> blockPtr = m_data[blockId];
 
-  public:
-    using iterator_category = std::random_access_iterator_tag;
-    using difference_type = std::int64_t;
-    using value_type = T;
-    using pointer = pando::GlobalPtr<T>;
-    using reference = pando::GlobalRef<T>;
-
-    DAIterator(DistArray<Y>& arr, std::uint64_t pos) : m_arr(arr), m_pos(pos) {}
-
-    reference operator*() const {
-      return *m_arr.get(m_pos);
-    }
-
-    pointer operator->() {
-      return m_arr.get(m_pos);
-    }
-    DAIterator& operator++() {
-      m_pos++;
-      return *this;
-    }
-    DAIterator operator++(int) {
-      DAIterator tmp = *this;
-      ++(*this);
-      return tmp;
-    }
-    friend bool operator==(const DAIterator<Y>& a, const DAIterator<Y>& b) {
-      return &a.m_arr == &b.m_arr && a.m_pos == b.m_pos;
-    }
-    friend bool operator!=(const DAIterator<Y>& a, const DAIterator<Y>& b) {
-      return &a.m_arr != &b.m_arr || a.m_pos != b.m_pos;
-    }
-    /**
-    template <>
-    friend pando::Place pando::localityOf<DAIterator<Y>>(const DAIterator<Y>& a) {
-      return pando::localityOf(a.m_arr.get(m_pos));
-    }
-    */
-  };
+    return &(blockPtr[index]);
+  }
 
 public:
+  friend DAIterator<T>;
+
   using iterator = DAIterator<T>;
-  using const_iterator = DAIterator<const T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
-  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   DistArray() noexcept = default;
 
@@ -180,7 +152,14 @@ public:
     return m_data.size() == 0;
   }
 
-  std::uint64_t size() noexcept {
+  constexpr std::uint64_t size() noexcept {
+    if (m_data.size() == 0)
+      return 0;
+    pando::Array<T> arr = m_data[0];
+    return m_data.size() * arr.size();
+  }
+
+  constexpr std::uint64_t size() const noexcept {
     if (m_data.size() == 0)
       return 0;
     pando::Array<T> arr = m_data[0];
@@ -195,20 +174,12 @@ public:
     return iterator(*this, 0);
   }
 
-  const_iterator cbegin() const noexcept {
-    return const_iterator(*this, 0);
-  }
-
   iterator end() noexcept {
     return iterator(*this, size());
   }
 
   iterator end() const noexcept {
     return iterator(*this, size());
-  }
-
-  const_iterator cend() const noexcept {
-    return const_iterator(*this, size());
   }
 
   /**
@@ -226,14 +197,7 @@ public:
   }
 
   /**
-   * @copydoc rbegin()
-   */
-  const_reverse_iterator crbegin() const noexcept {
-    return const_reverse_iterator(cend()--);
-  }
-
-  /**
-   * reverse iterator to the last element
+   * @brief reverse iterator to the last element
    */
   reverse_iterator rend() noexcept {
     return reverse_iterator(begin()--);
@@ -246,12 +210,212 @@ public:
     return reverse_iterator(begin()--);
   }
 
+  friend bool isSame(const DistArray<T>& a, const DistArray<T>& b) {
+    return a.m_data.data() == b.m_data.data();
+  }
+};
+
+/**
+ * @brief an iterator that stores the DistArray and the current position to provide random access
+ * iterator semantics
+ */
+template <typename T>
+class DAIterator {
+  DistArray<T> m_arr;
+  std::uint64_t m_pos;
+  friend CountedIterator<DAIterator<T>>;
+
+public:
+  using iterator_category = std::random_access_iterator_tag;
+  using difference_type = std::int64_t;
+  using value_type = T;
+  using pointer = pando::GlobalPtr<T>;
+  using reference = pando::GlobalRef<T>;
+
+  DAIterator(DistArray<T> arr, std::uint64_t pos) : m_arr(arr), m_pos(pos) {}
+
+  constexpr DAIterator() noexcept = default;
+  constexpr DAIterator(DAIterator&&) noexcept = default;
+  constexpr DAIterator(const DAIterator&) noexcept = default;
+  ~DAIterator() = default;
+
+  constexpr DAIterator& operator=(const DAIterator&) noexcept = default;
+  constexpr DAIterator& operator=(DAIterator&&) noexcept = default;
+
+  reference operator*() const noexcept {
+    return *m_arr.get(m_pos);
+  }
+
+  reference operator*() noexcept {
+    return *m_arr.get(m_pos);
+  }
+
+  pointer operator->() {
+    return m_arr.get(m_pos);
+  }
+
+  DAIterator& operator++() {
+    m_pos++;
+    return *this;
+  }
+
+  DAIterator operator++(int) {
+    DAIterator tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  DAIterator& operator--() {
+    m_pos--;
+    return *this;
+  }
+
+  DAIterator operator--(int) {
+    DAIterator tmp = *this;
+    --(*this);
+    return tmp;
+  }
+
+  constexpr DAIterator operator+(std::uint64_t n) const noexcept {
+    return DAIterator(m_arr, m_pos + n);
+  }
+
+  constexpr DAIterator operator-(std::uint64_t n) const noexcept {
+    return DAIterator(m_arr, m_pos - n);
+  }
+
+  constexpr difference_type operator-(DAIterator b) const noexcept {
+    return m_pos - b.m_pos;
+  }
+
+  reference operator[](std::uint64_t n) noexcept {
+    return m_arr[m_pos + n];
+  }
+
+  reference operator[](std::uint64_t n) const noexcept {
+    return m_arr[m_pos + n];
+  }
+
+  friend bool operator==(const DAIterator& a, const DAIterator& b) {
+    return a.m_pos == b.m_pos && a.m_arr.size() == b.m_arr.size() &&
+           a.m_arr.m_data.data() == b.m_arr.m_data.data();
+  }
+
+  friend bool operator!=(const DAIterator& a, const DAIterator& b) {
+    return !(a == b);
+  }
+
+  friend bool operator<(const DAIterator& a, const DAIterator& b) {
+    return a.m_pos < b.m_pos;
+  }
+
+  friend bool operator<=(const DAIterator& a, const DAIterator& b) {
+    return a.m_pos <= b.m_pos;
+  }
+
+  friend bool operator>(const DAIterator& a, const DAIterator& b) {
+    return a.m_pos > b.m_pos;
+  }
+
+  friend bool operator>=(const DAIterator& a, const DAIterator& b) {
+    return a.m_pos >= b.m_pos;
+  }
+
+  friend pando::Place localityOf(DAIterator& a) {
+    pando::GlobalPtr<T> ptr = &a.m_arr[a.m_pos];
+    return pando::localityOf(ptr);
+  }
+};
+
+/**
+ * @brief a Slice of a DistArray, so there is a start and end of the slice
+ */
+template <typename T>
+class DistArraySlice {
+  DistArray<T> m_arr;
+  std::uint64_t m_begin;
+  std::uint64_t m_end;
+
+public:
+  using iterator = DAIterator<T>;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+
+  DistArraySlice(DistArray<T> arr, std::uint64_t begin, std::uint64_t end)
+      : m_arr(arr), m_begin(begin), m_end(end) {}
+
+  DistArraySlice() noexcept = default;
+  DistArraySlice(const DistArraySlice&) = default;
+  DistArraySlice(DistArraySlice&&) = default;
+
+  ~DistArraySlice() = default;
+
+  DistArraySlice& operator=(const DistArraySlice&) = default;
+  DistArraySlice& operator=(DistArraySlice&&) = default;
+
+  constexpr std::uint64_t size() noexcept {
+    return m_end - m_begin;
+  }
+
+  constexpr std::uint64_t size() const noexcept {
+    return m_end - m_begin;
+  }
+
+  iterator begin() noexcept {
+    return DAIterator<T>(m_arr, m_begin);
+  }
+
+  iterator begin() const noexcept {
+    return DAIterator<T>(m_arr, m_begin);
+  }
+
+  iterator end() noexcept {
+    return DAIterator<T>(m_arr, m_end);
+  }
+
+  iterator end() const noexcept {
+    return DAIterator<T>(m_arr, m_end);
+  }
+
+  /**
+   * @brief reverse iterator to the first element
+   */
+  reverse_iterator rbegin() noexcept {
+    return reverse_iterator(end()--);
+  }
+
+  /**
+   * @copydoc rbegin()
+   */
+  reverse_iterator rbegin() const noexcept {
+    return reverse_iterator(end()--);
+  }
+
+  /**
+   * @brief reverse iterator to the last element
+   */
+  reverse_iterator rend() noexcept {
+    return reverse_iterator(begin()--);
+  }
+
   /**
    * @copydoc rend()
    */
-  const_reverse_iterator crend() const noexcept {
-    return const_reverse_iterator(cbegin()--);
+  reverse_iterator rend() const noexcept {
+    return reverse_iterator(begin()--);
   }
 };
+
 } // namespace galois
+
+namespace std {
+template <typename T>
+struct iterator_traits<galois::DAIterator<T>> {
+  using value_type = T;
+  using pointer = pando::GlobalPtr<T>;
+  using reference = pando::GlobalRef<T>;
+  using difference_type = std::int64_t;
+  using iterator_category = std::random_access_iterator_tag;
+};
+} // namespace std
+
 #endif // PANDO_LIB_GALOIS_CONTAINERS_DIST_ARRAY_HPP_

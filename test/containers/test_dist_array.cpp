@@ -167,7 +167,7 @@ TEST(DistArray, Iterator) {
     }
 
     std::uint64_t i = 0;
-    for (auto val : array) {
+    for (std::uint64_t val : array) {
       EXPECT_EQ(val, i);
       i++;
     }
@@ -177,6 +177,138 @@ TEST(DistArray, Iterator) {
     done.notify();
   };
 
+  pando::Notification necessary;
+  EXPECT_EQ(necessary.init(), pando::Status::Success);
+  EXPECT_EQ(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore}, f,
+                             necessary.getHandle()),
+            pando::Status::Success);
+  necessary.wait();
+}
+
+TEST(DistArray, IteratorManual) {
+  auto f = +[](pando::Notification::HandleType done) {
+    const std::uint64_t size = 1000;
+
+    // create array
+    galois::DistArray<std::uint64_t> array;
+
+    pando::Vector<PlaceType> vec;
+    EXPECT_EQ(vec.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
+    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+      vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
+                         pando::MemoryType::Main};
+    }
+
+    EXPECT_EQ(array.initialize(vec.begin(), vec.end(), size), pando::Status::Success);
+
+    for (std::uint64_t i = 0; i < size; i++) {
+      array[i] = i;
+    }
+    for (std::uint64_t i = 0; i < size; i++) {
+      EXPECT_EQ(array[i], i);
+    }
+
+    std::uint64_t i = 0;
+    for (auto curr = array.begin(); curr != array.end(); curr++) {
+      EXPECT_EQ(*curr, i);
+      i++;
+    }
+
+    array.deinitialize();
+
+    done.notify();
+  };
+
+  pando::Notification necessary;
+  EXPECT_EQ(necessary.init(), pando::Status::Success);
+  EXPECT_EQ(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore}, f,
+                             necessary.getHandle()),
+            pando::Status::Success);
+  necessary.wait();
+}
+
+TEST(DistArray, ReverseIterator) {
+  auto f = +[](pando::Notification::HandleType done) {
+    const std::uint64_t size = 1000;
+
+    // create array
+    galois::DistArray<std::uint64_t> array;
+
+    pando::Vector<PlaceType> vec;
+    EXPECT_EQ(vec.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
+    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+      vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
+                         pando::MemoryType::Main};
+    }
+
+    EXPECT_EQ(array.initialize(vec.begin(), vec.end(), size), pando::Status::Success);
+
+    for (std::uint64_t i = 0; i < size; i++) {
+      array[i] = i;
+    }
+    for (std::uint64_t i = 0; i < size; i++) {
+      EXPECT_EQ(array[i], i);
+    }
+
+    std::uint64_t i = array.size() - 1;
+    for (auto curr = array.rbegin(); curr != array.rend(); curr++) {
+      EXPECT_EQ(*curr, i);
+      i--;
+    }
+
+    array.deinitialize();
+
+    done.notify();
+  };
+
+  pando::Notification necessary;
+  EXPECT_EQ(necessary.init(), pando::Status::Success);
+  EXPECT_EQ(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore}, f,
+                             necessary.getHandle()),
+            pando::Status::Success);
+  necessary.wait();
+}
+
+TEST(DistArray, IteratorExecuteOn) {
+  using DI = galois::DAIterator<std::uint64_t>;
+  static_assert(std::is_trivially_copyable<DI>::value);
+  auto f = +[](pando::Notification::HandleType done) {
+    constexpr std::uint64_t size = 1000;
+    constexpr std::uint64_t goodVal = 0xDEADBEEF;
+
+    // create array
+    galois::DistArray<std::uint64_t> array;
+
+    pando::Vector<PlaceType> vec;
+    EXPECT_EQ(vec.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
+    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+      vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
+                         pando::MemoryType::Main};
+    }
+
+    EXPECT_EQ(array.initialize(vec.begin(), vec.end(), size), pando::Status::Success);
+
+    for (std::uint64_t i = 0; i < size; i++) {
+      array[i] = 0xDEADBEEF;
+    }
+
+    pando::Status status;
+    auto func = +[](pando::NotificationHandle done, std::uint64_t goodVal, DI begin) {
+      // for(auto curr = begin; curr != end; curr++) {EXPECT_EQ(*curr, goodVal);}
+      EXPECT_EQ(*begin, goodVal);
+      done.notify();
+    };
+    pando::Notification notif;
+    EXPECT_EQ(notif.init(), pando::Status::Success);
+    status = pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
+                              func, notif.getHandle(), goodVal, array.begin()); //, array.end());
+    EXPECT_EQ(status, pando::Status::Success);
+    notif.wait();
+
+    array.deinitialize();
+
+    done.notify();
+  };
   pando::Notification necessary;
   EXPECT_EQ(necessary.init(), pando::Status::Success);
   EXPECT_EQ(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore}, f,

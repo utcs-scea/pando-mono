@@ -12,6 +12,14 @@
 
 namespace galois {
 
+/**
+ * @brief the generic localityOf function for pointers for DoAll
+ */
+template <typename T>
+pando::Place localityOf(pando::GlobalPtr<T> ptr) {
+  return pando::localityOf(ptr);
+}
+
 class DoAll {
 private:
   /**
@@ -68,10 +76,10 @@ public:
 
     const auto end = range.end();
 
-    for (auto curr = range.begin(); curr != range.end(); curr++) {
+    for (auto curr = range.begin(); curr != end; curr++) {
       wgh.addOne();
-      err = pando::executeOn(pando::localityOf(curr), &notifyFunc<F, State, typename R::iterator>,
-                             func, s, curr, wgh);
+      err = pando::executeOn(localityOf(curr), &notifyFunc<F, State, typename R::iterator>, func, s,
+                             curr, wgh);
       if (err != pando::Status::Success) {
         wgh.done();
         return err;
@@ -99,10 +107,10 @@ public:
 
     const auto end = range.end();
 
-    for (auto curr = range.begin(); curr != range.end(); curr++) {
+    for (auto curr = range.begin(); curr != end; curr++) {
       wgh.addOne();
-      err = pando::executeOn(pando::localityOf(curr), &notifyFunc<F, typename R::iterator>, func,
-                             curr, wgh);
+      err =
+          pando::executeOn(localityOf(curr), &notifyFunc<F, typename R::iterator>, func, curr, wgh);
       if (err != pando::Status::Success) {
         wgh.done();
         return err;
@@ -162,19 +170,19 @@ public:
 };
 
 template <typename State, typename R, typename F>
-pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func) {
+pando::Status doAll(WaitGroup::HandleType wgh, State s, R range, const F& func) {
   return DoAll::doAll<State, R, F>(wgh, s, range, func);
 }
 template <typename R, typename F>
-pando::Status doAll(WaitGroup::HandleType wgh, R& range, const F& func) {
+pando::Status doAll(WaitGroup::HandleType wgh, R range, const F& func) {
   return DoAll::doAll<R, F>(wgh, range, func);
 }
 template <typename State, typename R, typename F>
-pando::Status doAll(State s, R& range, const F& func) {
+pando::Status doAll(State s, R range, const F& func) {
   return DoAll::doAll<State, R, F>(s, range, func);
 }
 template <typename R, typename F>
-pando::Status doAll(R& range, const F& func) {
+pando::Status doAll(R range, const F& func) {
   return DoAll::doAll<R, F>(range, func);
 }
 } // namespace galois

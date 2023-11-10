@@ -15,6 +15,7 @@ add_subdirectory(containers)
 add_subdirectory(graphs)
 add_subdirectory(loops)
 add_subdirectory(sync)
+add_subdirectory(utility)
 
 pando_add_exec(import_csrlist import_csrlist.cpp)
 

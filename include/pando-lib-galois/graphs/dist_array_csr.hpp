@@ -3,7 +3,9 @@
 
 #ifndef PANDO_LIB_GALOIS_GRAPHS_DIST_ARRAY_CSR_HPP_
 #define PANDO_LIB_GALOIS_GRAPHS_DIST_ARRAY_CSR_HPP_
-#include "pando-rt/export.h"
+
+#include <pando-rt/export.h>
+
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-rt/containers/vector.hpp>
 
@@ -11,16 +13,131 @@ namespace galois {
 /**
  * @brief This is a csr built upon a distributed arrays
  */
-template <typename NodeType, typename EdgeType>
-struct DistArrayCSR {
+template <typename VertexType, typename EdgeType>
+class DistArrayCSR {
   ///@brief Stores the vertex offsets
-  galois::DistArray<std::uint64_t> nodeIndex;
+  galois::DistArray<std::uint64_t> vertexEdgeOffsets;
+  ///@brief Stores the vertex gids
+  galois::DistArray<std::uint64_t> vertexGIDs;
   ///@brief Stores the edge destinations
-  galois::DistArray<std::uint64_t> edgeIndex;
-  ///@brief Stores the data for each node
-  galois::DistArray<NodeType> nodeData;
+  galois::DistArray<std::uint64_t> edgeDestinations;
+  ///@brief Stores the data for each vertex
+  galois::DistArray<VertexType> vertexData;
   //@brief Stores the data for each edge
   galois::DistArray<EdgeType> edgeData;
+
+public:
+  using VertexTokenID = std::uint64_t;
+  using VertexTopologyID = std::uint64_t;
+  using EdgeHandle = std::uint64_t;
+  using VertexData = VertexType;
+  using EdgeData = EdgeType;
+  using EdgeRange = DistArraySlice<EdgeHandle>;
+
+  /**
+   * @brief topology id and edge ranges in order to ensure proper depromotion for doAll inference
+   */
+  struct VertexInfo {
+    VertexTopologyID lid;
+    EdgeRange edges;
+    operator VertexTopologyID() {
+      return lid;
+    }
+    operator EdgeRange() {
+      return edges;
+    }
+  };
+
+  static_assert(!std::is_same<VertexTopologyID, EdgeRange>::value);
+
+  /**
+   * @brief Vertex Iterator since the graph itself is returned as the range
+   */
+  class VertexIt {
+    DistArray<EdgeHandle> m_vertexEdgeOffsets;
+    DistArray<VertexTopologyID> m_edgeDestinations;
+    VertexTopologyID m_vertex;
+
+  public:
+    using iterator_category = std::random_access_iterator_tag;
+    using difference_type = std::int64_t;
+    using value_type = VertexInfo;
+
+    VertexIt(DistArrayCSR& dacsr, VertexTopologyID vertex)
+        : m_vertexEdgeOffsets(dacsr.vertexEdgeOffsets),
+          m_edgeDestinations(dacsr.edgeDestinations),
+          m_vertex(vertex) {}
+    constexpr VertexIt() noexcept = default;
+    constexpr VertexIt(VertexIt&&) noexcept = default;
+    constexpr VertexIt(const VertexIt&) noexcept = default;
+    ~VertexIt() = default;
+
+    constexpr VertexIt& operator=(const VertexIt&) noexcept = default;
+    constexpr VertexIt& operator=(VertexIt&&) noexcept = default;
+
+    value_type operator*() const noexcept {
+      std::uint64_t beg = (m_vertex == 0) ? 0 : m_vertexEdgeOffsets[m_vertex - 1];
+      return VertexInfo{m_vertex,
+                        EdgeRange(m_edgeDestinations, beg, m_vertexEdgeOffsets[m_vertex])};
+    }
+
+    value_type operator*() noexcept {
+      std::uint64_t beg = (m_vertex == 0) ? 0 : m_vertexEdgeOffsets[m_vertex - 1];
+      return VertexInfo{m_vertex,
+                        EdgeRange(m_edgeDestinations, beg, m_vertexEdgeOffsets[m_vertex])};
+    }
+
+    VertexIt& operator++() {
+      m_vertex++;
+      return *this;
+    }
+
+    VertexIt operator++(int) {
+      VertexIt tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+
+    VertexIt& operator--() {
+      m_vertex--;
+      return *this;
+    }
+
+    VertexIt operator--(int) {
+      VertexIt tmp = *this;
+      --(*this);
+      return tmp;
+    }
+
+    friend bool operator==(const VertexIt& a, const VertexIt& b) {
+      return a.m_vertex == b.m_vertex && isSame(a.m_vertexEdgeOffsets, b.m_vertexEdgeOffsets) &&
+             isSame(a.m_edgeDestinations, b.m_edgeDestinations);
+    }
+
+    friend bool operator!=(const VertexIt& a, const VertexIt& b) {
+      return !(a == b);
+    }
+
+    friend pando::Place localityOf(VertexIt& a) {
+      std::uint64_t beg = (a.m_vertex == 0) ? 0 : a.m_vertexEdgeOffsets[a.m_vertex - 1];
+      pando::GlobalPtr<VertexTopologyID> ptr = &a.m_edgeDestinations[beg];
+      return pando::localityOf(ptr);
+    }
+  };
+
+  using VertexRange = DistArrayCSR<VertexType, EdgeType>;
+  using VertexDataRange = DistArraySlice<VertexType>;
+  using EdgeDataRange = DistArraySlice<EdgeType>;
+
+  using iterator = VertexIt;
+
+  constexpr DistArrayCSR() noexcept = default;
+  constexpr DistArrayCSR(DistArrayCSR&&) noexcept = default;
+  constexpr DistArrayCSR(const DistArrayCSR&) noexcept = default;
+  ~DistArrayCSR() = default;
+
+  constexpr DistArrayCSR& operator=(const DistArrayCSR&) noexcept = default;
+  constexpr DistArrayCSR& operator=(DistArrayCSR&&) noexcept = default;
 
   /**
    * @brief Creates a DistArrayCSR from an edgeList
@@ -40,16 +157,23 @@ struct DistArrayCSR {
                          pando::MemoryType::Main};
     }
 
-    err = nodeIndex.initialize(vec.begin(), vec.end(), edgeList.size());
+    err = vertexEdgeOffsets.initialize(vec.begin(), vec.end(), edgeList.size());
     if (err != pando::Status::Success) {
       vec.deinitialize();
       return err;
     }
 
-    err = nodeData.initialize(vec.begin(), vec.end(), edgeList.size());
+    err = vertexGIDs.initialize(vec.begin(), vec.end(), edgeList.size());
     if (err != pando::Status::Success) {
       vec.deinitialize();
-      nodeIndex.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+    }
+
+    err = vertexData.initialize(vec.begin(), vec.end(), edgeList.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexGIDs.deinitialize();
       return err;
     }
 
@@ -58,31 +182,35 @@ struct DistArrayCSR {
       edgeNums += bucket.size();
     }
 
-    err = edgeIndex.initialize(vec.begin(), vec.end(), edgeNums);
+    err = edgeDestinations.initialize(vec.begin(), vec.end(), edgeNums);
     if (err != pando::Status::Success) {
       vec.deinitialize();
-      nodeIndex.deinitialize();
-      nodeData.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexGIDs.deinitialize();
+      vertexData.deinitialize();
       return err;
     }
 
     err = edgeData.initialize(vec.begin(), vec.end(), edgeNums);
     if (err != pando::Status::Success) {
       vec.deinitialize();
-      nodeIndex.deinitialize();
-      nodeData.deinitialize();
-      edgeIndex.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexGIDs.deinitialize();
+      vertexData.deinitialize();
+      edgeDestinations.deinitialize();
       return err;
     }
 
     std::uint64_t edgeCurr = 0;
-    for (std::uint64_t nodeCurr = 0; nodeCurr < edgeList.size(); nodeCurr++) {
-      pando::Vector<std::uint64_t> edges = edgeList[nodeCurr];
+    for (std::uint64_t vertexCurr = 0; vertexCurr < edgeList.size(); vertexCurr++) {
+      pando::Vector<std::uint64_t> edges = edgeList[vertexCurr];
       for (auto edgesIt = edges.cbegin(); edgesIt != edges.cend(); edgesIt++, edgeCurr++) {
-        edgeIndex[edgeCurr] = *edgesIt;
+        edgeDestinations[edgeCurr] = *edgesIt;
       }
-      nodeIndex[nodeCurr] = edgeCurr;
+      vertexEdgeOffsets[vertexCurr] = edgeCurr;
+      vertexGIDs[vertexCurr] = vertexCurr;
     }
+    vec.deinitialize();
     return err;
   }
 
@@ -90,73 +218,165 @@ struct DistArrayCSR {
    * @brief Frees all memory and objects associated with this structure
    */
   void deinitialize() {
-    nodeIndex.deinitialize();
-    edgeIndex.deinitialize();
-    nodeData.deinitialize();
+    vertexEdgeOffsets.deinitialize();
+    vertexGIDs.deinitialize();
+    edgeDestinations.deinitialize();
+    vertexData.deinitialize();
     edgeData.deinitialize();
   }
 
   /**
-   * @brief gives the number of nodes
+   * @brief gives the number of vertices
    */
   std::uint64_t size() noexcept {
-    return nodeIndex.size();
+    return vertexEdgeOffsets.size();
   }
 
   /**
-   * @brief Sets the value of the node provided
+   * @brief gives the number of vertices
    */
-  void setValue(std::uint64_t node, NodeType data) {
-    nodeData[node] = data;
+  std::uint64_t size() const noexcept {
+    return vertexEdgeOffsets.size();
   }
 
   /**
-   * @brief gets the value of the node provided
+   * @brief get the token ID as input
    */
-  pando::GlobalRef<NodeType> getValue(std::uint64_t node) {
-    return nodeData[node];
+  VertexTokenID getTokenID(VertexTopologyID vertex) {
+    return vertexGIDs[vertex];
+  }
+
+  /**
+   * @brief Sets the value of the vertex provided
+   */
+  void setData(VertexTopologyID vertex, VertexData data) {
+    vertexData[vertex] = data;
+  }
+
+  /**
+   * @brief gets an edgeHandle from a vertex and offset
+   */
+  EdgeHandle mintEdgeHandle(VertexTopologyID vertex, std::uint64_t off) {
+    std::uint64_t beg = (vertex == 0) ? 0 : vertexEdgeOffsets[vertex - 1];
+    return beg + off;
+  }
+
+  /**
+   * @brief gets the value of the vertex provided
+   */
+  pando::GlobalRef<VertexData> getData(VertexTopologyID vertex) {
+    return vertexData[vertex];
   }
 
   /**
    * @brief Sets the value of the edge provided
    */
-  void setEdgeValue(std::uint64_t node, std::uint64_t off, EdgeType data) {
-    std::uint64_t beg = (node == 0) ? 0 : nodeIndex[node - 1];
-    edgeData[beg + off] = data;
+  void setEdgeData(EdgeHandle eh, EdgeData data) {
+    edgeData[eh] = data;
   }
 
   /**
-   * @brief gets the value of the node provided
+   * @brief Sets the value of the edge provided
    */
-  pando::GlobalRef<EdgeType> getEdgeValue(std::uint64_t node, std::uint64_t off) {
-    std::uint64_t beg = (node == 0) ? 0 : nodeIndex[node - 1];
-    return edgeData[beg + off];
+  void setEdgeData(VertexTopologyID vertex, std::uint64_t off, EdgeData data) {
+    setEdgeData(mintEdgeHandle(vertex, off), data);
   }
 
   /**
-   * @brief get the number of edges for the node provided
+   * @brief gets the reference to the vertex provided
    */
-  std::uint64_t getNumEdges(std::uint64_t node) {
-    std::uint64_t beg = (node == 0) ? 0 : nodeIndex[node - 1];
-    std::uint64_t end = nodeIndex[node];
+  pando::GlobalRef<EdgeData> getEdgeData(EdgeHandle eh) {
+    return edgeData[eh];
+  }
+
+  /**
+   * @brief gets the reference to the vertex provided
+   */
+  pando::GlobalRef<EdgeData> getEdgeData(VertexTopologyID vertex, std::uint64_t off) {
+    return getEdgeData(mintEdgeHandle(vertex, off));
+  }
+
+  /**
+   * @brief get the number of edges for the vertex provided
+   */
+  std::uint64_t getNumEdges(VertexTopologyID vertex) {
+    std::uint64_t beg = (vertex == 0) ? 0 : vertexEdgeOffsets[vertex - 1];
+    std::uint64_t end = vertexEdgeOffsets[vertex];
     return end - beg;
   }
 
   /**
-   * @brief get the vertex at the end of the edge provided by node at the offset from the start
+   * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
    */
-  std::uint64_t getEdgeDst(std::uint64_t node, std::uint64_t off) {
-    std::uint64_t beg = (node == 0) ? 0 : nodeIndex[node - 1];
-    return edgeIndex[beg + off];
+  std::uint64_t getEdgeDst(EdgeHandle eh) {
+    return edgeDestinations[eh];
   }
 
   /**
-   * @brief Get the locality of a particular node
+   * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
    */
-  pando::Place getLocalityNode(std::uint64_t node) {
-    std::uint64_t beg = (node == 0) ? 0 : nodeIndex[node - 1];
-    return pando::localityOf(&edgeIndex[beg]);
+  std::uint64_t getEdgeDst(VertexTopologyID vertex, std::uint64_t off) {
+    return getEdgeDst(mintEdgeHandle(vertex, off));
+  }
+
+  /**
+   * @brief Get the Vertices range
+   */
+  VertexRange& vertices() {
+    return *this;
+  }
+
+  /**
+   * @brief Get the beginning of vertices
+   */
+  iterator begin() noexcept {
+    return iterator(*this, 0);
+  }
+
+  /**
+   * @brief Get the beginning of vertices
+   */
+  iterator begin() const noexcept {
+    return iterator(*this, 0);
+  }
+
+  /**
+   * @brief Get the end of vertices
+   */
+  iterator end() noexcept {
+    return iterator(*this, size());
+  }
+
+  /**
+   * @brief Get the end of vertices
+   */
+  iterator end() const noexcept {
+    return iterator(*this, size());
+  }
+
+  /**
+   * @brief Get the EdgeRange for the graph
+   */
+  EdgeRange edges(VertexTopologyID vertex) noexcept {
+    return *iterator(*this, vertex);
+  }
+
+  /**
+   * @brief Get the VertexDataRange for the graph
+   */
+  VertexDataRange vertexDataRange() noexcept {
+    return VertexDataRange(vertexData, 0, size());
+  }
+
+  /**
+   * @brief Get the EdgeDataRange for the graph
+   */
+  EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
+    auto beg = mintEdgeHandle(vertex, 0);
+    auto end = vertexEdgeOffsets[vertex];
+    return EdgeDataRange(edgeData, beg, end);
   }
 };
+
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_GRAPHS_DIST_ARRAY_CSR_HPP_
