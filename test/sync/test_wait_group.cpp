@@ -32,7 +32,7 @@ TEST(WaitGroup, Wait) {
     wg.done();
   };
   EXPECT_EQ(pando::executeOn(anyZero, func, wg.getHandle(), ptr, goodVal), pando::Status::Success);
-  wg.wait();
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
   EXPECT_EQ(*ptr, goodVal);
   wg.deinitialize();
 }
@@ -51,7 +51,7 @@ TEST(WaitGroup, AddOne) {
     wg.done();
   };
   EXPECT_EQ(pando::executeOn(anyZero, func, wg.getHandle(), ptr, goodVal), pando::Status::Success);
-  wg.wait();
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
   EXPECT_EQ(*ptr, goodVal);
   wg.deinitialize();
 }
@@ -73,7 +73,7 @@ TEST(WaitGroup, Add) {
     wg.done();
   };
   EXPECT_EQ(pando::executeOn(anyZero, func, wg.getHandle(), ptr, goodVal), pando::Status::Success);
-  wg.wait();
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
   EXPECT_EQ(*ptr, goodVal);
   wg.deinitialize();
 }
@@ -96,7 +96,7 @@ TEST(WaitGroup, RemoteUsage) {
                          func, wg.getHandle(), ptr, goodVal),
         pando::Status::Success);
   }
-  wg.wait();
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
   for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(*ptr, goodVal);
   }

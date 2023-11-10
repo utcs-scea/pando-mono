@@ -12,14 +12,14 @@
 #include <pando-rt/sync/atomic.hpp>
 #include <pando-rt/sync/notification.hpp>
 
-static void addLocal(pando::GlobalPtr<std::uint64_t> countPtr, std::uint32_t delta,
+static void addLocal(pando::GlobalPtr<std::int64_t> countPtr, std::uint32_t delta,
                      pando::NotificationHandle handle) {
-  pando::atomicFetchAdd(countPtr, static_cast<std::uint64_t>(delta), std::memory_order_release);
+  pando::atomicFetchAdd(countPtr, static_cast<std::int64_t>(delta), std::memory_order_release);
   handle.notify();
 }
 
-static void subLocalNoNotify(pando::GlobalPtr<std::uint64_t> countPtr, std::uint32_t delta) {
-  pando::atomicFetchSub(countPtr, static_cast<std::uint64_t>(delta), std::memory_order_release);
+static void subLocalNoNotify(pando::GlobalPtr<std::int64_t> countPtr, std::uint32_t delta) {
+  pando::atomicFetchSub(countPtr, static_cast<std::int64_t>(delta), std::memory_order_release);
 }
 
 namespace galois {
@@ -28,12 +28,12 @@ namespace galois {
  */
 class WaitGroup {
   ///@brief This is a pointer to the counter used by everyone
-  pando::GlobalPtr<std::uint64_t> m_count = nullptr;
+  pando::GlobalPtr<std::int64_t> m_count = nullptr;
 
 public:
   class HandleType {
-    pando::GlobalPtr<std::uint64_t> m_count = nullptr;
-    explicit HandleType(pando::GlobalPtr<std::uint64_t> countPtr) : m_count(countPtr) {}
+    pando::GlobalPtr<std::int64_t> m_count = nullptr;
+    explicit HandleType(pando::GlobalPtr<std::int64_t> countPtr) : m_count(countPtr) {}
     friend WaitGroup;
 
   public:
@@ -51,8 +51,7 @@ public:
      */
     void add(std::uint32_t delta) {
       if (isSubsetOf(pando::getCurrentPlace(), pando::localityOf(m_count))) {
-        pando::atomicFetchAdd(m_count, static_cast<std::uint64_t>(delta),
-                              std::memory_order_release);
+        pando::atomicFetchAdd(m_count, static_cast<std::int64_t>(delta), std::memory_order_release);
       } else {
         bool notifier;
         pando::Notification notify;
@@ -79,7 +78,7 @@ public:
      */
     void done() {
       if (pando::isSubsetOf(pando::getCurrentPlace(), pando::localityOf(m_count))) {
-        pando::atomicFetchSub(m_count, static_cast<std::uint64_t>(1), std::memory_order_release);
+        pando::atomicFetchSub(m_count, static_cast<std::int64_t>(1), std::memory_order_release);
       } else {
         pando::atomicThreadFence(std::memory_order_release);
         PANDO_CHECK(pando::executeOn(pando::localityOf(m_count), &subLocalNoNotify, m_count,
@@ -108,9 +107,10 @@ public:
   [[nodiscard]] pando::Status initialize(std::uint32_t initialCount, pando::Place place,
                                          pando::MemoryType memoryType) {
     pando::Status status;
-    std::tie(m_count, status) = pando::allocateMemory<std::uint64_t>(place, 1, memoryType);
+    std::tie(m_count, status) = pando::allocateMemory<std::int64_t>(place, 1, memoryType);
     if (status == pando::Status::Success) {
-      *m_count = initialCount;
+      (void)initialCount;
+      *m_count = static_cast<std::int64_t>(initialCount);
       pando::atomicThreadFence(std::memory_order_release);
     }
     return status;
@@ -146,12 +146,16 @@ public:
   /**
    * @brief Waits until the number of items to wait on is zero.
    */
-  void wait() {
+  [[nodiscard]] pando::Status wait() {
     pando::waitUntil([this] {
-      const bool ready = *m_count == static_cast<std::uint64_t>(0);
+      const bool ready = *m_count <= static_cast<std::int64_t>(0);
       return ready;
     });
     pando::atomicThreadFence(std::memory_order_acquire);
+    if (*m_count < static_cast<std::int64_t>(0)) {
+      return pando::Status::Error;
+    }
+    return pando::Status::Success;
   }
 };
 } // namespace galois

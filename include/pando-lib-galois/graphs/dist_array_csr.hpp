@@ -10,6 +10,17 @@
 #include <pando-rt/containers/vector.hpp>
 
 namespace galois {
+
+template <typename EdgeType>
+struct GenericEdge {
+  GenericEdge() = default;
+  GenericEdge(uint64_t src_, uint64_t dst_, EdgeType data_) : src(src_), dst(dst_), data(data_) {}
+
+  uint64_t src;
+  uint64_t dst;
+  EdgeType data;
+};
+
 /**
  * @brief This is a csr built upon a distributed arrays
  */
@@ -138,6 +149,85 @@ public:
 
   constexpr DistArrayCSR& operator=(const DistArrayCSR&) noexcept = default;
   constexpr DistArrayCSR& operator=(DistArrayCSR&&) noexcept = default;
+
+  /**
+   * @brief Creates a DistArrayCSR from an explicit graph definition, intended only for tests
+   *
+   * @param[in] vertices This is a vector of vertex values.
+   * @param[in] edges This is vector global src id, dst id, and edge data.
+   */
+  [[nodiscard]] pando::Status initialize(pando::Vector<VertexType> vertices,
+                                         pando::Vector<GenericEdge<EdgeType>> edges) {
+    pando::Status err;
+    pando::Vector<galois::PlaceType> vec;
+    err = vec.initialize(pando::getPlaceDims().node.id);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+
+    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+      vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
+                         pando::MemoryType::Main};
+    }
+
+    err = vertexEdgeOffsets.initialize(vec.begin(), vec.end(), vertices.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      return err;
+    }
+
+    err = vertexGIDs.initialize(vec.begin(), vec.end(), vertices.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+    }
+
+    err = vertexData.initialize(vec.begin(), vec.end(), vertices.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexGIDs.deinitialize();
+      return err;
+    }
+
+    err = edgeDestinations.initialize(vec.begin(), vec.end(), edges.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexGIDs.deinitialize();
+      vertexData.deinitialize();
+      return err;
+    }
+
+    err = edgeData.initialize(vec.begin(), vec.end(), edges.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexGIDs.deinitialize();
+      vertexData.deinitialize();
+      edgeDestinations.deinitialize();
+      return err;
+    }
+
+    for (std::uint64_t vertex = 0; vertex < vertices.size(); vertex++) {
+      vertexGIDs[vertex] = vertex;
+      vertexData[vertex] = vertices[vertex];
+    }
+
+    std::uint64_t vertexCurr = 0;
+    for (std::uint64_t i = 0; i < edges.size(); i++) {
+      GenericEdge<EdgeType> edge = edges[i];
+      edgeData[i] = edge.data;
+      edgeDestinations[i] = edge.dst;
+      if (edge.src != vertexCurr) {
+        vertexEdgeOffsets[vertexCurr] = i;
+        vertexCurr = edge.src;
+      }
+    }
+    vertexEdgeOffsets[vertices.size() - 1] = edges.size();
+    vec.deinitialize();
+    return err;
+  }
 
   /**
    * @brief Creates a DistArrayCSR from an edgeList
@@ -317,6 +407,15 @@ public:
    */
   std::uint64_t getEdgeDst(VertexTopologyID vertex, std::uint64_t off) {
     return getEdgeDst(mintEdgeHandle(vertex, off));
+  }
+
+  pando::Place getLocalityVertex(VertexTopologyID vertex) {
+    std::uint64_t beg = (vertex == 0) ? 0 : vertexEdgeOffsets[vertex - 1];
+    return pando::localityOf(&edgeDestinations[beg]);
+  }
+
+  bool isLocal(VertexTopologyID vertex) {
+    return getLocalityVertex(vertex).node == pando::getCurrentPlace().node;
   }
 
   /**

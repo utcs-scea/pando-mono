@@ -1,4 +1,6 @@
-/* Copyright (c) 2023. University of Texas at Austin. All rights reserved. */
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+
 #ifndef PANDO_LIB_GALOIS_GRAPHS_EDGE_LIST_IMPORTER_HPP_
 #define PANDO_LIB_GALOIS_GRAPHS_EDGE_LIST_IMPORTER_HPP_
 
