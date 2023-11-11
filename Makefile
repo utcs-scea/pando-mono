@@ -39,6 +39,9 @@ hooks:
 pre-commit:
 	@pre-commit run -a
 
+git-submodules:
+	@git submodule update --init --recursive
+
 docker-image:
 	@mkdir -p dockerbuild
 	@docker --context ${CONTAINER_CONTEXT} build \
