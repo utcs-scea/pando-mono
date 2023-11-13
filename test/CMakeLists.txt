@@ -13,6 +13,7 @@ endfunction()
 
 add_subdirectory(containers)
 add_subdirectory(graphs)
+add_subdirectory(import)
 add_subdirectory(loops)
 add_subdirectory(sync)
 add_subdirectory(utility)
