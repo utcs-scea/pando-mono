@@ -153,7 +153,7 @@ TEST(DistArrayCSR, TopologyVertexIteratorsDoAll) {
         constexpr std::uint64_t SIZE = 100;
         g.ptr[vlid] = true;
         std::uint64_t j = 0;
-        for (std::uint64_t dstVertex : g.graph.edges(vlid)) {
+        for (pando::GlobalRef<std::uint64_t> dstVertex : g.graph.edges(vlid)) {
           EXPECT_EQ(dstVertex, j);
           j++;
         }
@@ -184,14 +184,21 @@ TEST(DistArrayCSR, TopologyEdgeIteratorsDoAll) {
     }
     galois::doAll(
         touchedBools, eRange,
-        +[](pando::GlobalPtr<bool> ptr, typename Graph::VertexTopologyID dstVertex) {
+        +[](pando::GlobalPtr<bool> ptr, pando::GlobalRef<std::uint64_t> dstVertex) {
           ptr[dstVertex] = true;
+        });
+    for (std::uint64_t i = 0; i < SIZE; i++) {
+      EXPECT_TRUE(touchedBools[i]);
+      touchedBools[i] = false;
+    }
+    galois::doAll(
+        GraphBools{g, touchedBools}, eRange, +[](GraphBools gb, std::uint64_t edgeHandle) {
+          gb.ptr[gb.graph.getEdgeDst(edgeHandle)] = true;
         });
     for (std::uint64_t i = 0; i < SIZE; i++) {
       EXPECT_TRUE(touchedBools[i]);
     }
   }
-
   g.deinitialize();
 }
 

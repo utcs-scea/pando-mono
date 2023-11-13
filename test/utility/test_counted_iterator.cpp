@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
@@ -21,9 +20,9 @@ TEST(CountedIterator, Array) {
 
   std::uint64_t i = 0;
   for (; curr != end; curr++, i++) {
-    std::pair<std::uint64_t, pando::GlobalRef<std::uint64_t>> pair = *curr;
-    EXPECT_EQ(pair.first, i);
-    pair.second = i;
+    auto pair = *curr;
+    EXPECT_EQ(pair.curr, i);
+    pair.value = i;
   }
 
   EXPECT_EQ(i, SIZE);

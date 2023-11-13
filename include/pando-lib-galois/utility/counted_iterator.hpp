@@ -19,11 +19,23 @@ class CountedIterator {
   It m_iter;
 
 public:
+  template <typename T>
+  struct RetType {
+    std::uint64_t curr;
+    T value;
+    static_assert(!std::is_same<std::uint64_t, T>::value);
+    operator T() {
+      return value;
+    }
+    operator std::uint64_t() {
+      return curr;
+    }
+  };
   using iterator_category = typename std::iterator_traits<It>::iterator_category;
   using difference_type = std::int64_t;
-  using value_type = std::pair<std::uint64_t, typename std::iterator_traits<It>::value_type>;
-  using pointer = std::pair<std::uint64_t, typename std::iterator_traits<It>::pointer>;
-  using reference = std::pair<std::uint64_t, typename std::iterator_traits<It>::reference>;
+  using value_type = RetType<typename std::iterator_traits<It>::value_type>;
+  using pointer = RetType<typename std::iterator_traits<It>::pointer>;
+  using reference = RetType<typename std::iterator_traits<It>::reference>;
 
   CountedIterator(std::uint64_t pos, It iter) : m_count(pos), m_iter(iter) {}
 
@@ -37,15 +49,15 @@ public:
   CountedIterator& operator=(CountedIterator&&) = default;
 
   reference operator*() const noexcept {
-    return std::make_pair(m_count, *m_iter);
+    return reference{m_count, *m_iter};
   }
 
   reference operator*() noexcept {
-    return std::make_pair(m_count, *m_iter);
+    return reference{m_count, *m_iter};
   }
 
   pointer operator->() {
-    return std::make_pair(m_count, &(*m_iter));
+    return pointer{m_count, &(*m_iter)};
   }
 
   CountedIterator<It>& operator++() {

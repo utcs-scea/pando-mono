@@ -337,7 +337,7 @@ class DistArraySlice {
   std::uint64_t m_end;
 
 public:
-  using iterator = DAIterator<T>;
+  using iterator = CountedIterator<DAIterator<T>>;
   using reverse_iterator = std::reverse_iterator<iterator>;
 
   DistArraySlice(DistArray<T> arr, std::uint64_t begin, std::uint64_t end)
@@ -361,19 +361,19 @@ public:
   }
 
   iterator begin() noexcept {
-    return DAIterator<T>(m_arr, m_begin);
+    return iterator(m_begin, DAIterator<T>(m_arr, m_begin));
   }
 
   iterator begin() const noexcept {
-    return DAIterator<T>(m_arr, m_begin);
+    return iterator(m_begin, DAIterator<T>(m_arr, m_begin));
   }
 
   iterator end() noexcept {
-    return DAIterator<T>(m_arr, m_end);
+    return iterator(m_end, DAIterator<T>(m_arr, m_end));
   }
 
   iterator end() const noexcept {
-    return DAIterator<T>(m_arr, m_end);
+    return iterator(m_end, DAIterator<T>(m_arr, m_end));
   }
 
   /**
