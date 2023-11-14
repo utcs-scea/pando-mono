@@ -98,11 +98,11 @@ TEST(DistArrayCSR, TopologyIteratorsFor) {
   galois::WaitGroup wg;
   EXPECT_EQ(wg.initialize(0), pando::Status::Success);
 
-  auto i = 0;
+  std::uint64_t i = 0;
   for (std::uint64_t vlid : graph.vertices()) {
     EXPECT_EQ(i, vlid);
-    auto j = 0;
-    for (std::uint64_t dstVertex : graph.edges(vlid)) {
+    std::uint64_t j = 0;
+    for (pando::GlobalRef<std::uint64_t> dstVertex : graph.edges(vlid)) {
       EXPECT_EQ(dstVertex, j);
       j++;
     }
@@ -113,8 +113,8 @@ TEST(DistArrayCSR, TopologyIteratorsFor) {
 
   i = 0;
   for (galois::DistArraySlice<std::uint64_t> edgeRange : graph.vertices()) {
-    auto j = 0;
-    for (std::uint64_t dstVertex : edgeRange) {
+    std::uint64_t j = 0;
+    for (pando::GlobalRef<std::uint64_t> dstVertex : edgeRange) {
       EXPECT_EQ(dstVertex, j);
       j++;
     }
