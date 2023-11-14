@@ -73,6 +73,7 @@ public:
 
   using iterator = DAIterator<T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
+  using pointer = pando::GlobalPtr<T>;
 
   DistArray() noexcept = default;
 
@@ -164,6 +165,24 @@ public:
       return 0;
     pando::Array<T> arr = m_data[0];
     return m_data.size() * arr.size();
+  }
+
+  /**
+   * @brief A beginning local iterator for a specified node `n` that
+   * points to the first local item of this distributed array.
+   */
+  pando::GlobalPtr<T> localBegin(std::int16_t n) noexcept {
+    pando::Array<T> arr = m_data[n];
+    return pando::GlobalPtr<T>(arr.begin());
+  }
+
+  /**
+   * @brief A ending local iterator for a specified node `n` that
+   * points to (the last local item of this distributed array + 1).
+   */
+  pando::GlobalPtr<T> localEnd(std::int16_t n) noexcept {
+    pando::Array<T> arr = m_data[n];
+    return pando::GlobalPtr<T>(arr.end());
   }
 
   iterator begin() noexcept {

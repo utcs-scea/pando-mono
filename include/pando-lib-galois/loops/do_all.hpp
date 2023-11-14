@@ -3,6 +3,7 @@
 
 #ifndef PANDO_LIB_GALOIS_LOOPS_DO_ALL_HPP_
 #define PANDO_LIB_GALOIS_LOOPS_DO_ALL_HPP_
+
 #include <pando-rt/export.h>
 
 #include <pando-lib-galois/sync/wait_group.hpp>
@@ -191,5 +192,6 @@ template <typename R, typename F>
 pando::Status doAll(R range, const F& func) {
   return DoAll::doAll<R, F>(range, func);
 }
+
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_LOOPS_DO_ALL_HPP_

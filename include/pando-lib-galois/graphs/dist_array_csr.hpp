@@ -26,20 +26,11 @@ struct GenericEdge {
  */
 template <typename VertexType, typename EdgeType>
 class DistArrayCSR {
-  ///@brief Stores the vertex offsets
-  galois::DistArray<std::uint64_t> vertexEdgeOffsets;
-  ///@brief Stores the vertex gids
-  galois::DistArray<std::uint64_t> vertexGIDs;
-  ///@brief Stores the edge destinations
-  galois::DistArray<std::uint64_t> edgeDestinations;
-  ///@brief Stores the data for each vertex
-  galois::DistArray<VertexType> vertexData;
-  //@brief Stores the data for each edge
-  galois::DistArray<EdgeType> edgeData;
-
 public:
   using VertexTokenID = std::uint64_t;
   using VertexTopologyID = std::uint64_t;
+  // This is an opaque edge type, and this could be either a graph topology edge ID
+  // or could be a pointer depending on the graph type.
   using EdgeHandle = std::uint64_t;
   using VertexData = VertexType;
   using EdgeData = EdgeType;
@@ -176,7 +167,7 @@ public:
       return err;
     }
 
-    err = vertexGIDs.initialize(vec.begin(), vec.end(), vertices.size());
+    err = vertexTokenIDs.initialize(vec.begin(), vec.end(), vertices.size());
     if (err != pando::Status::Success) {
       vec.deinitialize();
       vertexEdgeOffsets.deinitialize();
@@ -186,7 +177,7 @@ public:
     if (err != pando::Status::Success) {
       vec.deinitialize();
       vertexEdgeOffsets.deinitialize();
-      vertexGIDs.deinitialize();
+      vertexTokenIDs.deinitialize();
       return err;
     }
 
@@ -194,7 +185,7 @@ public:
     if (err != pando::Status::Success) {
       vec.deinitialize();
       vertexEdgeOffsets.deinitialize();
-      vertexGIDs.deinitialize();
+      vertexTokenIDs.deinitialize();
       vertexData.deinitialize();
       return err;
     }
@@ -203,14 +194,14 @@ public:
     if (err != pando::Status::Success) {
       vec.deinitialize();
       vertexEdgeOffsets.deinitialize();
-      vertexGIDs.deinitialize();
+      vertexTokenIDs.deinitialize();
       vertexData.deinitialize();
       edgeDestinations.deinitialize();
       return err;
     }
 
     for (std::uint64_t vertex = 0; vertex < vertices.size(); vertex++) {
-      vertexGIDs[vertex] = vertex;
+      vertexTokenIDs[vertex] = vertex;
       vertexData[vertex] = vertices[vertex];
     }
 
@@ -253,7 +244,7 @@ public:
       return err;
     }
 
-    err = vertexGIDs.initialize(vec.begin(), vec.end(), edgeList.size());
+    err = vertexTokenIDs.initialize(vec.begin(), vec.end(), edgeList.size());
     if (err != pando::Status::Success) {
       vec.deinitialize();
       vertexEdgeOffsets.deinitialize();
@@ -263,7 +254,7 @@ public:
     if (err != pando::Status::Success) {
       vec.deinitialize();
       vertexEdgeOffsets.deinitialize();
-      vertexGIDs.deinitialize();
+      vertexTokenIDs.deinitialize();
       return err;
     }
 
@@ -276,7 +267,7 @@ public:
     if (err != pando::Status::Success) {
       vec.deinitialize();
       vertexEdgeOffsets.deinitialize();
-      vertexGIDs.deinitialize();
+      vertexTokenIDs.deinitialize();
       vertexData.deinitialize();
       return err;
     }
@@ -285,7 +276,7 @@ public:
     if (err != pando::Status::Success) {
       vec.deinitialize();
       vertexEdgeOffsets.deinitialize();
-      vertexGIDs.deinitialize();
+      vertexTokenIDs.deinitialize();
       vertexData.deinitialize();
       edgeDestinations.deinitialize();
       return err;
@@ -298,7 +289,7 @@ public:
         edgeDestinations[edgeCurr] = *edgesIt;
       }
       vertexEdgeOffsets[vertexCurr] = edgeCurr;
-      vertexGIDs[vertexCurr] = vertexCurr;
+      vertexTokenIDs[vertexCurr] = vertexCurr;
     }
     vec.deinitialize();
     return err;
@@ -309,7 +300,7 @@ public:
    */
   void deinitialize() {
     vertexEdgeOffsets.deinitialize();
-    vertexGIDs.deinitialize();
+    vertexTokenIDs.deinitialize();
     edgeDestinations.deinitialize();
     vertexData.deinitialize();
     edgeData.deinitialize();
@@ -333,7 +324,7 @@ public:
    * @brief get the token ID as input
    */
   VertexTokenID getTokenID(VertexTopologyID vertex) {
-    return vertexGIDs[vertex];
+    return vertexTokenIDs[vertex];
   }
 
   /**
@@ -461,6 +452,20 @@ public:
   }
 
   /**
+   * @brief Return the start edge index assigned to the specified vertex.
+   */
+  EdgeHandle edgeBegin(VertexTopologyID v) {
+    return (v == 0) ? 0 : vertexEdgeOffsets[v - 1];
+  }
+
+  /**
+   * @brief Return the end edge index assigned to the specified vertex.
+   */
+  EdgeHandle edgeEnd(VertexTopologyID v) {
+    return vertexEdgeOffsets[v];
+  }
+
+  /**
    * @brief Get the VertexDataRange for the graph
    */
   VertexDataRange vertexDataRange() noexcept {
@@ -475,6 +480,18 @@ public:
     auto end = vertexEdgeOffsets[vertex];
     return EdgeDataRange(edgeData, beg, end);
   }
+
+private:
+  ///@brief Stores the vertex offsets
+  galois::DistArray<EdgeHandle> vertexEdgeOffsets;
+  ///@brief Stores the vertex gids
+  galois::DistArray<VertexTokenID> vertexTokenIDs;
+  ///@brief Stores the edge destinations
+  galois::DistArray<VertexTopologyID> edgeDestinations;
+  ///@brief Stores the data for each vertex
+  galois::DistArray<VertexData> vertexData;
+  //@brief Stores the data for each edge
+  galois::DistArray<EdgeData> edgeData;
 };
 
 } // namespace galois

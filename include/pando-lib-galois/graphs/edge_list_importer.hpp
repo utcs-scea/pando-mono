@@ -12,18 +12,24 @@
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/pando-rt.hpp>
 
+/** @file edge_list_importer.hpp
+ *  This edge list importer reads an edge list file, and constructs a 2D array that
+ *  consists of an edge list for each vertex.
+ *  The output list of the edge lists will be the input for CSR graph construction.
+ */
+
 namespace galois {
 
 /**
  * @brief Imports an edge list to a vector based CSR
  *
- * @param[in] numNodes the number of nodes that are under examination
+ * @param[in] numVertices the number of Vertices; the reason why this is an input is because
+ *            we want to materialize a dense vector for edge end points.
  * @param[in] filePath the path to the edge list file
- * @param[in] retRef the reference to the Vector to put values into.
+ * @param[out] elRef the reference to the output edge list
  */
-pando::Status importNaiveCSRFromEdgeListFileOnCPU(
-    std::uint64_t numNodes, char* filePath,
-    pando::GlobalRef<pando::Vector<pando::Vector<std::uint64_t>>> retRef);
+pando::Status importELFile(std::uint64_t numVertices, const char* filePath,
+                           pando::GlobalRef<pando::Vector<pando::Vector<std::uint64_t>>> elRef);
 
 } // namespace galois
 

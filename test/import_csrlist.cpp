@@ -53,7 +53,7 @@ int pandoMain(int argc, char** argv) {
     GV<V<std::uint64_t>> listcsrPtr = static_cast<GV<V<std::uint64_t>>>(
         pando::getDefaultMainMemoryResource()->allocate(sizeof(V<V<std::uint64_t>>)));
 
-    PANDO_CHECK(galois::importNaiveCSRFromEdgeListFileOnCPU(numVertices, filepath, *listcsrPtr));
+    PANDO_CHECK(galois::importELFile(numVertices, filepath, *listcsrPtr));
     pando::Vector<pando::Vector<std::uint64_t>> listcsr = *listcsrPtr;
     for (pando::Vector<std::uint64_t> vec : listcsr) {
       std::vector<std::uint64_t> stdvec;
@@ -62,7 +62,7 @@ int pandoMain(int argc, char** argv) {
       }
       std::sort(stdvec.begin(), stdvec.end());
       for (std::uint64_t val : stdvec) {
-        std::cout << val << '\t';
+        std::cout << val << ' ';
       }
       std::cout << std::endl;
     }
