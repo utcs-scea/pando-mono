@@ -16,6 +16,7 @@ target_include_directories(pando-lib-galois
 
 target_sources(pando-lib-galois
     PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/atomic.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/loops.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/edge_list_importer.cpp
 )

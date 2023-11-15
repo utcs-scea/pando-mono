@@ -141,9 +141,6 @@ public:
     }
     doAll<State, R, F>(wg.getHandle(), s, range, func);
     err = wg.wait();
-    if (err != pando::Status::Success) {
-      return err;
-    }
     wg.deinitialize();
     return err;
   }
@@ -168,9 +165,6 @@ public:
     doAll<R, F>(wg.getHandle(), range, func);
 
     err = wg.wait();
-    if (err != pando::Status::Success) {
-      return err;
-    }
     wg.deinitialize();
     return err;
   }
