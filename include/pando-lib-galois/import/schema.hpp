@@ -55,7 +55,7 @@ template <typename V, typename E>
 class WMDParser : public FileParser<V, E> {
 public:
   explicit WMDParser(pando::Vector<const char*> files) : csvFields_(10), files_(files) {}
-  WMDParser(uint64_t csvFields, pando::Vector<galois::StringView> files)
+  WMDParser(uint64_t csvFields, pando::Vector<const char*> files)
       : csvFields_(csvFields), files_(files) {}
 
   const pando::Vector<const char*>& getFiles() override {
