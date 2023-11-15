@@ -106,14 +106,14 @@ public:
    */
   [[nodiscard]] pando::Status initialize(std::uint32_t initialCount, pando::Place place,
                                          pando::MemoryType memoryType) {
-    pando::Status status;
-    std::tie(m_count, status) = pando::allocateMemory<std::int64_t>(place, 1, memoryType);
-    if (status == pando::Status::Success) {
-      (void)initialCount;
-      *m_count = static_cast<std::int64_t>(initialCount);
-      pando::atomicThreadFence(std::memory_order_release);
+    const auto expected = pando::allocateMemory<std::int64_t>(1, place, memoryType);
+    if (!expected.hasValue()) {
+      return expected.error();
     }
-    return status;
+    m_count = expected.value();
+    *m_count = static_cast<std::int64_t>(initialCount);
+    pando::atomicThreadFence(std::memory_order_release);
+    return pando::Status::Success;
   }
 
   /**

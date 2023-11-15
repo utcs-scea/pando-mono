@@ -65,6 +65,7 @@ docker:
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
 	${VIM} \
 	--privileged \
+	--network host \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -it \
 	${IMAGE_NAME}:${VERSION} ${CONTAINER_CMD}
 

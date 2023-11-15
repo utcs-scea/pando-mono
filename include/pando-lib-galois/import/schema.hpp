@@ -94,6 +94,7 @@ public:
         return ParsedGraphStructure<V, E>();
       }
       pando::Vector<E> edges;
+      PANDO_CHECK(edges.initialize(0));
       E edge(tokens);
 
       // insert inverse edges to the graph
