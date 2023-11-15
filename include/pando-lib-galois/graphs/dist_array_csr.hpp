@@ -298,7 +298,7 @@ public:
       // of the vertex edge offset array, and it could cause an infinite loop
       // while edges are iterated through edgeBegin() and edgeEnd().
       for (std::uint64_t remainingIndex = edgeList.size();
-           remainingIndex < vertexEdgeOffsets.size(); ++ remainingIndex) {
+           remainingIndex < vertexEdgeOffsets.size(); ++remainingIndex) {
         vertexEdgeOffsets[remainingIndex] = vertexEdgeOffsets[remainingIndex - 1];
         // TODO(hc): should we also take care of vertexTokenIDs?
       }

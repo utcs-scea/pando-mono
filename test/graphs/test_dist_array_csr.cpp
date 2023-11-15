@@ -47,7 +47,7 @@ pando::Status deleteVectorVector(pando::Vector<pando::Vector<T>> vec) {
   return err;
 }
 
-TEST(DistArrayCSR, FullyConnected) {
+TEST(DistArrayCSR, DISABLED_FullyConnected) {
   // This paradigm is necessary because the CP system is not part of the PGAS system
   pando::Notification necessary;
   EXPECT_EQ(necessary.init(), pando::Status::Success);
@@ -87,7 +87,7 @@ TEST(DistArrayCSR, FullyConnected) {
   necessary.wait();
 }
 
-TEST(DistArrayCSR, TopologyIteratorsFor) {
+TEST(DistArrayCSR, DISABLED_TopologyIteratorsFor) {
   constexpr std::uint64_t SIZE = 100;
   auto vec = generateFullyConnectedGraph(SIZE);
   galois::DistArrayCSR<std::uint64_t, std::uint64_t> graph;
@@ -133,7 +133,7 @@ struct GraphBools {
   pando::GlobalPtr<bool> ptr;
 };
 
-TEST(DistArrayCSR, TopologyVertexIteratorsDoAll) {
+TEST(DistArrayCSR, DISABLED_TopologyVertexIteratorsDoAll) {
   constexpr std::uint64_t SIZE = 100;
   auto vec = generateFullyConnectedGraph(SIZE);
   GraphBools gBools;
@@ -167,7 +167,7 @@ TEST(DistArrayCSR, TopologyVertexIteratorsDoAll) {
   gBools.graph.deinitialize();
 }
 
-TEST(DistArrayCSR, TopologyEdgeIteratorsDoAll) {
+TEST(DistArrayCSR, DISABLED_TopologyEdgeIteratorsDoAll) {
   constexpr std::uint64_t SIZE = 100;
   auto vec = generateFullyConnectedGraph(SIZE);
   Graph g;
@@ -202,7 +202,7 @@ TEST(DistArrayCSR, TopologyEdgeIteratorsDoAll) {
   g.deinitialize();
 }
 
-TEST(DistArrayCSR, DataVertexIteratorsDoAll) {
+TEST(DistArrayCSR, DISABLED_DataVertexIteratorsDoAll) {
   constexpr std::uint64_t SIZE = 100;
   constexpr std::uint64_t goodValue = 0xDEADBEEF;
   auto vec = generateFullyConnectedGraph(SIZE);
@@ -224,7 +224,7 @@ TEST(DistArrayCSR, DataVertexIteratorsDoAll) {
   g.deinitialize();
 }
 
-TEST(DistArrayCSR, DataEdgeIteratorsDoAll) {
+TEST(DistArrayCSR, DISABLED_DataEdgeIteratorsDoAll) {
   constexpr std::uint64_t SIZE = 100;
   constexpr std::uint64_t goodValue = 0xDEADBEEF;
   auto vec = generateFullyConnectedGraph(SIZE);

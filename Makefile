@@ -4,8 +4,10 @@
 SHELL := /bin/bash
 
 IMAGE_NAME ?= pando-galois
-VERSION ?= latest
 SRC_DIR ?= $(shell pwd)
+GALOIS_VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev)
+ROOT_IMAGE_VERSION ?= $(shell cd pando-rt/ && git log --pretty="%h" -1 docker)
+VERSION ?= ${GALOIS_VERSION}-${ROOT_IMAGE_VERSION}
 
 CONTAINER_SRC_DIR ?= /pando
 CONTAINER_BUILD_DIR ?= /pando/dockerbuild
@@ -13,10 +15,15 @@ CONTAINER_WORKDIR ?= ${CONTAINER_SRC_DIR}
 CONTAINER_CONTEXT ?= default
 CONTAINER_OPTS ?=
 CONTAINER_CMD ?= bash -l
+INTERACTIVE ?= i
+UNAME ?= $(shell whoami)
+UID ?= $(shell id -u)
+GID ?= $(shell id -g)
 
 BUILD_TYPE ?= Release
 
-VIM ?= -v /home/${USER}/.vim/:/home/${USER}/.vim
+# Developer variables that should be set as env vars in startup files like .profile
+PANDO_CONTAINER_MOUNTS ?=
 
 dependencies: dependencies-asdf
 
@@ -53,9 +60,9 @@ docker-image:
 	@docker --context ${CONTAINER_CONTEXT} build \
 	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
 	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
-	--build-arg UNAME=$(shell whoami) \
-  --build-arg UID=$(shell id -u) \
-  --build-arg GID=$(shell id -g) \
+	--build-arg UNAME=${UNAME} \
+  --build-arg UID=${UID} \
+  --build-arg GID=${GID} \
 	-t ${IMAGE_NAME}:${VERSION} \
 	--file Dockerfile.dev \
 	--target dev .
@@ -63,10 +70,10 @@ docker-image:
 docker:
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
-	${VIM} \
+	${PANDO_CONTAINER_MOUNTS} \
 	--privileged \
 	--network host \
-	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -it \
+	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
 	${IMAGE_NAME}:${VERSION} ${CONTAINER_CMD}
 
 setup:
@@ -83,12 +90,12 @@ setup:
   -DBUILD_DOCS=OFF
 
 run-tests:
-	@cd ${BUILD_DIR} && ctest
+	@cd ${BUILD_DIR} && ctest --output-on-failure
 
 # this command is slow since hooks are not stored in the container image
 # this is mostly for CI use
 docker-pre-commit:
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} --privileged \
-	--workdir=${CONTAINER_WORKDIR} -it \
+	--workdir=${CONTAINER_WORKDIR} -t \
 	${IMAGE_NAME}:${VERSION} bash -lc "make hooks && make pre-commit"

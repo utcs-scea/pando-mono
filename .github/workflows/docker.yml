@@ -21,13 +21,17 @@ jobs:
   prep-smp-ubuntu-2204-docker:
     name: gcc / ${{ matrix.build-type }}
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
     env:
+      REGISTRY: ghcr.io/amdresearch
       ROOT_IMAGE_NAME: pando-rt
-      ROOT_IMAGE_VERSION: latest
       IMAGE_NAME: pando
-      IMAGE_VERSION: ${{ matrix.build-type }}
       CONTAINER_SRC_DIR: "/pando"
       CONTAINER_BUILD_DIR: "/pando/dockerbuild"
+      CONTAINER_WORK_DIR: "/pando"
+      INTERACTIVE: ""
     defaults:
       run:
         shell: bash -l {0}
@@ -41,49 +45,72 @@ jobs:
       with:
         token: ${{ secrets.CI_PAT }}
         submodules: recursive
+    - name: Set up environment variables
+      timeout-minutes: 1
+      run: |
+        echo "UNAME=$(whoami)" >> $GITHUB_ENV
+        echo "UID=$(id -u)" >> $GITHUB_ENV
+        echo "GID=$(id -g)" >> $GITHUB_ENV
+        echo "SRC_DIR=$(pwd)" >> $GITHUB_ENV
+        echo "IMAGE_VERSION=$(git log --pretty="%h" -1 Dockerfile.dev)" >> $GITHUB_ENV
+        echo "ROOT_IMAGE_VERSION=$(cd pando-rt/ && git log --pretty="%h" -1 docker)" >> $GITHUB_ENV
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/amdresearch/PANDO-lib-gal
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
       with:
         driver-opts: network=host
 
-    - name: Build root Docker image
-      uses: docker/build-push-action@v4
-      with:
-        context: docker
-        push: false
-        load: true
-        file: ./pando-rt/docker/Dockerfile
-        tags: "${{ env.ROOT_IMAGE_NAME }}:${{ env.ROOT_IMAGE_VERSION }}"
-        build-args: |
-          "SRC_DIR=${{ env.CONTAINER_SRC_DIR }}"
-          "BUILD_DIR=${{ env.CONTAINER_BUILD_DIR }}"
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+    # - name: Build root Docker image
+    #   uses: docker/build-push-action@v4
+    #   with:
+    #     context: ./pando-rt/docker
+    #     push: false
+    #     load: true
+    #     file: ./pando-rt/docker/Dockerfile
+    #     tags: "${{ env.ROOT_IMAGE_NAME }}:${{ env.ROOT_IMAGE_VERSION }}"
+    #     build-args: |
+    #       "SRC_DIR=${{ env.CONTAINER_SRC_DIR }}"
+    #       "BUILD_DIR=${{ env.CONTAINER_BUILD_DIR }}"
+    #     cache-from: type=registry,ref=${{ steps.meta.outputs.tags }}
+    #     cache-to: type=registry,mode=max,ref=${{ steps.meta.outputs.tags }}
 
     - name: Build development Docker image
       uses: docker/build-push-action@v4
       with:
-        context: docker
+        context: .
         push: false
         load: true
-        file: ./Dockerfile.dev
-        tags: "${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}"
+        file: ./Dockerfile.ci
+        tags: "${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}"
+        target: pando-lib-galois
         build-args: |
           "SRC_DIR=${{ env.CONTAINER_SRC_DIR }}"
           "BUILD_DIR=${{ env.CONTAINER_BUILD_DIR }}"
-          "UNAME=$(whoami)"
-          "UID=$(id -u)"
-          "GID=$(id -g)"
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+          "UNAME=${{ env.UNAME }}"
+          "UID=${{ env.UID }}"
+          "GID=${{ env.GID }}"
+        #"BUILD_IMAGE=${{ env.ROOT_IMAGE_NAME }}:${{ env.ROOT_IMAGE_VERSION }}"
+        cache-from: type=registry,ref=${{ steps.meta.outputs.tags }}
+        cache-to: type=registry,mode=max,ref=${{ steps.meta.outputs.tags }}
 
     - name: Check pre-commit
       timeout-minutes: 10
       run: |
         IMAGE_NAME="${{ env.IMAGE_NAME }}" \
-          VERSION="${{ env.IMAGE_VERSION }}" \
-          SRC_DIR="$GITHUB_WORKSPACE" \
+          VERSION="${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}" \
           make docker-pre-commit
 
     - name: Configure
@@ -92,20 +119,16 @@ jobs:
         CONTAINER_CMD="make setup" \
           CONTAINER_OPTS="-e=BUILD_TYPE=${{ matrix.build-type }}" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
-          VERSION="${{ env.IMAGE_VERSION }}" \
-          SRC_DIR="$GITHUB_WORKSPACE" \
+          VERSION="${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}" \
           make docker
 
     - name: Build
       timeout-minutes: 10
       run: |
-        echo "ls GITHUB_WORKSPACE"
-        ls $GITHUB_WORKSPACE
         CONTAINER_CMD="make -j8" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
-          VERSION="${{ env.IMAGE_VERSION }}" \
+          VERSION="${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}" \
           CONTAINER_WORKDIR="${{ env.CONTAINER_BUILD_DIR }}" \
-          SRC_DIR="$GITHUB_WORKSPACE" \
           make docker
 
     - name: Run Smoke Test
@@ -115,8 +138,7 @@ jobs:
       run: |
         CONTAINER_CMD="bash scripts/run.sh" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
-          VERSION="${{ env.IMAGE_VERSION }}" \
-          SRC_DIR="$GITHUB_WORKSPACE" \
+          VERSION="${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}" \
           make docker
 
     - name: Run Tests
@@ -126,6 +148,5 @@ jobs:
       run: |
         CONTAINER_CMD="make run-tests" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
-          VERSION="${{ env.IMAGE_VERSION }}" \
-          SRC_DIR="$GITHUB_WORKSPACE" \
+          VERSION="${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}" \
           make docker
