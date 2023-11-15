@@ -13,6 +13,10 @@ project(
     LANGUAGES     CXX
 )
 
+if(CMAKE_CXX_FLAGS)
+    message(STATUS "Provided CXX Flags: " ${CMAKE_CXX_FLAGS})
+endif()
+
 set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
 set(BUILD_TESTING OFF)
 add_subdirectory(pando-rt)

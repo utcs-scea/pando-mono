@@ -22,8 +22,14 @@ GID ?= $(shell id -g)
 
 BUILD_TYPE ?= Release
 
+# CMake variables
+PANDO_TEST_DISCOVERY_TIMEOUT ?= 150
+PANDO_EXTRA_CXX_FLAGS ?= ""
+PANDO_BUILD_DOCS ?= OFF
+
 # Developer variables that should be set as env vars in startup files like .profile
 PANDO_CONTAINER_MOUNTS ?=
+PANDO_CONTAINER_ENV ?=
 
 dependencies: dependencies-asdf
 
@@ -71,6 +77,7 @@ docker:
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
 	${PANDO_CONTAINER_MOUNTS} \
+	${PANDO_CONTAINER_ENV} \
 	--privileged \
 	--network host \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
@@ -84,10 +91,12 @@ setup:
   -S ${SRC_DIR} \
   -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
   -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
   -DBUILD_TESTING=ON \
   -DBUILD_EXAMPLES=ON \
-  -DBUILD_DOCS=OFF
+  -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
+	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT}
 
 run-tests:
 	@cd ${BUILD_DIR} && ctest --output-on-failure

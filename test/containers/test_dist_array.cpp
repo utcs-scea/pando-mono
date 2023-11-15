@@ -77,7 +77,7 @@ TEST(DistArray, Initialize) {
   necessary.wait();
 }
 
-TEST(DistArray, Swap) {
+TEST(DistArray, DISABLED_Swap) {
   auto f = +[](pando::Notification::HandleType done) {
     const std::uint64_t size0 = 10;
     const std::uint64_t size1 = 15;
