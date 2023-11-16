@@ -36,6 +36,7 @@ TEST(HashTable, Initialize) {
 
   EXPECT_EQ(table.initialize(8), pando::Status::Success);
   EXPECT_EQ(table.capacity(), 8);
+  table.deinitialize();
 }
 
 TEST(HashTable, Resize) {
@@ -54,6 +55,7 @@ TEST(HashTable, Resize) {
   checkCorrectness(table);
 
   EXPECT_GT(table.capacity(), 8);
+  table.deinitialize();
 }
 
 TEST(HashTable, PutGet) {
@@ -76,6 +78,7 @@ TEST(HashTable, PutGet) {
     EXPECT_EQ(table.get(i, val), true);
     EXPECT_EQ(val, i);
   }
+  table.deinitialize();
 }
 
 TEST(HashTable, PutGetResize) {
@@ -99,6 +102,7 @@ TEST(HashTable, PutGetResize) {
     EXPECT_EQ(table.get(i, val), true);
     EXPECT_EQ(val, arr[i]);
   }
+  table.deinitialize();
 }
 
 TEST(HashTable, PutGet900) {
@@ -126,6 +130,7 @@ TEST(HashTable, PutGet900) {
   }
 
   checkCorrectness(table);
+  table.deinitialize();
 }
 
 TEST(HashTable, Clear) {
@@ -146,6 +151,7 @@ TEST(HashTable, Clear) {
   checkCorrectness(table);
   EXPECT_EQ(table.size(), 0);
   EXPECT_GT(table.capacity(), 8);
+  table.deinitialize();
 }
 
 TEST(HashTable, GetFail) {
@@ -167,4 +173,5 @@ TEST(HashTable, GetFail) {
     EXPECT_EQ(table.get(i, _tmp), false);
     checkCorrectness(table);
   }
+  table.deinitialize();
 }

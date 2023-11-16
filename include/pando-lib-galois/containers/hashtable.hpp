@@ -102,10 +102,10 @@ public:
 
   // @brief initialize the capacity, place, and memory type of the hashtable.
   pando::Status initialize(std::size_t capacity, pando::Place place, pando::MemoryType memType) {
-    const auto status = mBuffer.initialize(capacity, place, memType);
+    const auto status = m_buffer.initialize(capacity, place, memType);
     if (status == pando::Status::Success) {
-      mCapacity = capacity;
-      mBuffer.fill(Entry{});
+      m_capacity = capacity;
+      m_buffer.fill(Entry{});
     }
 
     return status;
@@ -116,24 +116,30 @@ public:
     return initialize(capacity, pando::getCurrentPlace(), pando::MemoryType::Main);
   }
 
+  void deinitialize() {
+    m_buffer.deinitialize();
+    m_size = 0;
+    m_capacity = 0;
+  }
+
   // @brief Resizes the backing array to `capacity`.
   pando::Status resize(std::size_t capacity) {
-    if (capacity <= mCapacity) {
+    if (capacity <= m_capacity) {
       return pando::Status::Success;
     }
 
     const auto memType =
-        mBuffer.data() == nullptr ? pando::MemoryType::Main : pando::memoryTypeOf(mBuffer.data());
+        m_buffer.data() == nullptr ? pando::MemoryType::Main : pando::memoryTypeOf(m_buffer.data());
 
     pando::Array<Entry> newBuffer;
-    auto status = newBuffer.initialize(capacity, pando::localityOf(mBuffer.data()), memType);
+    auto status = newBuffer.initialize(capacity, pando::localityOf(m_buffer.data()), memType);
 
     if (status != pando::Status::Success) {
       return pando::Status::BadAlloc;
     }
 
-    for (std::size_t i = 0; i < mCapacity; i++) {
-      Entry e = mBuffer[i];
+    for (std::size_t i = 0; i < m_capacity; i++) {
+      Entry e = m_buffer[i];
       if (e.occupied) {
         auto insert = bufferInsert(newBuffer, e.key, e.value);
         if (insert != pando::Status::Success) {
@@ -142,17 +148,17 @@ public:
       }
     }
 
-    std::swap(mBuffer, newBuffer);
+    std::swap(m_buffer, newBuffer);
     newBuffer.deinitialize();
 
-    mCapacity = capacity;
+    m_capacity = capacity;
     return pando::Status::Success;
   }
 
   // @brief If key is in hashtable, return true and place value into `value`
   // else return false
   bool get(const Key& key, T& value) {
-    Entry e = mBuffer[probe(key)];
+    Entry e = m_buffer[probe(key)];
 
     if (e.occupied && e.key == key) {
       value = e.value;
@@ -171,70 +177,70 @@ public:
       }
     }
 
-    bufferInsert(mBuffer, key, value);
+    bufferInsert(m_buffer, key, value);
 
-    mSize++;
+    m_size++;
     return pando::Status::Success;
   }
 
   // @brief Clear all entries in hashtable.
   void clear() {
-    mSize = 0;
+    m_size = 0;
     for (std::size_t i = 0; i < capacity(); i++) {
-      Entry e = mBuffer[i];
+      Entry e = m_buffer[i];
       e.occupied = false;
-      mBuffer[i] = e;
+      m_buffer[i] = e;
     }
   }
 
   // @brief Returns number of entries in the hashtable.
   std::size_t size() {
-    return mSize;
+    return m_size;
   }
 
   // @brief Returns the current capacity of the hashtable.
   std::size_t capacity() {
-    return mCapacity;
+    return m_capacity;
   }
 
   // @brief Returns the load factor of the hashtable.
   float loadFactor() {
-    return static_cast<float>(mSize) / static_cast<float>(mCapacity);
+    return static_cast<float>(m_size) / static_cast<float>(m_capacity);
   }
 
   Iterator begin() {
-    auto i = mBuffer.begin();
+    auto i = m_buffer.begin();
     Entry e = *i;
-    while (i != mBuffer.end() && !e.occupied) {
+    while (i != m_buffer.end() && !e.occupied) {
       i++;
       e = *i;
     }
-    return Iterator(i, mBuffer.begin(), mBuffer.end());
+    return Iterator(i, m_buffer.begin(), m_buffer.end());
   }
   Iterator end() {
-    return Iterator(mBuffer.end(), mBuffer.begin(), mBuffer.end());
+    return Iterator(m_buffer.end(), m_buffer.begin(), m_buffer.end());
   }
 
 private:
-  std::size_t mSize = 0;
-  std::size_t mCapacity = 0;
+  std::size_t m_size = 0;
+  std::size_t m_capacity = 0;
 
-  pando::Array<Entry> mBuffer;
+  pando::Array<Entry> m_buffer;
   float maxLoadFactor = 0.8;
 
   // returns the index a key would be in the hashtable
   // if it is present in the hashtable.
   std::size_t probe(const Key& key) {
     auto h = hashIndex(key);
-    Entry e = mBuffer[h];
+    Entry e = m_buffer[h];
     std::size_t idx = h;
 
     // quadratic probing
     for (std::size_t i = 1; e.occupied && e.key != key; i++) {
       idx = h + (i * i);
-      idx %= mCapacity;
+      idx %= m_capacity;
 
-      e = mBuffer[idx];
+      e = m_buffer[idx];
     }
 
     return idx;
@@ -242,7 +248,7 @@ private:
 
   pando::Status bufferInsert(pando::Array<Entry>& buf, const Key& key, T value) {
     std::size_t idx = probe(key);
-    Entry e = mBuffer[idx];
+    Entry e = m_buffer[idx];
 
     // e is not occupied or e.key = key, due to probe
     e.key = key;
@@ -254,13 +260,13 @@ private:
 
   std::size_t nextCapacity() {
     // TODO(prydt) maybe try prime sizes instead
-    return mCapacity * 2;
+    return m_capacity * 2;
   }
 
   inline std::size_t hashIndex(const Key& key) {
     std::size_t i = std::hash<Key>{}(key);
 
-    return i % mCapacity;
+    return i % m_capacity;
   }
 };
 } // namespace galois
