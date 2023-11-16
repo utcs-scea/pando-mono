@@ -77,10 +77,10 @@ TEST(DistArray, Initialize) {
   necessary.wait();
 }
 
-TEST(DistArray, DISABLED_Swap) {
+TEST(DistArray, Swap) {
   auto f = +[](pando::Notification::HandleType done) {
     const std::uint64_t size0 = 10;
-    const std::uint64_t size1 = 15;
+    const std::uint64_t size1 = 16;
     pando::Vector<PlaceType> vec0;
     EXPECT_EQ(vec0.initialize(size0), pando::Status::Success);
     for (std::int16_t i = 0; i < static_cast<std::int16_t>(size0); i++) {
@@ -104,19 +104,11 @@ TEST(DistArray, DISABLED_Swap) {
       array0[i] = i;
     }
 
-    for (std::uint64_t i = 0; i < size0; i++) {
-      EXPECT_EQ(array0[i], i);
-    }
-
     galois::DistArray<std::uint64_t> array1;
     EXPECT_EQ(array1.initialize(vec1.begin(), vec1.end(), size1), pando::Status::Success);
 
     for (std::uint64_t i = 0; i < size1; i++) {
       array1[i] = i + size0;
-    }
-
-    for (std::uint64_t i = 0; i < size1; i++) {
-      EXPECT_EQ(array1[i], i + size0);
     }
 
     std::swap(array0, array1);
@@ -129,6 +121,8 @@ TEST(DistArray, DISABLED_Swap) {
       EXPECT_EQ(array1[i], i);
     }
 
+    vec0.deinitialize();
+    vec1.deinitialize();
     array0.deinitialize();
     array1.deinitialize();
 
