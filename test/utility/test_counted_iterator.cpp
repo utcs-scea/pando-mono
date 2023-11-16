@@ -34,3 +34,15 @@ TEST(CountedIterator, Array) {
   }
   EXPECT_EQ(i, SIZE);
 }
+
+TEST(IotaRange, Simple) {
+  constexpr std::uint64_t SIZE = 10;
+  auto range = galois::IotaRange(0, SIZE);
+  std::uint64_t i = 0;
+
+  for (auto s : range) {
+    EXPECT_EQ(i, s);
+    i++;
+  }
+  EXPECT_EQ(SIZE, range.size());
+}
