@@ -18,7 +18,7 @@ namespace galois {
  */
 template <typename T>
 pando::Place localityOf(pando::GlobalPtr<T> ptr) {
-  return pando::localityOf(ptr);
+  return (ptr == nullptr) ? pando::getCurrentPlace() : pando::localityOf(ptr);
 }
 
 class DoAll {

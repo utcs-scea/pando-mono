@@ -7,6 +7,7 @@
 #include <pando-rt/export.h>
 
 #include <pando-lib-galois/containers/dist_array.hpp>
+#include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/vector.hpp>
 
 namespace galois {
@@ -123,7 +124,7 @@ public:
     friend pando::Place localityOf(VertexIt& a) {
       std::uint64_t beg = (a.m_vertex == 0) ? 0 : a.m_vertexEdgeOffsets[a.m_vertex - 1];
       pando::GlobalPtr<VertexTopologyID> ptr = &a.m_edgeDestinations[beg];
-      return pando::localityOf(ptr);
+      return galois::localityOf(ptr);
     }
   };
 
@@ -414,7 +415,7 @@ public:
 
   pando::Place getLocalityVertex(VertexTopologyID vertex) {
     std::uint64_t beg = (vertex == 0) ? 0 : vertexEdgeOffsets[vertex - 1];
-    return pando::localityOf(&edgeDestinations[beg]);
+    return galois::localityOf(&edgeDestinations[beg]);
   }
 
   bool isLocal(VertexTopologyID vertex) {
