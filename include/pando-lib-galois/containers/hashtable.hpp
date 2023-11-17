@@ -13,8 +13,8 @@
 #include "pando-rt/export.h"
 #include <pando-rt/containers/array.hpp>
 #include <pando-rt/memory/address_translation.hpp>
+#include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
-#include <pando-rt/memory/memory_utilities.hpp>
 
 namespace galois {
 

@@ -79,8 +79,10 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       wgh.addOne();
-      err = pando::executeOn(localityOf(curr), &notifyFunc<F, State, typename R::iterator>, func, s,
-                             curr, wgh);
+      // Required hack without workstealing
+      auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
+      err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
+                             wgh);
       if (err != pando::Status::Success) {
         wgh.done();
         return err;
@@ -110,8 +112,9 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       wgh.addOne();
-      err =
-          pando::executeOn(localityOf(curr), &notifyFunc<F, typename R::iterator>, func, curr, wgh);
+      // Required hack without workstealing
+      auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
+      err = pando::executeOn(nodePlace, &notifyFunc<F, typename R::iterator>, func, curr, wgh);
       if (err != pando::Status::Success) {
         wgh.done();
         return err;

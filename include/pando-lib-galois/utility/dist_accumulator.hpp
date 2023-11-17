@@ -7,8 +7,8 @@
 #include <pando-rt/export.h>
 
 #include <pando-rt/containers/vector.hpp>
+#include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
-#include <pando-rt/memory/memory_utilities.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/atomic.hpp>
 #include <pando-rt/sync/notification.hpp>

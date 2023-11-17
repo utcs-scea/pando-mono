@@ -10,7 +10,7 @@
 #include <pando-lib-galois/sync/atomic.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory.hpp>
-#include <pando-rt/memory/memory_utilities.hpp>
+#include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/pando-rt.hpp>
 
 namespace {

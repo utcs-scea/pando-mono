@@ -54,3 +54,48 @@ TEST(doALL, SimpleCopy) {
   EXPECT_EQ(err, pando::Status::Success);
   necessary.wait();
 }
+
+TEST(doALL, NestedInit) {
+  constexpr std::uint64_t SIZE = 10;
+  constexpr std::uint64_t VALUE = 0xDEADBEEF;
+  pando::Array<pando::Array<pando::Array<std::uint64_t>>> distArray;
+  EXPECT_EQ(distArray.initialize(SIZE), pando::Status::Success);
+
+  galois::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+
+  auto f = +[](galois::WaitGroup::HandleType wgh,
+               pando::GlobalRef<pando::Array<pando::Array<std::uint64_t>>> arrArrRef) {
+    auto g = +[](galois::WaitGroup::HandleType wgh,
+                 pando::GlobalRef<pando::Array<std::uint64_t>> arrRef) {
+      auto h = +[](pando::GlobalRef<std::uint64_t> ref) {
+        constexpr std::uint64_t VALUE = 0xDEADBEEF;
+        ref = VALUE;
+      };
+      constexpr std::uint64_t SIZE = 10;
+      pando::Array<std::uint64_t> arr;
+      EXPECT_EQ(arr.initialize(SIZE), pando::Status::Success);
+      galois::doAll(wgh, arr, h);
+      arrRef = arr;
+    };
+    constexpr std::uint64_t SIZE = 10;
+    pando::Array<pando::Array<std::uint64_t>> arrArr;
+    EXPECT_EQ(arrArr.initialize(SIZE), pando::Status::Success);
+    galois::doAll(wgh, wgh, arrArr, g);
+    arrArrRef = arrArr;
+  };
+  EXPECT_EQ(galois::doAll(wg.getHandle(), wg.getHandle(), distArray, f), pando::Status::Success);
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  wg.deinitialize();
+
+  for (pando::Array<pando::Array<std::uint64_t>> arrArr : distArray) {
+    for (pando::Array<std::uint64_t> arr : arrArr) {
+      for (std::uint64_t val : arr) {
+        EXPECT_EQ(val, VALUE);
+      }
+      arr.deinitialize();
+    }
+    arrArr.deinitialize();
+  }
+  distArray.deinitialize();
+}
