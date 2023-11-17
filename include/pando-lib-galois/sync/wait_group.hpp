@@ -50,7 +50,7 @@ public:
      * @param[in] delta the amount of things to wait on
      */
     void add(std::uint32_t delta) {
-      if (isSubsetOf(pando::getCurrentPlace(), pando::localityOf(m_count))) {
+      if (pando::getCurrentPlace().node == pando::localityOf(m_count).node) {
         pando::atomicFetchAdd(m_count, static_cast<std::int64_t>(delta), std::memory_order_release);
       } else {
         bool notifier;
@@ -61,8 +61,9 @@ public:
         } else {
           PANDO_CHECK(notify.init(&notifier));
         }
-
-        PANDO_CHECK(pando::executeOn(pando::localityOf(m_count), &addLocal, m_count, delta,
+        const auto countLocalityNodePlace =
+            pando::Place{pando::localityOf(m_count).node, pando::anyPod, pando::anyCore};
+        PANDO_CHECK(pando::executeOn(countLocalityNodePlace, &addLocal, m_count, delta,
                                      notify.getHandle()));
         notify.wait();
       }
@@ -77,11 +78,13 @@ public:
      * @brief Signals that one of the things in the WaitGroup has completed.
      */
     void done() {
-      if (pando::isSubsetOf(pando::getCurrentPlace(), pando::localityOf(m_count))) {
+      if (pando::getCurrentPlace().node == pando::localityOf(m_count).node) {
         pando::atomicFetchSub(m_count, static_cast<std::int64_t>(1), std::memory_order_release);
       } else {
+        const auto countLocalityNodePlace =
+            pando::Place{pando::localityOf(m_count).node, pando::anyPod, pando::anyCore};
         pando::atomicThreadFence(std::memory_order_release);
-        PANDO_CHECK(pando::executeOn(pando::localityOf(m_count), &subLocalNoNotify, m_count,
+        PANDO_CHECK(pando::executeOn(countLocalityNodePlace, &subLocalNoNotify, m_count,
                                      static_cast<std::uint32_t>(1)));
       }
     }
