@@ -47,44 +47,31 @@ pando::Status deleteVectorVector(pando::Vector<pando::Vector<T>> vec) {
   return err;
 }
 
-TEST(DistArrayCSR, DISABLED_FullyConnected) {
-  // This paradigm is necessary because the CP system is not part of the PGAS system
-  pando::Notification necessary;
-  EXPECT_EQ(necessary.init(), pando::Status::Success);
-
-  auto f = +[](pando::Notification::HandleType done) {
-    constexpr std::uint64_t SIZE = 100;
-    constexpr std::uint64_t value = 0xDEADBEEF;
-    galois::DistArrayCSR<std::uint64_t, std::uint64_t> graph;
-    auto vec = generateFullyConnectedGraph(SIZE);
-    graph.initialize(vec);
-    auto err = deleteVectorVector<std::uint64_t>(vec);
-    EXPECT_EQ(err, pando::Status::Success);
-    for (std::uint64_t i = 0; i < SIZE; i++) {
-      EXPECT_EQ(graph.getNumEdges(i), SIZE);
-      graph.setData(i, value);
-      for (std::uint64_t j = 0; j < SIZE; j++) {
-        EXPECT_EQ(graph.getEdgeDst(i, j), j);
-        graph.setEdgeData(i, j, value);
-      }
+TEST(DistArrayCSR, FullyConnected) {
+  constexpr std::uint64_t SIZE = 10;
+  constexpr std::uint64_t value = 0xDEADBEEF;
+  galois::DistArrayCSR<std::uint64_t, std::uint64_t> graph;
+  auto vec = generateFullyConnectedGraph(SIZE);
+  graph.initialize(vec);
+  auto err = deleteVectorVector<std::uint64_t>(vec);
+  EXPECT_EQ(err, pando::Status::Success);
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    EXPECT_EQ(graph.getNumEdges(i), SIZE);
+    graph.setData(i, value);
+    for (std::uint64_t j = 0; j < SIZE; j++) {
+      EXPECT_EQ(graph.getEdgeDst(i, j), j);
+      graph.setEdgeData(i, j, value);
     }
-    for (std::uint64_t i = 0; i < SIZE; i++) {
-      EXPECT_EQ(graph.getNumEdges(i), SIZE);
-      EXPECT_EQ(graph.getData(i), value);
-      for (std::uint64_t j = 0; j < SIZE; j++) {
-        EXPECT_EQ(graph.getEdgeDst(i, j), j);
-        EXPECT_EQ(graph.getEdgeData(i, j), value);
-      }
+  }
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    EXPECT_EQ(graph.getNumEdges(i), SIZE);
+    EXPECT_EQ(graph.getData(i), value);
+    for (std::uint64_t j = 0; j < SIZE; j++) {
+      EXPECT_EQ(graph.getEdgeDst(i, j), j);
+      EXPECT_EQ(graph.getEdgeData(i, j), value);
     }
-    graph.deinitialize();
-
-    done.notify();
-  };
-
-  EXPECT_EQ(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore}, f,
-                             necessary.getHandle()),
-            pando::Status::Success);
-  necessary.wait();
+  }
+  graph.deinitialize();
 }
 
 TEST(DistArrayCSR, TopologyIteratorsFor) {
