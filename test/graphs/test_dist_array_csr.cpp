@@ -87,8 +87,8 @@ TEST(DistArrayCSR, DISABLED_FullyConnected) {
   necessary.wait();
 }
 
-TEST(DistArrayCSR, DISABLED_TopologyIteratorsFor) {
-  constexpr std::uint64_t SIZE = 100;
+TEST(DistArrayCSR, TopologyIteratorsFor) {
+  constexpr std::uint64_t SIZE = 10;
   auto vec = generateFullyConnectedGraph(SIZE);
   galois::DistArrayCSR<std::uint64_t, std::uint64_t> graph;
   graph.initialize(vec);
@@ -133,8 +133,8 @@ struct GraphBools {
   pando::GlobalPtr<bool> ptr;
 };
 
-TEST(DistArrayCSR, DISABLED_TopologyVertexIteratorsDoAll) {
-  constexpr std::uint64_t SIZE = 100;
+TEST(DistArrayCSR, TopologyVertexIteratorsDoAll) {
+  constexpr std::uint64_t SIZE = 10;
   auto vec = generateFullyConnectedGraph(SIZE);
   GraphBools gBools;
   gBools.graph.initialize(vec);
@@ -150,7 +150,7 @@ TEST(DistArrayCSR, DISABLED_TopologyVertexIteratorsDoAll) {
 
   galois::doAll(
       gBools, gBools.graph.vertices(), +[](GraphBools g, typename Graph::VertexTopologyID vlid) {
-        constexpr std::uint64_t SIZE = 100;
+        constexpr std::uint64_t SIZE = 10;
         g.ptr[vlid] = true;
         std::uint64_t j = 0;
         for (pando::GlobalRef<std::uint64_t> dstVertex : g.graph.edges(vlid)) {
@@ -167,8 +167,8 @@ TEST(DistArrayCSR, DISABLED_TopologyVertexIteratorsDoAll) {
   gBools.graph.deinitialize();
 }
 
-TEST(DistArrayCSR, DISABLED_TopologyEdgeIteratorsDoAll) {
-  constexpr std::uint64_t SIZE = 100;
+TEST(DistArrayCSR, TopologyEdgeIteratorsDoAll) {
+  constexpr std::uint64_t SIZE = 10;
   auto vec = generateFullyConnectedGraph(SIZE);
   Graph g;
   g.initialize(vec);
@@ -202,8 +202,8 @@ TEST(DistArrayCSR, DISABLED_TopologyEdgeIteratorsDoAll) {
   g.deinitialize();
 }
 
-TEST(DistArrayCSR, DISABLED_DataVertexIteratorsDoAll) {
-  constexpr std::uint64_t SIZE = 100;
+TEST(DistArrayCSR, DataVertexIteratorsDoAll) {
+  constexpr std::uint64_t SIZE = 10;
   constexpr std::uint64_t goodValue = 0xDEADBEEF;
   auto vec = generateFullyConnectedGraph(SIZE);
   Graph g;
@@ -224,8 +224,8 @@ TEST(DistArrayCSR, DISABLED_DataVertexIteratorsDoAll) {
   g.deinitialize();
 }
 
-TEST(DistArrayCSR, DISABLED_DataEdgeIteratorsDoAll) {
-  constexpr std::uint64_t SIZE = 100;
+TEST(DistArrayCSR, DataEdgeIteratorsDoAll) {
+  constexpr std::uint64_t SIZE = 10;
   constexpr std::uint64_t goodValue = 0xDEADBEEF;
   auto vec = generateFullyConnectedGraph(SIZE);
   Graph g;
