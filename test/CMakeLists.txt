@@ -19,5 +19,8 @@ add_subdirectory(sync)
 add_subdirectory(utility)
 
 pando_add_exec(import_csrlist import_csrlist.cpp)
+pando_add_exec(import_dirOptCsrList import_dirOptCsrList.cpp)
 
+pando_add_bin_test(import_dirOptCsrList "-n 10 -f" ${pando-lib-galois_SOURCE_DIR}/graphs/repeats.el
+  ${pando-lib-galois_SOURCE_DIR}/ok/repeats.el-import-dirOptCsrList-10.ok)
 pando_add_bin_test(import_csrlist "-n 10 -f" ${pando-lib-galois_SOURCE_DIR}/graphs/simple.el ${pando-lib-galois_SOURCE_DIR}/ok/simple.el-import-csrlist-10.ok)

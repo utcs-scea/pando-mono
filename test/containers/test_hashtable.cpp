@@ -31,6 +31,19 @@ TEST(HashTable, Empty) {
   EXPECT_EQ(table.capacity(), 0);
 }
 
+TEST(HashTable, InitZero) {
+  galois::HashTable<int, int> table;
+  table.initialize(0);
+  EXPECT_EQ(table.capacity(), 0);
+  table.put(1, 1);
+  table.put(2, 2);
+  table.put(3, 3);
+  table.put(4, 4);
+  EXPECT_GT(table.capacity(), 0);
+  checkCorrectness(table);
+  table.deinitialize();
+}
+
 TEST(HashTable, Initialize) {
   galois::HashTable<int, int> table;
 
@@ -52,6 +65,7 @@ TEST(HashTable, Resize) {
   table.put(6, 6);
   table.put(7, 7);
   table.put(8, 8);
+  table.put(9, 9);
   checkCorrectness(table);
 
   EXPECT_GT(table.capacity(), 8);

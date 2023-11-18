@@ -9,6 +9,7 @@
 #include <fstream>
 #include <utility>
 
+#include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/pando-rt.hpp>
 
@@ -30,6 +31,18 @@ namespace galois {
  */
 pando::Status importELFile(std::uint64_t numVertices, const char* filePath,
                            pando::GlobalRef<pando::Vector<pando::Vector<std::uint64_t>>> elRef);
+
+/**
+ * @brief Imports an edge list to a vector based CSR as direction Optimized
+ *
+ * @param[in] numVertices the number of Vertices; the reason why this is an input is because
+ *            we want to materialize a dense vector for edge end points.
+ * @param[in] filePath the path to the edge list file
+ * @param[out] elRef the reference to the output edgelist.
+ */
+pando::Status importELFileDirOpt(
+    std::uint64_t numVertices, const char* filePath,
+    pando::GlobalRef<pando::Vector<galois::HashTable<std::uint64_t, std::uint64_t>>> elRef);
 
 } // namespace galois
 

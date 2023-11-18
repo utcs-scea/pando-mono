@@ -170,7 +170,7 @@ public:
 
   // @brief Puts new `key` `value` pair into hashtable.
   pando::Status put(const Key& key, T value) {
-    if (loadFactor() > maxLoadFactor) {
+    if (m_capacity == 0 || loadFactor() > maxLoadFactor) {
       auto status = resize(nextCapacity());
       if (status != pando::Status::Success) {
         return status;
@@ -260,6 +260,8 @@ private:
 
   std::size_t nextCapacity() {
     // TODO(prydt) maybe try prime sizes instead
+    if (m_capacity == 0)
+      return 8;
     return m_capacity * 2;
   }
 
