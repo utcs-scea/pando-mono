@@ -189,3 +189,30 @@ TEST(HashTable, GetFail) {
   }
   table.deinitialize();
 }
+
+TEST(HashTable, Remote) {
+  auto checker = +[](galois::HashTable<int, int> hmap) -> bool {
+    checkCorrectness(hmap);
+    return true;
+  };
+
+  galois::HashTable<int, int> table;
+
+  EXPECT_EQ(table.initialize(8), pando::Status::Success);
+  table.put(1, 1);
+  table.put(2, 2);
+  table.put(3, 3);
+  table.put(4, 4);
+  table.put(5, 5);
+  table.put(6, 6);
+  table.put(7, 7);
+  table.put(8, 8);
+  checkCorrectness(table);
+  auto nextPlace = pando::Place{pando::NodeIndex{pando::getCurrentPlace().node.id}, pando::anyPod,
+                                pando::anyCore};
+  auto expected = pando::executeOnWait(nextPlace, checker, table);
+  if (!expected.hasValue()) {
+    PANDO_CHECK(expected.error());
+  }
+  table.deinitialize();
+}

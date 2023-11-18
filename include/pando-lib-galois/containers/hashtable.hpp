@@ -31,8 +31,16 @@ public:
   };
 
   // TODO(prydt) constructor with capacity, max load factor
-  HashTable() = default;
+  HashTable() noexcept = default;
   explicit HashTable(float maxLoad) : maxLoadFactor(maxLoad) {}
+
+  HashTable(const HashTable&) = default;
+  HashTable(HashTable&&) = default;
+
+  ~HashTable() = default;
+
+  HashTable& operator=(const HashTable&) = default;
+  HashTable& operator=(HashTable&&) = default;
 
   struct Iterator {
     using iterator_category = std::bidirectional_iterator_tag;
