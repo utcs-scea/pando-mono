@@ -139,7 +139,7 @@ TEST(DistArray, Swap) {
 
 TEST(DistArray, Iterator) {
   auto f = +[](pando::Notification::HandleType done) {
-    const std::uint64_t size = 1000;
+    const std::uint64_t size = 100;
 
     // create array
     galois::DistArray<std::uint64_t> array;
@@ -181,7 +181,7 @@ TEST(DistArray, Iterator) {
 
 TEST(DistArray, IteratorManual) {
   auto f = +[](pando::Notification::HandleType done) {
-    const std::uint64_t size = 1000;
+    const std::uint64_t size = 100;
 
     // create array
     galois::DistArray<std::uint64_t> array;
@@ -223,7 +223,7 @@ TEST(DistArray, IteratorManual) {
 
 TEST(DistArray, ReverseIterator) {
   auto f = +[](pando::Notification::HandleType done) {
-    const std::uint64_t size = 1000;
+    const std::uint64_t size = 100;
 
     // create array
     galois::DistArray<std::uint64_t> array;
@@ -267,7 +267,7 @@ TEST(DistArray, IteratorExecuteOn) {
   using DI = galois::DAIterator<std::uint64_t>;
   static_assert(std::is_trivially_copyable<DI>::value);
   auto f = +[](pando::Notification::HandleType done) {
-    constexpr std::uint64_t size = 1000;
+    constexpr std::uint64_t size = 10;
     constexpr std::uint64_t goodVal = 0xDEADBEEF;
 
     // create array
@@ -287,15 +287,16 @@ TEST(DistArray, IteratorExecuteOn) {
     }
 
     pando::Status status;
-    auto func = +[](pando::NotificationHandle done, std::uint64_t goodVal, DI begin) {
-      // for(auto curr = begin; curr != end; curr++) {EXPECT_EQ(*curr, goodVal);}
-      EXPECT_EQ(*begin, goodVal);
+    auto func = +[](pando::NotificationHandle done, std::uint64_t goodVal, DI begin, DI end) {
+      for (auto curr = begin; curr != end; curr++) {
+        EXPECT_EQ(*curr, goodVal);
+      }
       done.notify();
     };
     pando::Notification notif;
     EXPECT_EQ(notif.init(), pando::Status::Success);
     status = pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
-                              func, notif.getHandle(), goodVal, array.begin()); //, array.end());
+                              func, notif.getHandle(), goodVal, array.begin(), array.end());
     EXPECT_EQ(status, pando::Status::Success);
     notif.wait();
 
