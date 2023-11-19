@@ -18,7 +18,6 @@ struct graph_traits {
   using EdgeData = typename G::EdgeData;
   using EdgeRange = typename G::EdgeRange;
   using VertexRange = typename G::VertexRange;
-  using VertexDataIt = typename G::VertexDataIt;
   using VertexDataRange = typename G::VertexDataRange;
   using EdgeDataRange = typename G::EdgeDataRange;
 };
