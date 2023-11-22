@@ -15,6 +15,7 @@
 #include <pando-rt/memory/address_translation.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
+#include <pando-rt/utility/math.hpp>
 
 namespace galois {
 
@@ -110,9 +111,9 @@ public:
 
   // @brief initialize the capacity, place, and memory type of the hashtable.
   pando::Status initialize(std::size_t capacity, pando::Place place, pando::MemoryType memType) {
-    const auto status = m_buffer.initialize(capacity, place, memType);
+    const bool pow2 = (capacity & (capacity - 1)) == 0;
+    const auto status = m_buffer.initialize(pow2 ? capacity : pando::up2(capacity), place, memType);
     if (status == pando::Status::Success) {
-      m_capacity = capacity;
       m_buffer.fill(Entry{});
     }
 
@@ -127,12 +128,11 @@ public:
   void deinitialize() {
     m_buffer.deinitialize();
     m_size = 0;
-    m_capacity = 0;
   }
 
   // @brief Resizes the backing array to `capacity`.
   pando::Status resize(std::size_t capacity) {
-    if (capacity <= m_capacity) {
+    if (capacity <= m_buffer.size()) {
       return pando::Status::Success;
     }
 
@@ -146,7 +146,7 @@ public:
       return pando::Status::BadAlloc;
     }
 
-    for (std::size_t i = 0; i < m_capacity; i++) {
+    for (std::size_t i = 0; i < m_buffer.size(); i++) {
       Entry e = m_buffer[i];
       if (e.occupied) {
         auto insert = bufferInsert(newBuffer, e.key, e.value);
@@ -159,7 +159,6 @@ public:
     std::swap(m_buffer, newBuffer);
     newBuffer.deinitialize();
 
-    m_capacity = capacity;
     return pando::Status::Success;
   }
 
@@ -178,7 +177,7 @@ public:
 
   // @brief Puts new `key` `value` pair into hashtable.
   pando::Status put(const Key& key, T value) {
-    if (m_capacity == 0 || loadFactor() > maxLoadFactor) {
+    if (m_buffer.size() == 0 || loadFactor() > maxLoadFactor) {
       auto status = resize(nextCapacity());
       if (status != pando::Status::Success) {
         return status;
@@ -208,12 +207,12 @@ public:
 
   // @brief Returns the current capacity of the hashtable.
   std::size_t capacity() {
-    return m_capacity;
+    return m_buffer.size();
   }
 
   // @brief Returns the load factor of the hashtable.
   float loadFactor() {
-    return static_cast<float>(m_size) / static_cast<float>(m_capacity);
+    return static_cast<float>(m_size) / static_cast<float>(m_buffer.size());
   }
 
   Iterator begin() {
@@ -231,10 +230,20 @@ public:
 
 private:
   std::size_t m_size = 0;
-  std::size_t m_capacity = 0;
 
   pando::Array<Entry> m_buffer;
   float maxLoadFactor = 0.8;
+
+  /**
+   * @warning note that i < cap
+   * @warning note that the cap MUST be powers of two for this to work
+   */
+  constexpr std::uint64_t polynomial(std::uint64_t i, std::uint64_t cap) noexcept {
+    // Since unsigned integer overflow is not undefined behavior this operation is safe.
+    // By assumption adding 1 to i should not overflow
+    std::uint64_t inner = (i % 2) ? ((i + 1) >> 2) * i : (i >> 2) * (i + 1);
+    return inner % cap;
+  }
 
   // returns the index a key would be in the hashtable
   // if it is present in the hashtable.
@@ -244,9 +253,10 @@ private:
     std::size_t idx = h;
 
     // quadratic probing
-    for (std::size_t i = 1; e.occupied && e.key != key; i++) {
-      idx = h + (i * i);
-      idx %= m_capacity;
+    // This should not be able to loop due to the fact that the polynomial cycles in 2^n.
+    for (std::size_t i = 1; i < e.occupied && e.key != key; i++) {
+      idx = h + polynomial(i, m_buffer.size());
+      idx %= m_buffer.size();
 
       e = m_buffer[idx];
     }
@@ -268,15 +278,15 @@ private:
 
   std::size_t nextCapacity() {
     // TODO(prydt) maybe try prime sizes instead
-    if (m_capacity == 0)
+    if (m_buffer.size() == 0)
       return 8;
-    return m_capacity * 2;
+    return m_buffer.size() * 2;
   }
 
   inline std::size_t hashIndex(const Key& key) {
     std::size_t i = std::hash<Key>{}(key);
 
-    return i % m_capacity;
+    return i % m_buffer.size();
   }
 };
 } // namespace galois
