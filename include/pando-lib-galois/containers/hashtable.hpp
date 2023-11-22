@@ -165,7 +165,7 @@ public:
   // @brief If key is in hashtable, return true and place value into `value`
   // else return false
   bool get(const Key& key, T& value) {
-    Entry e = m_buffer[probe(key)];
+    Entry e = m_buffer[probe(m_buffer, key)];
 
     if (e.occupied && e.key == key) {
       value = e.value;
@@ -222,6 +222,7 @@ public:
       i++;
       e = *i;
     }
+    for (auto i = m_buffer.begin(); i != m_buffer.end() && !static_cast<Entry>(*i).occupied; i++) {}
     return Iterator(i, m_buffer.begin(), m_buffer.end());
   }
   Iterator end() {
@@ -241,32 +242,32 @@ private:
   constexpr std::uint64_t polynomial(std::uint64_t i, std::uint64_t cap) noexcept {
     // Since unsigned integer overflow is not undefined behavior this operation is safe.
     // By assumption adding 1 to i should not overflow
-    std::uint64_t inner = (i % 2) ? ((i + 1) >> 2) * i : (i >> 2) * (i + 1);
+    std::uint64_t inner = (i % 2) ? ((i + 1) >> 1) * i : (i >> 1) * (i + 1);
     return inner % cap;
   }
 
   // returns the index a key would be in the hashtable
   // if it is present in the hashtable.
-  std::size_t probe(const Key& key) {
+  std::size_t probe(pando::Array<Entry>& buf, const Key& key) {
     auto h = hashIndex(key);
-    Entry e = m_buffer[h];
+    Entry e = buf[h];
     std::size_t idx = h;
 
     // quadratic probing
     // This should not be able to loop due to the fact that the polynomial cycles in 2^n.
-    for (std::size_t i = 1; i < e.occupied && e.key != key; i++) {
-      idx = h + polynomial(i, m_buffer.size());
-      idx %= m_buffer.size();
+    for (std::size_t i = 1; e.occupied && e.key != key; i++) {
+      idx = h + polynomial(i, buf.size());
+      idx %= buf.size();
 
-      e = m_buffer[idx];
+      e = buf[idx];
     }
 
     return idx;
   }
 
   pando::Status bufferInsert(pando::Array<Entry>& buf, const Key& key, T value) {
-    std::size_t idx = probe(key);
-    Entry e = m_buffer[idx];
+    std::size_t idx = probe(buf, key);
+    Entry e = buf[idx];
 
     // e is not occupied or e.key = key, due to probe
     e.key = key;
