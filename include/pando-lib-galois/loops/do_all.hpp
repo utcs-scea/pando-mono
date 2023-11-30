@@ -124,7 +124,7 @@ public:
   }
 
   /**
-   * @brief This is the do_all loop from galois which takes a rang and lifts a function to it, and
+   * @brief This is the do_all loop from galois which takes a range and lifts a function to it, and
    * adds a barrier afterwards.
    *
    * @tparam State the type of the state to enable closure variables to be communicated
