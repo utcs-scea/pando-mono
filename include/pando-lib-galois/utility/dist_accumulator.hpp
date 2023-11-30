@@ -108,6 +108,7 @@ public:
           localCounter = 0;
         });
     globalValueComputed = false;
+    globalValue[0] = 0;
   }
 
   /**
