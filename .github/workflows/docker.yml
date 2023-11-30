@@ -49,6 +49,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
       with:
+        lfs: 'true'
         token: ${{ secrets.CI_PAT }}
         submodules: recursive
     - name: Set up environment variables

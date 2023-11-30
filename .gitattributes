@@ -1,3 +1,7 @@
 *.el filter=lfs diff=lfs merge=lfs -text
-simple.el -filter=lfs -diff=lfs -merge=lfs -text
-repeats.el -filter=lfs -diff=lfs -merge=lfs -text
+graphs/simple.el -filter=lfs -diff=lfs -merge=lfs -text
+graphs/repeats.el -filter=lfs -diff=lfs -merge=lfs -text
+*.ok filter=lfs diff=lfs merge=lfs -text
+ok/ifstream.ok -filter=lfs -diff=lfs -merge=lfs -text
+ok/repeats.el-import-dirOptCsrList-10.ok -filter=lfs -diff=lfs -merge=lfs -text
+ok/simple.el-import-csrlist-10.ok -filter=lfs -diff=lfs -merge=lfs -text
