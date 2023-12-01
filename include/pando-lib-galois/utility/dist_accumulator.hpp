@@ -27,7 +27,7 @@ class DAccumulator {
   ///@brief This is a distributed array of the counters used by each PXN
   galois::DistArray<T> localCounters;
   ///@brief This is a pointer to the computed global value, populated by reduce()
-  galois::DistArray<T> globalValue;
+  pando::GlobalPtr<T> globalValue;
   ///@brief Tracks whether global_value holds a valid value
   bool globalValueComputed = false;
 
@@ -43,17 +43,19 @@ public:
    * @warning one of the initialize methods must be called before use
    */
   [[nodiscard]] pando::Status initialize(pando::Place place, pando::MemoryType memoryType) {
-    int16_t pxns = pando::getPlaceDims().node.id;
     pando::Status err;
+    int16_t pxns = pando::getPlaceDims().node.id;
+
+    auto expect = pando::allocateMemory<T>(1, place, memoryType);
+    if (!expect.hasValue()) {
+      return expect.error();
+    }
+    globalValue = expect.value();
+
     pando::Vector<galois::PlaceType> vec;
     err = vec.initialize(pxns);
     if (err != pando::Status::Success) {
-      return err;
-    }
-    pando::Vector<galois::PlaceType> globalPlace;
-    err = globalPlace.initialize(1);
-    if (err != pando::Status::Success) {
-      vec.deinitialize();
+      pando::deallocateMemory<T>(globalValue, 1);
       return err;
     }
 
@@ -61,19 +63,11 @@ public:
       vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                          pando::MemoryType::Main};
     }
-    globalPlace[0] = PlaceType{place, memoryType};
 
     err = localCounters.initialize(vec.begin(), vec.end(), pxns);
+    vec.deinitialize();
     if (err != pando::Status::Success) {
-      vec.deinitialize();
-      globalPlace.deinitialize();
-      return err;
-    }
-    err = globalValue.initialize(globalPlace.begin(), globalPlace.end(), 1);
-    if (err != pando::Status::Success) {
-      vec.deinitialize();
-      globalPlace.deinitialize();
-      localCounters.deinitialize();
+      pando::deallocateMemory<T>(globalValue, 1);
       return err;
     }
     reset();
@@ -96,19 +90,19 @@ public:
    */
   void deinitialize() {
     localCounters.deinitialize();
-    globalValue.deinitialize();
+    pando::deallocateMemory<T>(globalValue, 1);
   }
 
   /**
    * @brief resets all local counters to 0 and sets globalValueComputed to false
    */
   void reset() {
-    galois::doAll(
-        localCounters, +[](pando::GlobalRef<T> localCounter) {
-          localCounter = 0;
-        });
+    for (pando::GlobalRef<T> localCounter : localCounters) {
+      localCounter = 0;
+    }
     globalValueComputed = false;
-    globalValue[0] = 0;
+    *globalValue = 0;
+    pando::atomicThreadFence(std::memory_order_release);
   }
 
   /**
@@ -118,17 +112,12 @@ public:
    * globally computed value after the first reduce, use get instead
    */
   T reduce() {
-    galois::doAll(
-        this->globalValue, localCounters,
-        +[](galois::DistArray<T> accumulator, pando::GlobalRef<T> localCounter) {
-          T localValue = localCounter;
-          galois::doAll(
-              localValue, accumulator, +[](T localValue, pando::GlobalRef<T> global) {
-                pando::atomicFetchAdd(&global, localValue, std::memory_order_release);
-              });
-        });
+    for (pando::GlobalRef<T> ref : localCounters) {
+      T val = pando::atomicLoad(&ref, std::memory_order_relaxed);
+      pando::atomicFetchAdd(globalValue, val, std::memory_order_release);
+    }
     globalValueComputed = true;
-    return globalValue[0];
+    return *globalValue;
   }
 
   /**
@@ -140,7 +129,7 @@ public:
     if (!globalValueComputed) {
       return 0;
     }
-    return globalValue[0];
+    return *globalValue;
   }
 
   /**
