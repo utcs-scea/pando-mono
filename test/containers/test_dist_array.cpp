@@ -311,3 +311,29 @@ TEST(DistArray, IteratorExecuteOn) {
             pando::Status::Success);
   necessary.wait();
 }
+
+TEST(DistArray, Sort) {
+  const std::uint64_t size = 10;
+  pando::Vector<PlaceType> vec;
+  EXPECT_EQ(vec.initialize(size), pando::Status::Success);
+  for (std::int16_t i = 0; i < static_cast<std::int16_t>(size); i++) {
+    std::int16_t nodeIdx = i % pando::getPlaceDims().node.id;
+    vec[i] = PlaceType{pando::Place{pando::NodeIndex{nodeIdx}, pando::anyPod, pando::anyCore},
+                       pando::MemoryType::Main};
+  }
+  galois::DistArray<std::uint64_t> array;
+
+  EXPECT_EQ(array.initialize(vec.begin(), vec.end(), size), pando::Status::Success);
+  EXPECT_EQ(array.size(), size);
+  std::uint64_t i = 0;
+  for (pando::GlobalRef<std::uint64_t> ref : array) {
+    ref = size - i - 1;
+    i++;
+  }
+  std::sort(array.begin(), array.end());
+  i = 0;
+  for (std::uint64_t val : array) {
+    EXPECT_EQ(val, i);
+    i++;
+  }
+}
