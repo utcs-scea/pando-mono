@@ -299,6 +299,11 @@ public:
     return DAIterator(m_arr, m_pos + n);
   }
 
+  constexpr DAIterator& operator+=(std::uint64_t n) noexcept {
+    m_pos += n;
+    return *this;
+  }
+
   constexpr DAIterator operator-(std::uint64_t n) const noexcept {
     return DAIterator(m_arr, m_pos - n);
   }

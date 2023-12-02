@@ -14,11 +14,10 @@
 namespace galois {
 
 template <typename It>
-class CountedIterator {
+struct CountedIterator {
   std::uint64_t m_count;
   It m_iter;
 
-public:
   template <typename T>
   struct RetType {
     std::uint64_t curr;
