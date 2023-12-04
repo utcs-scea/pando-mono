@@ -15,6 +15,7 @@
 
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
+#include <pando-lib-galois/sync/atomic.hpp>
 
 namespace galois {
 

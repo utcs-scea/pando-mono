@@ -46,3 +46,18 @@ double pando::atomicFetchSub(pando::GlobalPtr<double> ptr, double value) {
   }
   return *ptr;
 }
+
+double pando::atomicLoad(pando::GlobalPtr<double> ptr, std::memory_order order) {
+  pando::atomicThreadFence(order);
+  return *ptr;
+}
+
+double pando::atomicFetchAdd(pando::GlobalPtr<double> ptr, double value, std::memory_order) {
+  return atomicFetchAdd(ptr, value);
+}
+double pando::atomicFetchSub(pando::GlobalPtr<double> ptr, double value, std::memory_order) {
+  return atomicFetchSub(ptr, value);
+}
+double pando::atomicLoad(pando::GlobalPtr<double> ptr) {
+  return atomicLoad(ptr, std::memory_order_seq_cst);
+}

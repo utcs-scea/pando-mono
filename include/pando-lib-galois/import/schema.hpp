@@ -28,41 +28,31 @@ struct ParsedGraphStructure {
   bool isEdge;
 };
 
+pando::Vector<galois::StringView> splitLine(const char* line, char delim, uint64_t numTokens);
+
+// Inheritance is not supported, this is the expected API for any parsers passed to the importer
+/*
 template <typename V, typename E>
 class FileParser {
 public:
-  virtual const pando::Vector<const char*>& getFiles() = 0;
-  virtual ParsedGraphStructure<V, E> parseLine(const char* line) = 0;
-  static pando::Vector<galois::StringView> splitLine(const char* line, char delim,
-                                                     uint64_t numTokens) {
-    uint64_t ndx = 0, start = 0, end = 0;
-    pando::Vector<galois::StringView> tokens;
-    PANDO_CHECK(tokens.initialize(numTokens));
-
-    for (; line[end] != '\0'; end++) {
-      if (line[end] == delim) {
-        tokens[ndx] = galois::StringView(line + start, end - start);
-        start = end + 1;
-        ndx++;
-      }
-    }
-    tokens[numTokens - 1] = galois::StringView(line + start, end - start); // flush last token
-    return tokens;
-  }
+  virtual pando::GlobalPtr<pando::Vector<const char*>> getFiles() = 0;
+  virtual ParsedGraphStructure<V, E> parseLine(const char*) = 0;
 };
+*/
 
 template <typename V, typename E>
-class WMDParser : public FileParser<V, E> {
+class WMDParser {
 public:
-  explicit WMDParser(pando::Vector<const char*> files) : csvFields_(10), files_(files) {}
-  WMDParser(uint64_t csvFields, pando::Vector<const char*> files)
+  explicit WMDParser(pando::GlobalPtr<pando::Vector<const char*>> files)
+      : csvFields_(10), files_(files) {}
+  WMDParser(uint64_t csvFields, pando::GlobalPtr<pando::Vector<const char*>> files)
       : csvFields_(csvFields), files_(files) {}
 
-  const pando::Vector<const char*>& getFiles() override {
+  pando::GlobalPtr<pando::Vector<const char*>> getFiles() {
     return files_;
   }
-  ParsedGraphStructure<V, E> parseLine(const char* line) override {
-    pando::Vector<galois::StringView> tokens = this->splitLine(line, ',', csvFields_);
+  ParsedGraphStructure<V, E> parseLine(const char* line) {
+    pando::Vector<galois::StringView> tokens = splitLine(line, ',', csvFields_);
     galois::StringView token1(tokens[1]);
     galois::StringView token2(tokens[2]);
     galois::StringView token3(tokens[3]);
@@ -112,7 +102,7 @@ public:
 
 private:
   uint64_t csvFields_;
-  pando::Vector<const char*> files_;
+  pando::GlobalPtr<pando::Vector<const char*>> files_;
 };
 
 } // namespace galois

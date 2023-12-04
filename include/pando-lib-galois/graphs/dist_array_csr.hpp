@@ -341,6 +341,15 @@ public:
   }
 
   /**
+   * @brief get the topology ID as input
+   *
+   * @warning unimplemented
+   */
+  VertexTopologyID getTopologyID(VertexTokenID vertex) {
+    return vertex;
+  }
+
+  /**
    * @brief Sets the value of the vertex provided
    */
   void setData(VertexTopologyID vertex, VertexData data) {
