@@ -111,6 +111,9 @@ public:
 
   // @brief initialize the capacity, place, and memory type of the hashtable.
   pando::Status initialize(std::size_t capacity, pando::Place place, pando::MemoryType memType) {
+    if (capacity < 8 && capacity != 0) {
+      capacity = 8;
+    }
     const bool pow2 = (capacity & (capacity - 1)) == 0;
     const auto status = m_buffer.initialize(pow2 ? capacity : pando::up2(capacity), place, memType);
     if (status == pando::Status::Success) {
