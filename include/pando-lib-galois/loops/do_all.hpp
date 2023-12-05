@@ -60,6 +60,42 @@ private:
 public:
   /**
    * @brief This is the do_all loop from galois which takes a rang and lifts a function to it, and
+   * adds a barrier afterwards, also supports a custom locality function.
+   * @warning May be deprecated after December
+   *
+   * @tparam State the type of the state to enable closure variables to be communicated
+   * @tparam R the range type, need to include begin, end, size
+   * @tparam F the type of the functor.
+   * @tparam L the type of the locality functor.
+   *
+   * @param[in] wgh   A WaitGroup that is used to detect termination
+   * @param[in] s     the state to pass closure variables
+   * @param[in] range a group of values to have func run on them.
+   * @param[in] func  the functor to lift
+   */
+  template <typename State, typename R, typename F, typename L>
+  static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func,
+                             const L& localityFunc) {
+    pando::Status err = pando::Status::Success;
+
+    const auto end = range.end();
+
+    for (auto curr = range.begin(); curr != end; curr++) {
+      wgh.addOne();
+      // Required hack without workstealing
+      auto nodePlace = pando::Place{localityFunc(s, *curr).node, pando::anyPod, pando::anyCore};
+      err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
+                             wgh);
+      if (err != pando::Status::Success) {
+        wgh.done();
+        return err;
+      }
+    }
+    return err;
+  }
+
+  /**
+   * @brief This is the do_all loop from galois which takes a rang and lifts a function to it, and
    * adds a barrier afterwards.
    *
    * @tparam State the type of the state to enable closure variables to be communicated
@@ -126,6 +162,32 @@ public:
   /**
    * @brief This is the do_all loop from galois which takes a range and lifts a function to it, and
    * adds a barrier afterwards.
+   * @warning May be deprecated after December
+   *
+   * @tparam State the type of the state to enable closure variables to be communicated
+   * @tparam R the range type, need to include begin, end, size
+   * @tparam F the type of the functor.
+   * @param[in] s the state to pass closure variables
+   * @param[in] range a group of values to have func run on them.
+   * @param[in] func the functor to lift
+   */
+  template <typename State, typename R, typename F, typename L>
+  static pando::Status doAll(State s, R& range, const F& func, const L& localityFunc) {
+    pando::Status err;
+    WaitGroup wg;
+    err = wg.initialize(0);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    doAll<State, R, F>(wg.getHandle(), s, range, func, localityFunc);
+    err = wg.wait();
+    wg.deinitialize();
+    return err;
+  }
+
+  /**
+   * @brief This is the do_all loop from galois which takes a range and lifts a function to it, and
+   * adds a barrier afterwards.
    *
    * @tparam State the type of the state to enable closure variables to be communicated
    * @tparam R the range type, need to include begin, end, size
@@ -173,6 +235,11 @@ public:
   }
 };
 
+template <typename State, typename R, typename F, typename L>
+pando::Status doAll(WaitGroup::HandleType wgh, State s, R range, const F& func,
+                    const L& localityFunc) {
+  return DoAll::doAll<State, R, F, L>(wgh, s, range, func, localityFunc);
+}
 template <typename State, typename R, typename F>
 pando::Status doAll(WaitGroup::HandleType wgh, State s, R range, const F& func) {
   return DoAll::doAll<State, R, F>(wgh, s, range, func);
@@ -180,6 +247,10 @@ pando::Status doAll(WaitGroup::HandleType wgh, State s, R range, const F& func) 
 template <typename R, typename F>
 pando::Status doAll(WaitGroup::HandleType wgh, R range, const F& func) {
   return DoAll::doAll<R, F>(wgh, range, func);
+}
+template <typename State, typename R, typename F, typename L>
+pando::Status doAll(State s, R range, const F& func, const L& localityFunc) {
+  return DoAll::doAll<State, R, F, L>(s, range, func, localityFunc);
 }
 template <typename State, typename R, typename F>
 pando::Status doAll(State s, R range, const F& func) {

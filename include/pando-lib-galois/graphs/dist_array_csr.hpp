@@ -431,6 +431,10 @@ public:
     return getLocalityVertex(vertex).node == pando::getCurrentPlace().node;
   }
 
+  bool isOwned(VertexTopologyID vertex) {
+    return isLocal(vertex);
+  }
+
   /**
    * @brief Get the Vertices range
    */

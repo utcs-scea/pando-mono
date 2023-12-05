@@ -22,6 +22,13 @@ pando::GlobalPtr<T> getGlobalObject() {
   return expected.value();
 }
 
+uint64_t getHostThreads() {
+  uint64_t x = pando::getPlaceDims().core.x;
+  uint64_t y = pando::getPlaceDims().core.y;
+  uint64_t threads = pando::getThreadDims().id;
+  return x * y * threads;
+}
+
 struct State {
   State() = default;
   State(galois::WaitGroup::HandleType f, galois::DAccumulator<uint64_t> s) : first(f), second(s) {}
@@ -92,10 +99,14 @@ TEST(PerThreadVector, Parallel) {
   EXPECT_EQ(perThreadVec.sizeAll(), workItems);
 
   uint64_t elts = 0;
-  for (pando::Vector<uint64_t> vec : perThreadVec) {
+  for (uint64_t i = 0; i < perThreadVec.size(); i++) {
+    pando::Vector<uint64_t> vec = *perThreadVec.get(i);
     elts += vec.size();
     for (uint64_t i = 0; i < vec.size(); i++) {
       EXPECT_LT(vec[i], workItems);
+    }
+    if (i > getHostThreads()) {
+      EXPECT_EQ(vec.size(), 0);
     }
   }
   EXPECT_EQ(elts, workItems);
@@ -118,11 +129,8 @@ TEST(PerThreadVector, DoAll) {
   EXPECT_EQ(perThreadVec.initialize(), pando::Status::Success);
   *perThreadVecPtr = perThreadVec;
 
-  galois::WaitGroup wg;
-  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
-
   static const uint64_t workItems = 1000;
-  pando::Vector<uint64_t> work;
+  galois::DistArray<uint64_t> work;
   EXPECT_EQ(work.initialize(workItems), pando::Status::Success);
   for (uint64_t i = 0; i < workItems; i++) {
     work[i] = i;
@@ -148,6 +156,8 @@ TEST(PerThreadVector, DoAll) {
       });
   EXPECT_EQ(perThreadVec.sizeAll(), workItems);
 
+  galois::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
   galois::doAll(
       wg.getHandle(), State(wg.getHandle(), sum), perThreadVec,
       +[](State state, pando::GlobalRef<pando::Vector<uint64_t>> vec) {

@@ -9,8 +9,8 @@
 #include <utility>
 
 #include "pando-rt/export.h"
+#include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
-#include <pando-rt/containers/array.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 
@@ -29,16 +29,18 @@ template <typename T>
 class PerThreadVector {
 public:
   /// @brief The data structure storing the data
-  pando::Array<pando::Vector<T>> m_data;
+  galois::DistArray<pando::Vector<T>> m_data;
 
 private:
   uint64_t coreY;
   uint64_t cores;
   uint64_t threads;
+  uint64_t hosts;
 
   uint64_t getLocalVectorID() {
     uint64_t coreID = (pando::getCurrentPlace().core.x * coreY) + pando::getCurrentPlace().core.y;
-    return (coreID * threads) + pando::getCurrentThread().id;
+    return ((pando::getCurrentPlace().node.id * cores * threads) + (coreID * threads) +
+            pando::getCurrentThread().id);
   }
 
 public:
@@ -54,14 +56,16 @@ public:
    * @brief Initializes the PerThreadVector array.
    */
   [[nodiscard]] pando::Status initialize() {
-    if (m_data.data() != nullptr) {
+    if (m_data.m_data.data() != nullptr) {
       return pando::Status::AlreadyInit;
     }
 
     coreY = pando::getPlaceDims().core.y;
     cores = pando::getPlaceDims().core.x * coreY;
     threads = pando::getThreadDims().id;
-    pando::Status err = m_data.initialize(cores * threads);
+    hosts = pando::getPlaceDims().node.id;
+
+    pando::Status err = m_data.initialize(hosts * cores * threads);
     if (err != pando::Status::Success) {
       return err;
     }
@@ -81,7 +85,7 @@ public:
    * @brief Deinitializes the PerThreadVector array.
    */
   void deinitialize() {
-    if (m_data.data() == nullptr) {
+    if (m_data.m_data.data() == nullptr) {
       return;
     }
     for (pando::Vector<T> vec : m_data) {
@@ -306,7 +310,7 @@ public:
 
   friend bool operator==(const PTVectorIterator& a, const PTVectorIterator& b) {
     return a.m_pos == b.m_pos && a.m_arr.size() == b.m_arr.size() &&
-           a.m_arr.m_data.data() == b.m_arr.m_data.data();
+           a.m_arr.m_data.m_data.data() == b.m_arr.m_data.m_data.data();
   }
 
   friend bool operator!=(const PTVectorIterator& a, const PTVectorIterator& b) {
@@ -330,8 +334,7 @@ public:
   }
 
   friend pando::Place localityOf(PTVectorIterator& a) {
-    pando::GlobalPtr<pando::Vector<T>> ptr = a.m_arr.m_data.data();
-    return pando::localityOf(ptr);
+    return pando::localityOf(a.m_arr.get(a.m_pos));
   }
 };
 

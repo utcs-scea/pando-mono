@@ -99,3 +99,32 @@ TEST(doALL, NestedInit) {
   }
   distArray.deinitialize();
 }
+
+TEST(doALL, CustomLocality) {
+  constexpr std::uint64_t SIZE = 25;
+  bool extraState = true;
+  pando::Array<uint64_t> arr;
+  EXPECT_EQ(arr.initialize(SIZE), pando::Status::Success);
+  for (uint64_t i = 0; i < arr.size(); i++) {
+    arr[i] = i;
+  }
+  galois::doAll(
+      extraState, arr,
+      +[](bool extraState, pando::GlobalRef<uint64_t> elt) {
+        if (extraState) {
+          elt = pando::getCurrentPlace().node.id;
+        }
+      },
+      +[](bool extraState, uint64_t elt) {
+        if (extraState) {
+          return pando::Place{pando::NodeIndex{(int16_t)(elt % pando::getPlaceDims().node.id)},
+                              pando::anyPod, pando::anyCore};
+        } else {
+          return pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore};
+        }
+      });
+  for (uint64_t i = 0; i < arr.size(); i++) {
+    EXPECT_EQ(arr[i], i % pando::getPlaceDims().node.id);
+  }
+  arr.deinitialize();
+}

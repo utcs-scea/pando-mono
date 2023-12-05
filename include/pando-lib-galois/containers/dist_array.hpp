@@ -126,6 +126,27 @@ public:
   }
 
   /**
+   * @brief Assumes the DistArray should have elements on all hosts and initializes the sizes of
+   * the objects
+   *
+   * @param[in] size The size of the data to encapsulate in this abstraction
+   */
+  [[nodiscard]] pando::Status initialize(std::uint64_t size) {
+    pando::Array<PlaceType> hostsPlaces;
+    pando::Status err = hostsPlaces.initialize(pando::getPlaceDims().node.id);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+      hostsPlaces[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
+                                 pando::MemoryType::Main};
+    }
+    err = initialize(hostsPlaces.begin(), hostsPlaces.end(), size);
+    hostsPlaces.deinitialize();
+    return err;
+  }
+
+  /**
    * @brief Deinitializes the array.
    */
   void deinitialize() {
