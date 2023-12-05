@@ -7,6 +7,8 @@
 #include <pando-rt/export.h>
 
 #include <pando-lib-galois/containers/dist_array.hpp>
+#include <pando-lib-galois/containers/hashtable.hpp>
+#include <pando-lib-galois/containers/per_thread.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/vector.hpp>
 
@@ -37,6 +39,9 @@ public:
   using EdgeData = EdgeType;
   using EdgeRange = DistArraySlice<EdgeHandle>;
 
+  template <typename, typename>
+  friend class DistArrayCSR;
+
   /**
    * @brief topology id and edge ranges in order to ensure proper depromotion for doAll inference
    */
@@ -49,6 +54,23 @@ public:
     operator EdgeRange() {
       return edges;
     }
+  };
+
+  template <typename Graph, typename Projection, typename V, typename E>
+  struct ProjectionState {
+    ProjectionState() = default;
+    ProjectionState(Graph oldGraph_, Projection projection_,
+                    galois::PerThreadVector<V> projectedVertices_,
+                    galois::PerThreadVector<GenericEdge<E>> projectedEdges_)
+        : oldGraph(oldGraph_),
+          projection(projection_),
+          projectedVertices(projectedVertices_),
+          projectedEdges(projectedEdges_) {}
+
+    Graph oldGraph;
+    Projection projection;
+    galois::PerThreadVector<V> projectedVertices;
+    galois::PerThreadVector<GenericEdge<E>> projectedEdges;
   };
 
   static_assert(!std::is_same<VertexTopologyID, EdgeRange>::value);
@@ -150,6 +172,9 @@ public:
    */
   [[nodiscard]] pando::Status initialize(pando::Vector<VertexType> vertices,
                                          pando::Vector<GenericEdge<EdgeType>> edges) {
+    numVertices = vertices.size();
+    numEdges = edges.size();
+
     pando::Status err;
     pando::Vector<galois::PlaceType> vec;
     err = vec.initialize(pando::getPlaceDims().node.id);
@@ -212,11 +237,124 @@ public:
       edgeData[i] = edge.data;
       edgeDestinations[i] = edge.dst;
       if (edge.src != vertexCurr) {
-        vertexEdgeOffsets[vertexCurr] = i;
-        vertexCurr = edge.src;
+        for (; vertexCurr < edge.src; vertexCurr++) {
+          vertexEdgeOffsets[vertexCurr] = i;
+        }
       }
     }
     vertexEdgeOffsets[vertices.size() - 1] = edges.size();
+    vec.deinitialize();
+    return err;
+  }
+
+  /**
+   * @brief Creates a DistArrayCSR from an explicit graph definition, intended only for tests
+   *
+   * @param[in] vertices This is a vector of vertex values with TokenIDs in an `id` field.
+   * @param[in] edges This is vector global src id, dst id, and edge data.
+   * @param[in] orderedNonContiguousIDs Edges are ordered by vertex, but vertex IDs are not
+   * contiguous
+   */
+  [[nodiscard]] pando::Status initialize(pando::Vector<VertexType> vertices,
+                                         pando::Vector<GenericEdge<EdgeType>> edges,
+                                         bool orderedNonContiguousIDs) {
+    if (!orderedNonContiguousIDs) {
+      PANDO_ABORT("illegal options given, read function description");
+    }
+    numVertices = vertices.size();
+    numEdges = edges.size();
+    pando::Status err;
+    pando::Vector<galois::PlaceType> vec;
+    err = vec.initialize(pando::getPlaceDims().node.id);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+
+    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+      vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
+                         pando::MemoryType::Main};
+    }
+
+    err = vertexEdgeOffsets.initialize(vec.begin(), vec.end(), vertices.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      return err;
+    }
+
+    err = vertexTokenIDs.initialize(vec.begin(), vec.end(), vertices.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+    }
+
+    err = vertexData.initialize(vec.begin(), vec.end(), vertices.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexTokenIDs.deinitialize();
+      return err;
+    }
+
+    err = edgeDestinations.initialize(vec.begin(), vec.end(), edges.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexTokenIDs.deinitialize();
+      vertexData.deinitialize();
+      return err;
+    }
+
+    err = edgeData.initialize(vec.begin(), vec.end(), edges.size());
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexTokenIDs.deinitialize();
+      vertexData.deinitialize();
+      edgeDestinations.deinitialize();
+      return err;
+    }
+
+    galois::HashTable<uint64_t, uint64_t> tokenToGlobalID;
+    err = tokenToGlobalID.initialize(vertices.size() * 3 / 2);
+    if (err != pando::Status::Success) {
+      vec.deinitialize();
+      vertexEdgeOffsets.deinitialize();
+      vertexTokenIDs.deinitialize();
+      vertexData.deinitialize();
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
+
+    for (std::uint64_t vertex = 0; vertex < vertices.size(); vertex++) {
+      vertexTokenIDs[vertex] = vertex;
+      vertexData[vertex] = vertices[vertex];
+      VertexData data = vertices[vertex];
+      PANDO_CHECK(tokenToGlobalID.put(data.id, vertex));
+    }
+
+    uint64_t v = 0;
+    VertexData vertexCurr = vertexData[v];
+    for (std::uint64_t i = 0; i < edges.size(); i++) {
+      GenericEdge<EdgeType> edge = edges[i];
+      edgeData[i] = edge.data;
+      uint64_t localDst;
+      if (!tokenToGlobalID.get(edge.dst, localDst)) {
+        std::printf("failed destination vertex: %lu\n", edge.dst);
+        PANDO_ABORT("given edge references a destination vertex that does not exist");
+      }
+      edgeDestinations[i] = localDst;
+      for (; v < vertices.size() - 1 && edge.src != vertexCurr.id; v++) {
+        vertexEdgeOffsets[v] = i;
+        vertexCurr = vertexData[v + 1];
+      }
+      if (v == vertices.size() - 1 && edge.src != vertexCurr.id) {
+        std::printf("failed source vertex: %lu, edge id: %lu\n", edge.src, i);
+        PANDO_ABORT("given edge references a source vertex that does not exist");
+      }
+    }
+    vertexEdgeOffsets[vertices.size() - 1] = edges.size();
+    tokenToGlobalID.deinitialize();
     vec.deinitialize();
     return err;
   }
@@ -263,6 +401,8 @@ public:
     for (pando::Vector<std::uint64_t> bucket : edgeList) {
       edgeNums += bucket.size();
     }
+    numVertices = edgeList.size();
+    numEdges = edgeNums;
 
     err = edgeDestinations.initialize(vec.begin(), vec.end(), edgeNums);
     if (err != pando::Status::Success) {
@@ -323,14 +463,14 @@ public:
    * @brief gives the number of vertices
    */
   std::uint64_t size() noexcept {
-    return vertexEdgeOffsets.size();
+    return numVertices;
   }
 
   /**
    * @brief gives the number of vertices
    */
   std::uint64_t size() const noexcept {
-    return vertexEdgeOffsets.size();
+    return numVertices;
   }
 
   /**
@@ -436,6 +576,85 @@ public:
   }
 
   /**
+   * @brief Project the graph given some Projection class
+   * @warning This consumes the original graph
+   * @note Tests for Project exist in
+   * https://github.com/AMDResearch/PANDO-wf4-gal-root/blob/main/test/test_import.cpp
+   */
+  template <class OldGraph, class NewGraph, class Projection>
+  NewGraph Project(Projection projection) {
+    using NewVertexType = typename NewGraph::VertexData;
+    using NewEdgeType = typename NewGraph::EdgeData;
+
+    galois::PerThreadVector<NewVertexType> projectedVertices;
+    galois::PerThreadVector<GenericEdge<NewEdgeType>> projectedEdges;
+    PANDO_CHECK(projectedVertices.initialize());
+    PANDO_CHECK(projectedEdges.initialize());
+    ProjectionState state(*this, projection, projectedVertices, projectedEdges);
+
+    galois::doAll(
+        state, vertices(),
+        +[](ProjectionState<OldGraph, Projection, NewVertexType, NewEdgeType>& state,
+            VertexTopologyID node) {
+          if (!state.projection.KeepNode(state.oldGraph, node)) {
+            return;
+          }
+          uint64_t keptEdges = 0;
+          for (EdgeHandle edge : state.oldGraph.edges(node)) {
+            EdgeType edgeData = state.oldGraph.getEdgeData(edge);
+            VertexTopologyID dstNode = state.oldGraph.getEdgeDst(edge);
+            if (!state.projection.KeepEdge(state.oldGraph, edgeData, node, dstNode)) {
+              continue;
+            }
+            keptEdges++;
+            PANDO_CHECK(state.projectedEdges.pushBack(GenericEdge(
+                node, dstNode,
+                state.projection.ProjectEdge(state.oldGraph, edgeData, node, dstNode))));
+          }
+          if (state.projection.KeepEdgeLessMasters() || keptEdges > 0) {
+            VertexType nodeData = state.oldGraph.getData(node);
+            PANDO_CHECK(state.projectedVertices.pushBack(
+                state.projection.ProjectNode(state.oldGraph, nodeData, node)));
+          }
+        });
+    deinitialize();
+
+    pando::GlobalPtr<pando::Vector<NewVertexType>> newVerticesPtr;
+    pando::GlobalPtr<pando::Vector<GenericEdge<NewEdgeType>>> newEdgesPtr;
+    auto expectVertices = pando::allocateMemory<pando::Vector<NewVertexType>>(
+        1, pando::getCurrentPlace(), pando::MemoryType::Main);
+    if (!expectVertices.hasValue()) {
+      PANDO_ABORT("could not allocate pointer");
+    }
+    newVerticesPtr = expectVertices.value();
+    auto expectEdges = pando::allocateMemory<pando::Vector<GenericEdge<NewEdgeType>>>(
+        1, pando::getCurrentPlace(), pando::MemoryType::Main);
+    if (!expectEdges.hasValue()) {
+      PANDO_ABORT("could not allocate pointer");
+    }
+    newEdgesPtr = expectEdges.value();
+
+    PANDO_CHECK(projectedVertices.assign(newVerticesPtr));
+    PANDO_CHECK(projectedEdges.assign(newEdgesPtr));
+    projectedVertices.deinitialize();
+    projectedEdges.deinitialize();
+    pando::Vector<NewVertexType> newVertices = *newVerticesPtr;
+    pando::Vector<GenericEdge<NewEdgeType>> newEdges = *newEdgesPtr;
+    // edge sources are sorted by construction due to no pre-emption
+    std::printf("Projected vertices: %lu\n", newVertices.size());
+    std::printf("Projected edges: %lu\n", newEdges.size());
+
+    const bool orderedNonContiguousIDs = true;
+    NewGraph newGraph;
+    PANDO_CHECK(newGraph.initialize(newVertices, newEdges, orderedNonContiguousIDs));
+    newVertices.deinitialize();
+    newEdges.deinitialize();
+    pando::deallocateMemory<pando::Vector<NewVertexType>>(newVerticesPtr, 1);
+    pando::deallocateMemory<pando::Vector<GenericEdge<NewEdgeType>>>(newEdgesPtr, 1);
+    return newGraph;
+  }
+
+  /**
    * @brief Get the Vertices range
    */
   VertexRange& vertices() {
@@ -508,6 +727,10 @@ public:
   }
 
 private:
+  ///@brief Stores the number of vertices, size may differ from DistArray sizes
+  uint64_t numVertices;
+  ///@brief Stores the number of edges, size may differ from DistArray sizes
+  uint64_t numEdges;
   ///@brief Stores the vertex offsets
   galois::DistArray<EdgeHandle> vertexEdgeOffsets;
   ///@brief Stores the vertex gids
@@ -516,7 +739,7 @@ private:
   galois::DistArray<VertexTopologyID> edgeDestinations;
   ///@brief Stores the data for each vertex
   galois::DistArray<VertexData> vertexData;
-  //@brief Stores the data for each edge
+  ///@brief Stores the data for each edge
   galois::DistArray<EdgeData> edgeData;
 };
 

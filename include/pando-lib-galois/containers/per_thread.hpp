@@ -172,10 +172,9 @@ public:
       return err;
     }
     uint64_t pos = 0;
-    for (std::uint64_t i = 0; i < m_data.size(); i++) {
-      pando::Vector<T> localVec = m_data[i];
-      for (uint64_t j = 0; j < localVec.size(); j++) {
-        tto[pos] = localVec[j];
+    for (pando::Vector<T> localVec : *this) {
+      for (T elt : localVec) {
+        tto[pos++] = elt;
       }
     }
     *to = tto;
