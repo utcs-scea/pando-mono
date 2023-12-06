@@ -551,14 +551,14 @@ public:
   /**
    * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
    */
-  std::uint64_t getEdgeDst(EdgeHandle eh) {
+  VertexTopologyID getEdgeDst(EdgeHandle eh) {
     return edgeDestinations[eh];
   }
 
   /**
    * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
    */
-  std::uint64_t getEdgeDst(VertexTopologyID vertex, std::uint64_t off) {
+  VertexTopologyID getEdgeDst(VertexTopologyID vertex, std::uint64_t off) {
     return getEdgeDst(mintEdgeHandle(vertex, off));
   }
 
