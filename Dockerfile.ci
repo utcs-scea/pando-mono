@@ -8,6 +8,7 @@ ARG COMPILER=g++-12
 ARG GCC_VERSION=12.3.0
 ARG QTHEADS_VERSION=1.16
 ARG GASNET_VERSION=2023.3.0
+ARG OMPI_VERSION=4.1.5
 
 RUN apt update -y \
     &&  apt install -y \
@@ -17,6 +18,7 @@ RUN apt update -y \
     language-pack-en\
     pkg-config\
     ${COMPILER}=${GCC_VERSION}* \
+    gfortran-12 \
     &&  apt clean \
     &&  update-locale
 
@@ -35,13 +37,15 @@ WORKDIR /dependencies
 RUN git clone --depth 1 --branch v0.20.1 https://github.com/spack/spack.git \
     &&  . /dependencies/spack/share/spack/setup-env.sh \
     &&  spack compiler find \
-    &&  spack install -j`nproc` gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
-    qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
-    &&  spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION}
+    &&  spack install -j`nproc` openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
+                                qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
+    &&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
+    &&  spack install -j`nproc` gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} conduits=smp,mpi target=x86_64
 
 ENV GCC_VERSION=${GCC_VERSION}
 ENV QTHEADS_VERSION=${QTHEADS_VERSION}
 ENV GASNET_VERSION=${GASNET_VERSION}
+ENV OMPI_VERSION=${OMPI_VERSION}
 ENV TERM=xterm-256color
 ENV USER=${UNAME}
 ENV LANG="C.UTF-8"
@@ -91,6 +95,11 @@ RUN pip3 install compdb pre-commit cpplint "clang-format>=12.0.1"
 
 RUN echo "export SRC_DIR=${SRC_DIR}" >> /home/${UNAME}/.profile
 RUN echo "export BUILD_DIR=${BUILD_DIR}" >> /home/${UNAME}/.profile
+RUN echo ". /dependencies/spack/share/spack/setup-env.sh" >> /home/${UNAME}/spack_env \
+&&  echo "spack load  gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} \
+                qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} \
+                openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION}" >> /home/${UNAME}/spack_env \
+&&  echo ". ${HOME}/spack_env" | tee -a /home/${UNAME}/.zshenv >> /home/${UNAME}/.bashrc
 
 RUN echo "PATH=/home/${UNAME}/.local/bin/:\$PATH" >> /home/${UNAME}/.zshenv
 WORKDIR ${SRC_DIR}

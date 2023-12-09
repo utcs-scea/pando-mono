@@ -79,27 +79,44 @@ docker:
 	${PANDO_CONTAINER_MOUNTS} \
 	${PANDO_CONTAINER_ENV} \
 	--privileged \
-	--network host \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
 	${IMAGE_NAME}:${VERSION} ${CONTAINER_CMD}
 
 setup:
 	@echo "Must be run from inside the dev Docker container"
 	@. /dependencies/spack/share/spack/setup-env.sh && \
-	spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} && \
+	spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
 	cmake \
   -S ${SRC_DIR} \
   -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
 	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
+	-DPANDO_PREP_GASNET_CONDUIT=mpi \
   -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
   -DBUILD_TESTING=ON \
   -DBUILD_EXAMPLES=ON \
   -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
-	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT}
+	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
+	-DCMAKE_CXX_COMPILER=g++-12 \
+  -DCMAKE_C_COMPILER=gcc-12 && \
+	cmake \
+  -S ${SRC_DIR} \
+  -B ${BUILD_DIR}-smp\
+  -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
+	-DPANDO_PREP_GASNET_CONDUIT=smp \
+  -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
+  -DBUILD_TESTING=ON \
+  -DBUILD_EXAMPLES=ON \
+  -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
+	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
+	-DCMAKE_CXX_COMPILER=g++-12 \
+  -DCMAKE_C_COMPILER=gcc-12
 
 run-tests:
-	@cd ${BUILD_DIR} && ctest --output-on-failure
+	. /dependencies/spack/share/spack/setup-env.sh && \
+	spack load gasnet qthreads openmpi && \
+	cd ${BUILD_DIR} && ctest --output-on-failure
 
 # this command is slow since hooks are not stored in the container image
 # this is mostly for CI use

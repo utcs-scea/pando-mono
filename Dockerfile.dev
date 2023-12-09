@@ -40,6 +40,11 @@ RUN pip3 install compdb pre-commit cpplint "clang-format>=12.0.1"
 
 RUN echo "export SRC_DIR=${SRC_DIR}" >> /home/${UNAME}/.profile
 RUN echo "export BUILD_DIR=${BUILD_DIR}" >> /home/${UNAME}/.profile
+RUN echo ". /dependencies/spack/share/spack/setup-env.sh" >> /home/${UNAME}/spack_env \
+&&  echo "spack load  gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} \
+                qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} \
+                openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION}" >> /home/${UNAME}/spack_env \
+&&  echo ". ${HOME}/spack_env" | tee -a /home/${UNAME}/.zshenv >> /home/${UNAME}/.bashrc
 
 RUN echo "PATH=/home/${UNAME}/.local/bin/:\$PATH" >> /home/${UNAME}/.zshenv
 WORKDIR ${SRC_DIR}

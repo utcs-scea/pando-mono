@@ -62,7 +62,14 @@ function(pando_add_driver_test TARGET SOURCEFILE)
   else ()
     set(DRIVER_DISCOVERY_TIMEOUT ${PANDO_TEST_DISCOVERY_TIMEOUT})
   endif ()
-  set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
+
+  if (${GASNet_CONDUIT} STREQUAL "smp")
+    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
+  elseif (${GASNet_CONDUIT} STREQUAL "mpi")
+    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun_mpi.sh)
+  else ()
+    message(FATAL_ERROR "No runner script for GASNet conduit ${GASNet_CONDUIT}")
+  endif ()
   set(NUM_PXNS 2)
   set(NUM_CORES 4)
 
@@ -89,8 +96,15 @@ function(pando_add_driver_test TARGET SOURCEFILE)
 endfunction()
 
 function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
-  set(DRIVER_SCRIPT ${pando-rt_SOURCE_DIR}/scripts/preprun.sh)
-  set(NUM_PXNS 3)
+  if (${GASNet_CONDUIT} STREQUAL "smp")
+    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
+  elseif (${GASNet_CONDUIT} STREQUAL "mpi")
+    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun_mpi.sh)
+  else ()
+    message(FATAL_ERROR "No runner script for GASNet conduit ${GASNet_CONDUIT}")
+  endif ()
+
+  set(NUM_PXNS 2)
   set(NUM_CORES 4)
 
   add_test(NAME ${TARGET}-${INPUTFILE}-${OKFILE}

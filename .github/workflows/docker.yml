@@ -122,6 +122,11 @@ jobs:
         cache-from: type=registry,ref=${{ steps.meta.outputs.tags }}
         cache-to: type=registry,mode=max,ref=${{ steps.meta.outputs.tags }}
 
+    - name: Disable ASLR
+      timeout-minutes: 1
+      run: |
+        echo 0 | sudo tee -a /proc/sys/kernel/randomize_va_space
+
     - name: Check pre-commit
       timeout-minutes: 10
       run: |
@@ -141,7 +146,7 @@ jobs:
     - name: Build
       timeout-minutes: 10
       run: |
-        CONTAINER_CMD="make -j8" \
+        CONTAINER_CMD="bash -c '. ~/spack_env && make -j8'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}" \
           CONTAINER_WORKDIR="${{ env.CONTAINER_BUILD_DIR }}" \
