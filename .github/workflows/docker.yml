@@ -64,11 +64,11 @@ jobs:
         if [ ${{ matrix.sanitizer-type }} == 'asan' ]; then
           echo "PANDO_TEST_DISCOVERY_TIMEOUT=150" >> $GITHUB_ENV
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=16384 -e=PANDO_EXTRA_CXX_FLAGS=-fsanitize=address" >> $GITHUB_ENV
+          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -e=PANDO_EXTRA_CXX_FLAGS=-fsanitize=address" >> $GITHUB_ENV
         elif [ ${{ matrix.sanitizer-type }} == 'ubsan' ]; then
           echo "PANDO_TEST_DISCOVERY_TIMEOUT=150" >> $GITHUB_ENV
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=16384 -e=PANDO_EXTRA_CXX_FLAGS=-fsanitize=undefined" >> $GITHUB_ENV
+          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -e=PANDO_EXTRA_CXX_FLAGS=-fsanitize=undefined" >> $GITHUB_ENV
         fi
 
     - name: Log in to the Container registry
@@ -163,7 +163,7 @@ jobs:
           make docker
 
     - name: Run Tests
-      timeout-minutes: 10
+      timeout-minutes: 15
       env:
         PANDO_PREP_LOG_LEVEL: warning
       run: |

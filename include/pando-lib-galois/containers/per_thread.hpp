@@ -11,6 +11,7 @@
 #include "pando-rt/export.h"
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
+#include <pando-lib-galois/utility/prefix_sum.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 
@@ -30,18 +31,40 @@ class PerThreadVector {
 public:
   /// @brief The data structure storing the data
   galois::DistArray<pando::Vector<T>> m_data;
+  /// @brief Stores a prefix sum of the structure, must be computed manually
+  galois::DistArray<uint64_t> m_indices;
+  /// @brief Tells if prefix sum has been computed
+  bool indices_computed = false;
 
-private:
   uint64_t coreY;
   uint64_t cores;
   uint64_t threads;
   uint64_t hosts;
 
+private:
   uint64_t getLocalVectorID() {
     uint64_t coreID = (pando::getCurrentPlace().core.x * coreY) + pando::getCurrentPlace().core.y;
     return ((pando::getCurrentPlace().node.id * cores * threads) + (coreID * threads) +
             pando::getCurrentThread().id);
   }
+
+  static uint64_t transmute(pando::Vector<T> p) {
+    return p.size();
+  }
+  static uint64_t scan_op(pando::Vector<T> p, uint64_t l) {
+    return p.size() + l;
+  }
+  static uint64_t combiner(uint64_t f, uint64_t s) {
+    return f + s;
+  }
+
+  struct AssignState {
+    AssignState() = default;
+    AssignState(PerThreadVector<T> data_, galois::DistArray<T> to_) : data(data_), to(to_) {}
+
+    PerThreadVector<T> data;
+    galois::DistArray<T> to;
+  };
 
 public:
   friend PTVectorIterator<T>;
@@ -56,6 +79,7 @@ public:
    * @brief Initializes the PerThreadVector array.
    */
   [[nodiscard]] pando::Status initialize() {
+    indices_computed = false;
     if (m_data.m_data.data() != nullptr) {
       return pando::Status::AlreadyInit;
     }
@@ -85,6 +109,9 @@ public:
    * @brief Deinitializes the PerThreadVector array.
    */
   void deinitialize() {
+    if (m_indices.m_data.data() != nullptr) {
+      m_indices.deinitialize();
+    }
     if (m_data.m_data.data() == nullptr) {
       return;
     }
@@ -113,6 +140,14 @@ public:
    */
   pando::GlobalPtr<const pando::Vector<T>> get(size_t i) const noexcept {
     return &(m_data[i]);
+  }
+
+  constexpr pando::GlobalRef<pando::Vector<T>> operator[](std::uint64_t pos) noexcept {
+    return *get(pos);
+  }
+
+  constexpr pando::GlobalRef<const pando::Vector<T>> operator[](std::uint64_t pos) const noexcept {
+    return *get(pos);
   }
 
   /**
@@ -160,24 +195,63 @@ public:
    * @brief Copies data from one host's PerThreadVector to another as a regular Vector
    *
    * @note Super useful for doing bulk data transfers from remote sources
-   * @warning Assumes that the vector "to" is not initialized.
+   * @warning Assumes that the DistArray "to" is not initialized.
    * @warning Will allocate memory in local main memory
    *
-   * @param to this is the vector we are copying to
+   * @param to this is the DistArray we are copying to
    */
-  [[nodiscard]] pando::Status assign(pando::GlobalPtr<pando::Vector<T>> to) {
-    pando::Vector<T> tto = *to;
-    auto err = tto.initialize(sizeAll());
+  [[nodiscard]] pando::Status assign(galois::DistArray<T>& to) {
+    pando::Status err;
+    if (!indices_computed) {
+      err = computeIndices();
+      if (err != pando::Status::Success) {
+        return err;
+      }
+    }
+    err = to.initialize(sizeAll());
     if (err != pando::Status::Success) {
       return err;
     }
-    uint64_t pos = 0;
-    for (pando::Vector<T> localVec : *this) {
-      for (T elt : localVec) {
-        tto[pos++] = elt;
-      }
+    galois::doAll(
+        AssignState(*this, to), galois::IotaRange(0, size()),
+        +[](AssignState& state, uint64_t i) {
+          uint64_t pos = i == 0 ? 0 : state.data.m_indices[i - 1];
+          pando::Vector<T> localVec = state.data[i];
+          for (T elt : localVec) {
+            state.to[pos++] = elt;
+          }
+        },
+        +[](AssignState& state, uint64_t i) {
+          return pando::Place{
+              pando::NodeIndex{(int16_t)(i / state.data.threads / state.data.cores)}, pando::anyPod,
+              pando::anyCore};
+        });
+    return pando::Status::Success;
+  }
+
+  [[nodiscard]] pando::Status computeIndices() {
+    if (m_indices.m_data.data() != nullptr) {
+      return pando::Status::AlreadyInit;
     }
-    *to = tto;
+    pando::Status err = m_indices.initialize(hosts * cores * threads);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    using SRC = galois::DistArray<pando::Vector<T>>;
+    using DST = galois::DistArray<uint64_t>;
+    using SRC_Val = pando::Vector<T>;
+    using DST_Val = uint64_t;
+
+    galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute, scan_op, combiner, galois::DistArray>
+        prefixSum(m_data, m_indices);
+    err = prefixSum.initialize();
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    prefixSum.computePrefixSum(m_indices.size());
+    indices_computed = true;
+
+    prefixSum.deinitialize();
     return pando::Status::Success;
   }
 

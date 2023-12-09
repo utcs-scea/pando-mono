@@ -36,8 +36,9 @@ class DistArray {
 public:
   /// @brief The data structure storing the data
   pando::Array<pando::Array<T>> m_data;
+  /// @brief Stores the amount of data in the array, may be less than allocated
+  uint64_t size_ = 0;
 
-private:
   /**
    * @brief Returns a pointer to the given index
    */
@@ -68,7 +69,6 @@ private:
     return &(blockPtr[index]);
   }
 
-public:
   friend DAIterator<T>;
 
   using iterator = DAIterator<T>;
@@ -99,6 +99,7 @@ public:
     if (m_data.data() != nullptr) {
       return pando::Status::AlreadyInit;
     }
+    size_ = size;
 
     if (size == 0) {
       return pando::Status::Success;
@@ -132,6 +133,7 @@ public:
    * @param[in] size The size of the data to encapsulate in this abstraction
    */
   [[nodiscard]] pando::Status initialize(std::uint64_t size) {
+    size_ = size;
     pando::Array<PlaceType> hostsPlaces;
     pando::Status err = hostsPlaces.initialize(pando::getPlaceDims().node.id);
     if (err != pando::Status::Success) {
@@ -175,17 +177,11 @@ public:
   }
 
   constexpr std::uint64_t size() noexcept {
-    if (m_data.size() == 0)
-      return 0;
-    pando::Array<T> arr = m_data[0];
-    return m_data.size() * arr.size();
+    return size_;
   }
 
   constexpr std::uint64_t size() const noexcept {
-    if (m_data.size() == 0)
-      return 0;
-    pando::Array<T> arr = m_data[0];
-    return m_data.size() * arr.size();
+    return size_;
   }
 
   /**

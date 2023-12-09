@@ -47,6 +47,7 @@ TEST(PerThreadVector, Init) {
   EXPECT_EQ(perThreadVec.initialize(), pando::Status::Success);
   pando::Vector<uint64_t> work;
   EXPECT_EQ(work.initialize(1), pando::Status::Success);
+  work[0] = 9801;
   galois::doAll(
       perThreadVec, work, +[](galois::PerThreadVector<uint64_t> perThreadVec, uint64_t x) {
         EXPECT_GE(pando::getCurrentThread().id, 0);
@@ -63,10 +64,11 @@ TEST(PerThreadVector, Init) {
   EXPECT_EQ(elts, 1);
 
   *perThreadVecPtr = perThreadVec;
-  pando::GlobalPtr<pando::Vector<uint64_t>> remoteVec = getGlobalObject<pando::Vector<uint64_t>>();
-  EXPECT_EQ(perThreadVec.assign(remoteVec), pando::Status::Success);
-  pando::Vector<uint64_t> copy = *remoteVec;
+  galois::DistArray<uint64_t> copy;
+  EXPECT_EQ(perThreadVec.assign(copy), pando::Status::Success);
   EXPECT_EQ(copy.size(), 1);
+  uint64_t val = copy[0];
+  EXPECT_EQ(val, 9801);
 
   copy.deinitialize();
   work.deinitialize();
@@ -112,9 +114,8 @@ TEST(PerThreadVector, Parallel) {
   EXPECT_EQ(elts, workItems);
 
   *perThreadVecPtr = perThreadVec;
-  pando::GlobalPtr<pando::Vector<uint64_t>> remoteVec = getGlobalObject<pando::Vector<uint64_t>>();
-  EXPECT_EQ(perThreadVec.assign(remoteVec), pando::Status::Success);
-  pando::Vector<uint64_t> copy = *remoteVec;
+  galois::DistArray<uint64_t> copy;
+  EXPECT_EQ(perThreadVec.assign(copy), pando::Status::Success);
   EXPECT_EQ(copy.size(), workItems);
 
   copy.deinitialize();
@@ -156,6 +157,9 @@ TEST(PerThreadVector, DoAll) {
       });
   EXPECT_EQ(perThreadVec.sizeAll(), workItems);
 
+  EXPECT_EQ(perThreadVec.computeIndices(), pando::Status::Success);
+  EXPECT_EQ(perThreadVec.m_indices[perThreadVec.m_indices.size() - 1], perThreadVec.sizeAll());
+
   galois::WaitGroup wg;
   EXPECT_EQ(wg.initialize(0), pando::Status::Success);
   galois::doAll(
@@ -174,6 +178,16 @@ TEST(PerThreadVector, DoAll) {
   EXPECT_EQ(wg.wait(), pando::Status::Success);
   EXPECT_EQ(sum.reduce(), ((workItems - 1) + 0) * (workItems / 2));
 
+  galois::DistArray<uint64_t> copy;
+  EXPECT_EQ(perThreadVec.assign(copy), pando::Status::Success);
+  EXPECT_EQ(copy.size(), workItems);
+  uint64_t copy_sum = 0;
+  for (uint64_t elt : copy) {
+    copy_sum += elt;
+  }
+  EXPECT_EQ(copy_sum, ((workItems - 1) + 0) * (workItems / 2));
+
+  copy.deinitialize();
   sum.deinitialize();
   work.deinitialize();
   wg.deinitialize();
