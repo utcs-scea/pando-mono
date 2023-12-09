@@ -14,7 +14,7 @@ CONTAINER_BUILD_DIR ?= /pando/dockerbuild
 CONTAINER_WORKDIR ?= ${CONTAINER_SRC_DIR}
 CONTAINER_CONTEXT ?= default
 CONTAINER_OPTS ?=
-CONTAINER_CMD ?= bash -l
+CONTAINER_CMD ?= setarch `uname -m` -R bash -l
 INTERACTIVE ?= i
 UNAME ?= $(shell whoami)
 UID ?= $(shell id -u)
@@ -80,7 +80,8 @@ docker:
 	${PANDO_CONTAINER_ENV} \
 	--privileged \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
-	${IMAGE_NAME}:${VERSION} ${CONTAINER_CMD}
+	${IMAGE_NAME}:${VERSION} \
+	${CONTAINER_CMD}
 
 setup:
 	@echo "Must be run from inside the dev Docker container"
