@@ -43,6 +43,45 @@ TEST(StringView, Constructor) {
   EXPECT_EQ(empty_view_substr.empty(), true);
 }
 
+void checkFromArray(const char* str) {
+  galois::StringView sv(str);
+  pando::Array<char> arr;
+  PANDO_CHECK(arr.initialize(sv.size()));
+  for (size_t i = 0; *str != '\0'; i++, str++) {
+    arr[i] = *str;
+  }
+  auto svTest = galois::StringView(arr);
+  EXPECT_TRUE(sv == galois::StringView(arr));
+  arr.deinitialize();
+  // Operation very dangerous and only done because this string is of known origin
+  free(const_cast<void*>(static_cast<const void*>(svTest.get())));
+}
+
+TEST(StringView, ConstructFromArray) {
+  const char* words[] = {"hihihi", "byebyebye", "hihi", "byebye", ""};
+
+  for (std::uint64_t i = 0; i < sizeof(words) / sizeof(const char*); i++) {
+    checkFromArray(words[i]);
+  }
+}
+
+void checkToArray(const char* str) {
+  galois::StringView sv(str);
+  auto arr = sv.toArray();
+  EXPECT_EQ(arr.size(), sv.size());
+  for (std::size_t i = 0; i < sv.size(); i++) {
+    EXPECT_EQ(arr[i], sv.get()[i]);
+  }
+}
+
+TEST(StringView, ToArray) {
+  const char* words[] = {"hihihi", "byebyebye", "hihi", "byebye", ""};
+
+  for (std::uint64_t i = 0; i < sizeof(words) / sizeof(const char*); i++) {
+    checkToArray(words[i]);
+  }
+}
+
 TEST(StringView, Parse) {
   galois::StringView zero("0");
   galois::StringView one("1");
