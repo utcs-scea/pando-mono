@@ -2,9 +2,10 @@
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
 #include <gtest/gtest.h>
+#include <pando-rt/export.h>
 
-#include "pando-rt/export.h"
 #include <pando-lib-galois/containers/dist_array.hpp>
+#include <pando-lib-galois/utility/pair.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
@@ -271,25 +272,6 @@ TEST(DistArray, Sort) {
   }
 }
 
-template <typename T0, typename T1>
-struct Pair {
-  T0 first;
-  T1 second;
-
-  friend bool operator==(const Pair& a, const Pair& b) {
-    return a.first == b.first && a.second == b.second;
-  }
-
-  friend bool operator<(const Pair& a, const Pair& b) {
-    if (a.first < b.first) {
-      return true;
-    } else if (a.first == b.first) {
-      return a.second < b.second;
-    }
-    return false;
-  }
-};
-
 TEST(DistArray, SortPair) {
   const std::uint64_t size = 10;
   pando::Vector<PlaceType> vec;
@@ -299,21 +281,22 @@ TEST(DistArray, SortPair) {
     vec[i] = PlaceType{pando::Place{pando::NodeIndex{nodeIdx}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main};
   }
-  galois::DistArray<Pair<std::uint64_t, std::uint64_t>> array;
+  galois::DistArray<galois::Pair<std::uint64_t, std::uint64_t>> array;
 
   EXPECT_EQ(array.initialize(vec.begin(), vec.end(), size * size), pando::Status::Success);
   EXPECT_EQ(array.size(), size * size);
   for (std::uint64_t i = 0; i < size; i++) {
     for (std::uint64_t j = 0; j < size; j++) {
-      array[i * size + j] = Pair<std::uint64_t, std::uint64_t>{size - i - 1, size - j - 1};
+      array[i * size + j] = galois::Pair<std::uint64_t, std::uint64_t>{size - i - 1, size - j - 1};
     }
   }
 
   std::sort(array.begin(), array.end());
   for (std::uint64_t i = 0; i < size; i++) {
     for (std::uint64_t j = 0; j < size; j++) {
-      Pair<std::uint64_t, std::uint64_t> totest = array[i * size + j];
-      Pair<std::uint64_t, std::uint64_t> expect = Pair<std::uint64_t, std::uint64_t>{i, j};
+      galois::Pair<std::uint64_t, std::uint64_t> totest = array[i * size + j];
+      galois::Pair<std::uint64_t, std::uint64_t> expect =
+          galois::Pair<std::uint64_t, std::uint64_t>{i, j};
       EXPECT_EQ(totest, expect);
     }
   }
