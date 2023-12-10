@@ -9,10 +9,10 @@
 #include <cstdint>
 
 #include <pando-rt/containers/array.hpp>
+#include <pando-rt/containers/vector.hpp>
 #include <pando-rt/pando-rt.hpp>
 
 namespace galois {
-
 /**
  * @brief A class that uses the correct DRV api in order to read files.
  */
@@ -91,13 +91,27 @@ public:
    * @param[in] n     The maximum number of characters that could be read
    * @param[in] delim The deliminator that serves as a newline
    */
-  ifstream& getline(char* buf, std::uint64_t n, char delim);
+  uint64_t getline(char* buf, std::uint64_t n, char delim);
+
+  /**
+   * @brief Gets the current line.
+   *
+   * @param[in] buf   The buffer to place values
+   * @param[in] delim The deliminator that serves as a newline
+   */
+  uint64_t getline(pando::Vector<char>& buf, char delim);
 
   /**
    * @brief reads a uint64_t
    * @param[out] val a reference to the output
    */
   ifstream& operator>>(std::uint64_t& val);
+
+  /**
+   * @brief sets the offset to a specific location
+   * @param[out] val a reference to the output
+   */
+  ifstream& seekg(std::uint64_t off);
 };
 static_assert(std::is_trivially_copyable<ifstream>::value);
 } // namespace galois

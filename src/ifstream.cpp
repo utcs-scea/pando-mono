@@ -107,13 +107,20 @@ ifstream& ifstream::read(char* str, std::uint64_t n) {
   return *this;
 }
 
-ifstream& ifstream::getline(char* str, std::uint64_t n, char delim) {
-  std::uint64_t i = 0;
-  while (i < (n - 1) && this->get(str[i]) && str[i] != delim) {
-    i++;
-  }
+uint64_t ifstream::getline(char* str, std::uint64_t n, char delim) {
+  std::uint64_t i;
+  for (i = 0; i < (n - 1) && this->get(str[i]) && str[i] != delim; i++) {}
   str[i] = '\0';
-  return *this;
+  return i;
+}
+
+uint64_t ifstream::getline(pando::Vector<char>& vec, char delim) {
+  std::uint64_t i;
+  char c;
+  for (i = 0; this->get(c) && c != delim && m_err == pando::Status::Success; i++) {
+    m_err = vec.pushBack(c);
+  }
+  return i;
 }
 
 ifstream& ifstream::operator>>(std::uint64_t& val) {
@@ -131,6 +138,11 @@ ifstream& ifstream::operator>>(std::uint64_t& val) {
       return *this;
     }
   } while (this->get(c));
+  return *this;
+}
+
+ifstream& ifstream::seekg(std::uint64_t off) {
+  m_pos = off;
   return *this;
 }
 

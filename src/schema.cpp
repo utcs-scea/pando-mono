@@ -11,7 +11,7 @@ pando::Vector<galois::StringView> galois::splitLine(const char* line, char delim
   pando::Vector<galois::StringView> tokens;
   PANDO_CHECK(tokens.initialize(numTokens));
 
-  for (; line[end] != '\0'; end++) {
+  for (; line[end] != '\0' && line[end] != '\n'; end++) {
     if (line[end] == delim) {
       tokens[ndx] = galois::StringView(line + start, end - start);
       start = end + 1;

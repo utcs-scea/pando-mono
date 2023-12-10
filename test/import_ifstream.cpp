@@ -72,15 +72,24 @@ int pandoMain(int argc, char** argv) {
     char blah[101];
     blah[100] = '\0';
     std::int64_t rdSz;
-    while ((rdSz = inputFileStream.getline(blah, 100, '\n')) > 0) {
-      if (rdSz > 100) {
-        std::cerr << "You read too many characters in this read\n";
-        std::exit(EXIT_FAILURE);
+    rdSz = inputFileStream.getline(blah, 100, '\n');
+    if (rdSz > 100) {
+      std::cerr << "You read too many characters in this read\n";
+      std::exit(EXIT_FAILURE);
+    }
+    std::cout << blah;
+    if (rdSz != 100) {
+      std::cout << std::endl;
+    }
+    pando::Vector<char> vec;
+    PANDO_CHECK(vec.initialize(0));
+    while ((rdSz = inputFileStream.getline(vec, '\n')) > 0) {
+      if (inputFileStream.status() == pando::Status::Success) {
+        PANDO_CHECK(vec.pushBack('\n'));
       }
-      std::cout << blah;
-      if (rdSz != 100) {
-        std::cout << std::endl;
-      }
+    }
+    for (char c : vec) {
+      std::cout << c;
     }
   }
   return 0;
