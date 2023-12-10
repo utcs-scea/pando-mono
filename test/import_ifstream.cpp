@@ -3,12 +3,15 @@
 
 #include <getopt.h>
 #include <pando-rt/export.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <cstdint>
 #include <iostream>
 
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
 #include <pando-lib-galois/import/ifstream.hpp>
+#include <pando-lib-galois/utility/string_view.hpp>
 #include <pando-rt/memory_resource.hpp>
 #include <pando-rt/pando-rt.hpp>
 
@@ -40,9 +43,17 @@ int pandoMain(int argc, char** argv) {
   }
 
   galois::ifstream inputFileStream;
-  const auto status = inputFileStream.open(filepath);
+  const auto status = inputFileStream.open(galois::StringView(filepath).toArray());
   if (status != pando::Status::Success) {
     printUsageExit(argv[0]);
+  }
+
+  // Read file size
+  struct stat stats;
+  stat(filepath, &stats);
+  if (inputFileStream.size() != static_cast<std::uint64_t>(stats.st_size)) {
+    std::cerr << "The size of the file is wrong\n";
+    std::exit(EXIT_FAILURE);
   }
 
   // Test reading uint64_t types

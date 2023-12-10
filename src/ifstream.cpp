@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#include <unistd.h>
-
 #include <fcntl.h>
 #include <limits.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <pando-lib-galois/import/ifstream.hpp>
+#include <pando-lib-galois/utility/string_view.hpp>
 
 namespace galois {
 pando::Status galois::ifstream::open(const char* filepath) {
@@ -22,6 +24,24 @@ pando::Status galois::ifstream::open(const char* filepath) {
   return pando::Status::Success;
 }
 
+pando::Status galois::ifstream::open(pando::Array<char> filepath) {
+  if (m_fd != -1) {
+    return pando::Status::AlreadyInit;
+  }
+
+  auto sv = StringView(filepath);
+
+  if (sv.size() == 0) {
+    return pando::Status::InvalidValue;
+  }
+
+  auto err = open(sv.get());
+
+  free(const_cast<void*>(static_cast<const void*>(sv.get())));
+
+  return err;
+}
+
 void ifstream::close() {
   if (m_fd == -1) {
     m_err = pando::Status::NotInit;
@@ -31,6 +51,15 @@ void ifstream::close() {
   m_fd = -1;
   m_pos = 0;
   m_err = pando::Status::Success;
+}
+
+std::uint64_t ifstream::size() {
+  struct stat stats;
+  int err = fstat(m_fd, &stats);
+  if (err) {
+    return 0;
+  }
+  return static_cast<std::uint64_t>(stats.st_size);
 }
 
 ifstream& ifstream::get(char& c) {

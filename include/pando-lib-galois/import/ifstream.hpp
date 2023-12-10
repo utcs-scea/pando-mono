@@ -8,6 +8,7 @@
 
 #include <cstdint>
 
+#include <pando-rt/containers/array.hpp>
 #include <pando-rt/pando-rt.hpp>
 
 namespace galois {
@@ -36,10 +37,17 @@ public:
 
   [[nodiscard]] pando::Status open(const char* filepath);
 
+  [[nodiscard]] pando::Status open(pando::Array<char> filepath);
+
   /**
    * @brief closes the underlying file
    */
   void close();
+
+  /**
+   * @brief get the size of the underlying file
+   */
+  uint64_t size();
 
   /**
    * @brief Returns the current status
