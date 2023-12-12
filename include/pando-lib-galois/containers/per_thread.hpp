@@ -10,7 +10,9 @@
 
 #include "pando-rt/export.h"
 #include <pando-lib-galois/containers/dist_array.hpp>
+#include <pando-lib-galois/containers/per_host.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
+#include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-lib-galois/utility/prefix_sum.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
@@ -58,12 +60,13 @@ private:
     return f + s;
   }
 
+  template <template <typename> typename Cont>
   struct AssignState {
     AssignState() = default;
-    AssignState(PerThreadVector<T> data_, galois::DistArray<T> to_) : data(data_), to(to_) {}
+    AssignState(PerThreadVector<T> data_, Cont<T> to_) : data(data_), to(to_) {}
 
     PerThreadVector<T> data;
-    galois::DistArray<T> to;
+    Cont<T> to;
   };
 
 public:
@@ -213,15 +216,70 @@ public:
       return err;
     }
     galois::doAll(
-        AssignState(*this, to), galois::IotaRange(0, size()),
-        +[](AssignState& state, uint64_t i) {
+        AssignState<galois::DistArray>(*this, to), galois::IotaRange(0, size()),
+        +[](AssignState<galois::DistArray>& state, uint64_t i) {
           uint64_t pos = i == 0 ? 0 : state.data.m_indices[i - 1];
           pando::Vector<T> localVec = state.data[i];
           for (T elt : localVec) {
             state.to[pos++] = elt;
           }
         },
-        +[](AssignState& state, uint64_t i) {
+        +[](AssignState<galois::DistArray>& state, uint64_t i) {
+          return pando::Place{
+              pando::NodeIndex{(int16_t)(i / state.data.threads / state.data.cores)}, pando::anyPod,
+              pando::anyCore};
+        });
+    return pando::Status::Success;
+  }
+
+  template <typename Y>
+  using PHV = galois::PerHost<pando::Vector<Y>>;
+
+  [[nodiscard]] pando::Status hostFlatten(
+      pando::GlobalRef<galois::PerHost<pando::Vector<T>>> flat) {
+    pando::Status err;
+    err = lift(flat, initialize);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+
+    if (!indices_computed) {
+      err = computeIndices();
+      if (err != pando::Status::Success) {
+        return err;
+      }
+    }
+
+    // TODO(AdityaAtulTewari) Make this properly parallel.
+    // Initialize the per host vectors
+    for (std::int16_t i = 0; i < static_cast<std::int16_t>(lift(flat, getNumNodes)); i++) {
+      auto place = pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore};
+      auto ref = fmap(flat, get, i);
+      err =
+          fmap(ref, initialize, m_indices[static_cast<std::uint64_t>(i + 1) * cores * threads - 1],
+               place, pando::MemoryType::Main);
+      if (err != pando::Status::Success) {
+        return err;
+      }
+    }
+
+    // Reduce into the per host vectors
+    auto f = +[](AssignState<PHV> assign, std::uint64_t i) {
+      std::uint64_t host = i / (assign.data.cores * assign.data.threads);
+      std::uint64_t start = assign.data.m_indices[static_cast<std::uint64_t>(i + 1) *
+                                                      assign.data.cores * assign.data.threads -
+                                                  1];
+      std::uint64_t curr = (i == 0) ? 0 : assign.data.m_indices[i - 1];
+
+      auto ref = assign.to.get(host);
+      pando::Vector<T> localVec = assign.data[i];
+      for (T elt : localVec) {
+        fmap(ref, get, curr - start) = elt;
+      }
+    };
+    galois::doAll(
+        AssignState<PHV>(*this, flat), galois::IotaRange(0, size()), f,
+        +[](AssignState<PHV>& state, uint64_t i) {
           return pando::Place{
               pando::NodeIndex{(int16_t)(i / state.data.threads / state.data.cores)}, pando::anyPod,
               pando::anyCore};

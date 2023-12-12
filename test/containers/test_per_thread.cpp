@@ -9,6 +9,7 @@
 #include <pando-lib-galois/utility/dist_accumulator.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
+#include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
 
@@ -192,4 +193,43 @@ TEST(PerThreadVector, DoAll) {
   work.deinitialize();
   wg.deinitialize();
   perThreadVec.deinitialize();
+}
+
+TEST(PerThreadVector, PerHostVector) {
+  constexpr std::uint64_t size = 512;
+  pando::Status err;
+
+  galois::PerThreadVector<std::uint64_t> ptv;
+  err = ptv.initialize();
+  EXPECT_EQ(err, pando::Status::Success);
+
+  galois::PerHost<std::uint64_t> phu{};
+
+  galois::doAll(
+      ptv, phu, +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t) {
+        galois::doAll(
+            ptv, galois::IotaRange(0, size),
+            +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t i) {
+              pando::Status err;
+              err = ptv.pushBack(i);
+              EXPECT_EQ(err, pando::Status::Success);
+            });
+      });
+
+  pando::GlobalPtr<galois::PerHost<pando::Vector<std::uint64_t>>> phv;
+
+  pando::LocalStorageGuard memGuard(phv, 1);
+
+  err = ptv.hostFlatten(*phv);
+  EXPECT_EQ(err, pando::Status::Success);
+
+  galois::PerHost<pando::Vector<std::uint64_t>> phvNoRef = *phv;
+
+  for (pando::GlobalRef<pando::Vector<std::uint64_t>> vecRef : phvNoRef) {
+    std::sort(lift(vecRef, begin), lift(vecRef, end));
+    pando::Vector<std::uint64_t> vec = vecRef;
+    for (std::uint64_t i = 0; i < size; i++) {
+      EXPECT_EQ(vec[i], i);
+    }
+  }
 }
