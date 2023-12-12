@@ -8,6 +8,7 @@
 
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/utility/agile_schema.hpp>
+#include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-lib-galois/utility/string_view.hpp>
 
 namespace galois {
@@ -26,28 +27,20 @@ public:
   }
   WMDVertex(uint64_t id_, agile::TYPES type_) : id(id_), edges(0), type(type_) {}
   explicit WMDVertex(pando::Vector<galois::StringView> tokens) {
-    galois::StringView token1(tokens[1]);
-    galois::StringView token2(tokens[2]);
-    galois::StringView token3(tokens[3]);
-    galois::StringView token4(tokens[4]);
-    galois::StringView token5(tokens[5]);
-    galois::StringView token6(tokens[6]);
     if (tokens[0] == galois::StringView("Person")) {
-      id = token1.getU64();
       type = agile::TYPES::PERSON;
     } else if (tokens[0] == galois::StringView("ForumEvent")) {
-      id = token4.getU64();
       type = agile::TYPES::FORUMEVENT;
     } else if (tokens[0] == galois::StringView("Forum")) {
-      id = token3.getU64();
       type = agile::TYPES::FORUM;
     } else if (tokens[0] == galois::StringView("Publication")) {
-      id = token5.getU64();
       type = agile::TYPES::PUBLICATION;
     } else if (tokens[0] == galois::StringView("Topic")) {
-      id = token6.getU64();
       type = agile::TYPES::TOPIC;
+    } else {
+      PANDO_ABORT("INVALID VERTEX TYPE");
     }
+    id = lift(tokens[static_cast<std::uint64_t>(type)], getU64);
     edges = 0;
   }
 

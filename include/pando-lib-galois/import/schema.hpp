@@ -15,30 +15,7 @@
 
 namespace galois {
 
-template <typename V, typename E>
-struct ParsedGraphStructure {
-  ParsedGraphStructure() : isNode(false), isEdge(false) {}
-  explicit ParsedGraphStructure(V node_) : node(node_), isNode(true), isEdge(false) {}
-  explicit ParsedGraphStructure(pando::Vector<E> edges_)
-      : edges(edges_), isNode(false), isEdge(true) {}
-
-  V node;
-  pando::Vector<E> edges;
-  bool isNode;
-  bool isEdge;
-};
-
 pando::Vector<galois::StringView> splitLine(const char* line, char delim, uint64_t numTokens);
-
-// Inheritance is not supported, this is the expected API for any parsers passed to the importer
-/*
-template <typename V, typename E>
-class FileParser {
-public:
-  virtual pando::GlobalPtr<pando::Vector<const char*>> getFiles() = 0;
-  virtual ParsedGraphStructure<V, E> parseLine(const char*) = 0;
-};
-*/
 
 template <typename V, typename E, typename VFunc, typename EFunc>
 void genParse(std::uint64_t numFields, const char* line, VFunc vfunc, EFunc efunc) {
@@ -77,6 +54,29 @@ void genParse(std::uint64_t numFields, const char* line, VFunc vfunc, EFunc efun
     return;
   }
 }
+
+template <typename V, typename E>
+struct ParsedGraphStructure {
+  ParsedGraphStructure() : isNode(false), isEdge(false) {}
+  explicit ParsedGraphStructure(V node_) : node(node_), isNode(true), isEdge(false) {}
+  explicit ParsedGraphStructure(pando::Vector<E> edges_)
+      : edges(edges_), isNode(false), isEdge(true) {}
+
+  V node;
+  pando::Vector<E> edges;
+  bool isNode;
+  bool isEdge;
+};
+
+// Inheritance is not supported, this is the expected API for any parsers passed to the importer
+/**
+ * template <typename V, typename E>
+ * class FileParser {
+ * public:
+ *   virtual pando::GlobalPtr<pando::Vector<const char*>> getFiles() = 0;
+ *   virtual ParsedGraphStructure<V, E> parseLine(const char*) = 0;
+ * };
+ */
 
 template <typename V, typename E>
 class WMDParser {

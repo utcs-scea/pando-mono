@@ -7,11 +7,11 @@
 namespace agile {
 
 enum class TYPES {
-  PERSON,
-  FORUMEVENT,
-  FORUM,
-  PUBLICATION,
-  TOPIC,
+  PERSON = 0x1,
+  FORUMEVENT = 0x4,
+  FORUM = 0x3,
+  PUBLICATION = 0x5,
+  TOPIC = 0x6,
   PURCHASE,
   SALE,
   AUTHOR,
