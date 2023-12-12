@@ -216,3 +216,91 @@ TEST(HashTable, Remote) {
   }
   table.deinitialize();
 }
+
+TEST(HashTable, PutGet900NegativeLoad) {
+  int seed = 0;
+  std::minstd_rand0 gen(seed);
+  int arr[900];
+  for (int i = 0; i < 900; i++) {
+    arr[i] = gen();
+  }
+
+  galois::HashTable<int, int> table(-1);
+
+  EXPECT_EQ(table.initialize(0), pando::Status::Success);
+
+  for (int i = 0; i < 900; i++) {
+    table.put(i, arr[i]);
+  }
+
+  checkCorrectness(table);
+
+  for (int i = 0; i < 900; i++) {
+    int val;
+    EXPECT_EQ(table.get(i, val), true);
+    EXPECT_EQ(val, arr[i]);
+  }
+
+  checkCorrectness(table);
+  table.deinitialize();
+}
+
+TEST(HashTable, PutGet900OverLoad) {
+  int seed = 0;
+  std::minstd_rand0 gen(seed);
+  int arr[900];
+  for (int i = 0; i < 900; i++) {
+    arr[i] = gen();
+  }
+
+  galois::HashTable<int, int> table(2);
+
+  EXPECT_EQ(table.initialize(0), pando::Status::Success);
+
+  for (int i = 0; i < 900; i++) {
+    table.put(i, arr[i]);
+  }
+
+  checkCorrectness(table);
+
+  for (int i = 0; i < 900; i++) {
+    int val;
+    EXPECT_EQ(table.get(i, val), true);
+    EXPECT_EQ(val, arr[i]);
+  }
+
+  checkCorrectness(table);
+  table.deinitialize();
+}
+
+TEST(HashTable, PutGet900LoadOne) {
+  int seed = 0;
+  std::minstd_rand0 gen(seed);
+  int arr[900];
+  for (int i = 0; i < 900; i++) {
+    arr[i] = gen();
+  }
+
+  galois::HashTable<int, int> table(1);
+
+  EXPECT_EQ(table.initialize(0), pando::Status::Success);
+
+  for (int i = 0; i < 900; i++) {
+    table.put(i, arr[i]);
+    auto j = i + 1;
+    if (j > 8 && ((j & (j - 1)) == 0)) {
+      EXPECT_EQ(j, table.capacity());
+    }
+  }
+
+  checkCorrectness(table);
+
+  for (int i = 0; i < 900; i++) {
+    int val;
+    EXPECT_EQ(table.get(i, val), true);
+    EXPECT_EQ(val, arr[i]);
+  }
+
+  checkCorrectness(table);
+  table.deinitialize();
+}

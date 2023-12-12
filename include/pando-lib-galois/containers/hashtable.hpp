@@ -33,7 +33,10 @@ public:
 
   // TODO(prydt) constructor with capacity, max load factor
   HashTable() noexcept = default;
-  explicit HashTable(float maxLoad) : maxLoadFactor(maxLoad) {}
+  explicit HashTable(float maxLoad)
+      : maxLoadFactor((maxLoad > 1.0)    ? 0.8
+                      : (maxLoad < .001) ? 0.8
+                                         : maxLoad) {}
 
   HashTable(const HashTable&) = default;
   HashTable(HashTable&&) = default;
@@ -180,7 +183,7 @@ public:
 
   // @brief Puts new `key` `value` pair into hashtable.
   pando::Status put(const Key& key, T value) {
-    if (m_buffer.size() == 0 || loadFactor() > maxLoadFactor) {
+    if (m_buffer.size() == 0 || loadFactor() >= maxLoadFactor) {
       auto status = resize(nextCapacity());
       if (status != pando::Status::Success) {
         return status;
