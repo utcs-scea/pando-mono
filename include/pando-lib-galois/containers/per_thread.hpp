@@ -43,13 +43,13 @@ public:
   uint64_t threads;
   uint64_t hosts;
 
-private:
   uint64_t getLocalVectorID() {
     uint64_t coreID = (pando::getCurrentPlace().core.x * coreY) + pando::getCurrentPlace().core.y;
     return ((pando::getCurrentPlace().node.id * cores * threads) + (coreID * threads) +
             pando::getCurrentThread().id);
   }
 
+private:
   static uint64_t transmute(pando::Vector<T> p) {
     return p.size();
   }
