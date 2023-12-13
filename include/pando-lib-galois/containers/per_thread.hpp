@@ -252,12 +252,13 @@ public:
 
     // TODO(AdityaAtulTewari) Make this properly parallel.
     // Initialize the per host vectors
-    for (std::int16_t i = 0; i < static_cast<std::int16_t>(lift(flat, getNumNodes)); i++) {
+    for (std::int16_t i = 0; i < static_cast<std::int16_t>(lift(flat, getNumHosts)); i++) {
       auto place = pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore};
       auto ref = fmap(flat, get, i);
-      err =
-          fmap(ref, initialize, m_indices[static_cast<std::uint64_t>(i + 1) * cores * threads - 1],
-               place, pando::MemoryType::Main);
+      std::uint64_t start =
+          (i == 0) ? 0 : m_indices[static_cast<std::uint64_t>(i) * cores * threads - 1];
+      std::uint64_t end = m_indices[static_cast<std::uint64_t>(i + 1) * cores * threads - 1];
+      err = fmap(ref, initialize, end - start, place, pando::MemoryType::Main);
       if (err != pando::Status::Success) {
         return err;
       }
@@ -266,15 +267,16 @@ public:
     // Reduce into the per host vectors
     auto f = +[](AssignState<PHV> assign, std::uint64_t i) {
       std::uint64_t host = i / (assign.data.cores * assign.data.threads);
-      std::uint64_t start = assign.data.m_indices[static_cast<std::uint64_t>(i + 1) *
-                                                      assign.data.cores * assign.data.threads -
-                                                  1];
+      std::uint64_t index =
+          static_cast<std::uint64_t>(host) * assign.data.cores * assign.data.threads - 1;
+      std::uint64_t start = (host == 0) ? 0 : assign.data.m_indices[index];
       std::uint64_t curr = (i == 0) ? 0 : assign.data.m_indices[i - 1];
 
       auto ref = assign.to.get(host);
       pando::Vector<T> localVec = assign.data[i];
       for (T elt : localVec) {
         fmap(ref, get, curr - start) = elt;
+        curr++;
       }
     };
     galois::doAll(

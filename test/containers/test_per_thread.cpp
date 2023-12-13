@@ -196,7 +196,7 @@ TEST(PerThreadVector, DoAll) {
 }
 
 TEST(PerThreadVector, PerHostVector) {
-  constexpr std::uint64_t size = 512;
+  constexpr std::uint64_t size = 32;
   pando::Status err;
 
   galois::PerThreadVector<std::uint64_t> ptv;

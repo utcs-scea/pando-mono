@@ -25,9 +25,9 @@ TEST(PerHost, Init) {
   };
 
   pando::NotificationArray dones;
-  err = dones.init(ph.getNumNodes());
+  err = dones.init(ph.getNumHosts());
   EXPECT_EQ(err, pando::Status::Success);
-  for (std::uint64_t i = 0; i < ph.getNumNodes(); i++) {
+  for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
     auto place =
         pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
     err = pando::executeOn(place, f, ph, i, dones.getHandle(i));
@@ -44,6 +44,10 @@ TEST(PerHost, DoAll) {
 
   EXPECT_EQ(ph.initialize(), pando::Status::Success);
 
+  for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
+    ph.get(i) = 0xDEADBEEF;
+  }
+
   auto g = +[](pando::GlobalRef<std::uint64_t> val) {
     val = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
   };
@@ -58,9 +62,9 @@ TEST(PerHost, DoAll) {
     done.notify();
   };
   pando::NotificationArray dones;
-  err = dones.init(ph.getNumNodes());
+  err = dones.init(ph.getNumHosts());
   EXPECT_EQ(err, pando::Status::Success);
-  for (std::uint64_t i = 0; i < ph.getNumNodes(); i++) {
+  for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
     auto place =
         pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
     err = pando::executeOn(place, f, ph, i, dones.getHandle(i));

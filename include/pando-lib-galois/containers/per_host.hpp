@@ -31,7 +31,7 @@ public:
   using iterator = PerHostIt<T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
 
-  [[nodiscard]] constexpr std::uint64_t getNumNodes() const noexcept {
+  [[nodiscard]] constexpr std::uint64_t getNumHosts() const noexcept {
     return static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
   }
 
@@ -40,12 +40,12 @@ public:
   }
 
   std::uint64_t size() {
-    return getNumNodes();
+    return getNumHosts();
   }
 
   [[nodiscard]] pando::Status initialize() {
     auto expect =
-        pando::allocateMemory<T>(getNumNodes(), pando::getCurrentPlace(), pando::MemoryType::Main);
+        pando::allocateMemory<T>(getNumHosts(), pando::getCurrentPlace(), pando::MemoryType::Main);
     if (!expect.hasValue()) {
       return expect.error();
     }
@@ -54,7 +54,7 @@ public:
   }
 
   void deinitialize() {
-    deallocateMemory(m_items, getNumNodes());
+    deallocateMemory(m_items, getNumHosts());
   }
 
   pando::GlobalRef<T> getLocal() noexcept {
@@ -74,11 +74,11 @@ public:
   }
 
   iterator end() noexcept {
-    return iterator(m_items, getNumNodes());
+    return iterator(m_items + getNumHosts(), getNumHosts());
   }
 
   iterator end() const noexcept {
-    return iterator(m_items, getNumNodes());
+    return iterator(m_items + getNumHosts(), getNumHosts());
   }
 
   /**
