@@ -734,7 +734,7 @@ public:
             keptEdges++;
             PANDO_CHECK(state.projectedEdges.pushBack(
                 state.projection.ProjectEdge(state.oldGraph, edgeData, node, dstNode)));
-            PANDO_CHECK(state.projectedEdgeDestinations.pushBack(dstNode));
+            PANDO_CHECK(state.projectedEdgeDestinations.pushBack(edgeData.dst));
           }
           if (state.projection.KeepEdgeLessMasters() || keptEdges > 0) {
             VertexType nodeData = state.oldGraph.getData(node);
