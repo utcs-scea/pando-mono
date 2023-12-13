@@ -184,6 +184,16 @@ public:
     return false;
   }
 
+  /// @brief If key is in hashtable, return true else return false
+  bool contains(const Key& key) {
+    Entry e = m_buffer[probe(m_buffer, key)];
+
+    if (e.occupied && e.key == key) {
+      return true;
+    }
+    return false;
+  }
+
   // @brief Puts new `key` `value` pair into hashtable.
   pando::Status put(const Key& key, T value) {
     if (m_buffer.size() == 0 || loadFactor() >= maxLoadFactor) {

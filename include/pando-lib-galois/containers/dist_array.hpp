@@ -9,8 +9,10 @@
 #include <utility>
 
 #include "pando-rt/export.h"
+#include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-rt/containers/array.hpp>
+#include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/address_translation.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
@@ -33,6 +35,15 @@ struct DAIterator;
  */
 template <typename T>
 class DistArray {
+private:
+  struct FromState {
+    FromState() = default;
+    FromState(galois::DistArray<T> to_, pando::Vector<T> from_) : to(to_), from(from_) {}
+
+    galois::DistArray<T> to;
+    pando::Vector<T> from;
+  };
+
 public:
   /// @brief The data structure storing the data
   pando::Array<pando::Array<T>> m_data;
@@ -145,6 +156,26 @@ public:
     }
     err = initialize(hostsPlaces.begin(), hostsPlaces.end(), size);
     hostsPlaces.deinitialize();
+    return err;
+  }
+
+  [[nodiscard]] pando::Status from(pando::Vector<T> data, uint64_t size) {
+    pando::Status err = initialize(size);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    galois::onEach(
+        FromState(*this, data), +[](FromState& state, uint64_t thread, uint64_t total_threads) {
+          uint64_t workPerHost = state.to.size() / total_threads;
+          uint64_t start = thread * workPerHost;
+          uint64_t end = start + workPerHost;
+          if (thread == total_threads - 1) {
+            end = state.to.size();
+          }
+          for (uint64_t i = 0; i < end; i++) {
+            state.to[i] = state.from[i];
+          }
+        });
     return err;
   }
 

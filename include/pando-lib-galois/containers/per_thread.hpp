@@ -215,19 +215,14 @@ public:
     if (err != pando::Status::Success) {
       return err;
     }
-    galois::doAll(
-        AssignState<galois::DistArray>(*this, to), galois::IotaRange(0, size()),
-        +[](AssignState<galois::DistArray>& state, uint64_t i) {
+    galois::onEach(
+        AssignState<galois::DistArray>(*this, to),
+        +[](AssignState<galois::DistArray>& state, uint64_t i, uint64_t) {
           uint64_t pos = i == 0 ? 0 : state.data.m_indices[i - 1];
           pando::Vector<T> localVec = state.data[i];
           for (T elt : localVec) {
             state.to[pos++] = elt;
           }
-        },
-        +[](AssignState<galois::DistArray>& state, uint64_t i) {
-          return pando::Place{
-              pando::NodeIndex{(int16_t)(i / state.data.threads / state.data.cores)}, pando::anyPod,
-              pando::anyCore};
         });
     return pando::Status::Success;
   }
@@ -265,7 +260,7 @@ public:
     }
 
     // Reduce into the per host vectors
-    auto f = +[](AssignState<PHV> assign, std::uint64_t i) {
+    auto f = +[](AssignState<PHV> assign, std::uint64_t i, uint64_t) {
       std::uint64_t host = i / (assign.data.cores * assign.data.threads);
       std::uint64_t index =
           static_cast<std::uint64_t>(host) * assign.data.cores * assign.data.threads - 1;
@@ -279,13 +274,7 @@ public:
         curr++;
       }
     };
-    galois::doAll(
-        AssignState<PHV>(*this, flat), galois::IotaRange(0, size()), f,
-        +[](AssignState<PHV>& state, uint64_t i) {
-          return pando::Place{
-              pando::NodeIndex{(int16_t)(i / state.data.threads / state.data.cores)}, pando::anyPod,
-              pando::anyCore};
-        });
+    galois::onEach(AssignState<PHV>(*this, flat), f);
     return pando::Status::Success;
   }
 

@@ -301,3 +301,19 @@ TEST(DistArray, SortPair) {
     }
   }
 }
+
+TEST(DistArray, From) {
+  const std::uint64_t size = 103;
+  const std::uint64_t oversized = 257;
+  pando::Vector<uint64_t> vec;
+  EXPECT_EQ(vec.initialize(oversized), pando::Status::Success);
+  for (uint64_t i = 0; i < size; i++) {
+    vec[i] = i;
+  }
+  galois::DistArray<std::uint64_t> array;
+  EXPECT_EQ(array.from(vec, size), pando::Status::Success);
+  EXPECT_EQ(array.size(), size);
+  for (uint64_t i = 0; i < size; i++) {
+    EXPECT_EQ(array[i], i);
+  }
+}

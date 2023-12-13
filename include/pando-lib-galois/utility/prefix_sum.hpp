@@ -223,15 +223,15 @@ public:
     if (workPerThread <= 10) {
       workers /= pando::getThreadDims().id;
     }
-    galois::doAll(
+    galois::doAllEvenlyPartition(
         PrefixState<PrefixSum<A, B, A_Val, B_Val, transmute, scan_op, combiner, Conduit>>(*this, ns,
                                                                                           workers),
-        galois::IotaRange(0, workers),
+        workers,
         +[](PrefixState<PrefixSum<A, B, A_Val, B_Val, transmute, scan_op, combiner, Conduit>>&
                 state,
-            uint64_t wf_id) {
+            uint64_t wf_id, uint64_t workers) {
           uint64_t ns = state.numObjects;
-          uint64_t nt = state.workers;
+          uint64_t nt = workers;
 
           // optimize for smaller structures near the size of num_threads
           uint64_t div_sz = ns / (nt + 1);
@@ -250,17 +250,6 @@ public:
           uint64_t phase2_ind = wf_id ? phase0_ind : ns - div_sz;
           state.prefixSum.parallel_pfxsum_work(phase0_ind, phase0_sz, phase2_ind, phase2_sz, wf_id,
                                                nt);
-        },
-        +[](PrefixState<PrefixSum<A, B, A_Val, B_Val, transmute, scan_op, combiner, Conduit>>&
-                state,
-            uint64_t thread) {
-          uint64_t workPerHost = state.workers / pando::getPlaceDims().node.id;
-          if (workPerHost == 0) {
-            workPerHost = 1;
-          }
-          uint64_t assignedHost = thread / workPerHost;
-          return pando::Place{pando::NodeIndex{(int16_t)assignedHost}, pando::anyPod,
-                              pando::anyCore};
         });
     this->lock.reset();
   }

@@ -10,6 +10,7 @@
 
 #include "pando-rt/pando-rt.hpp"
 #include <pando-lib-galois/loops/do_all.hpp>
+#include <pando-lib-galois/utility/dist_accumulator.hpp>
 #include <pando-rt/sync/notification.hpp>
 
 TEST(doALL, SimpleCopy) {
@@ -127,4 +128,51 @@ TEST(doALL, CustomLocality) {
     EXPECT_EQ(arr[i], i % pando::getPlaceDims().node.id);
   }
   arr.deinitialize();
+}
+
+TEST(onEach, VerifyLocality) {
+  galois::DAccumulator<uint64_t> loops;
+  EXPECT_EQ(loops.initialize(), pando::Status::Success);
+  galois::onEach(
+      loops, +[](galois::DAccumulator<uint64_t>& loops, uint64_t threadID, uint64_t ts) {
+        loops.add(threadID);
+        uint64_t coreY = pando::getPlaceDims().core.y;
+        uint64_t cores = pando::getPlaceDims().core.x * coreY;
+        uint64_t threads = pando::getThreadDims().id;
+        uint64_t hosts = pando::getPlaceDims().node.id;
+        uint64_t totalThreads = hosts * cores * threads;
+        EXPECT_EQ(ts, totalThreads);
+        EXPECT_EQ(threadID / cores / threads, (uint64_t)pando::getCurrentPlace().node.id);
+      });
+  uint64_t coreY = pando::getPlaceDims().core.y;
+  uint64_t cores = pando::getPlaceDims().core.x * coreY;
+  uint64_t threads = pando::getThreadDims().id;
+  uint64_t hosts = pando::getPlaceDims().node.id;
+  uint64_t totalThreads = hosts * cores * threads;
+  EXPECT_EQ(loops.reduce(), (totalThreads - 1 + 0) * (totalThreads) / 2);
+}
+
+TEST(doAll, EvenlyPartition) {
+  // deliberately prime
+  static const uint64_t workItems = 71;
+  galois::DAccumulator<uint64_t> loops;
+  EXPECT_EQ(loops.initialize(), pando::Status::Success);
+  galois::doAllEvenlyPartition(
+      loops, workItems,
+      +[](galois::DAccumulator<uint64_t>& loops, uint64_t workItem, uint64_t workItemsLocal) {
+        EXPECT_NE(workItem, workItemsLocal - 2);
+        loops.add(workItem);
+        uint64_t hosts = pando::getPlaceDims().node.id;
+        uint64_t workPerHost = workItemsLocal / hosts;
+        if (workPerHost == 0) {
+          workPerHost = 1;
+        }
+        uint64_t expectedHost = workItem / workPerHost;
+        if (expectedHost >= hosts) {
+          expectedHost = hosts - 1;
+          EXPECT_LT(workPerHost * hosts, workItemsLocal);
+        }
+        EXPECT_EQ(expectedHost, (uint64_t)pando::getCurrentPlace().node.id);
+      });
+  EXPECT_EQ(loops.reduce(), (workItems - 1 + 0) * (workItems) / 2);
 }

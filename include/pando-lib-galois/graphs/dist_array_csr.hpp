@@ -257,7 +257,7 @@ public:
    * @brief Creates a DistArrayCSR from an explicit graph definition, intended only for tests
    *
    * @param[in] vertices This is a vector of vertex values with TokenIDs in an `id` field.
-   * @param[in] edges This is a vector if edge data.
+   * @param[in] edges This is a vector of edge data.
    * @param[in] edgeDsts This is a vector of token dst id
    * @param[in] edgeCounts This is a vector of edge counts
    * @warning Edges must be ordered by vertex, but vertex IDs may not contiguous
@@ -341,6 +341,134 @@ public:
       edgeDestinations[i] = localDst;
     }
     tokenToGlobalID.deinitialize();
+    return err;
+  }
+
+  /**
+   * @brief Creates a DistArrayCSR from an ordered edge list
+   *
+   * @param[in] edges This is a vector of edge data.
+   * @warning Edges must be ordered by vertex, but vertex IDs may not contiguous
+   */
+  pando::Status initialize(galois::DistArray<EdgeType>&& edges) {
+    pando::Status err;
+
+    edgeData = edges;
+    numVertices = 0;
+    numEdges = edges.size();
+
+    err = edgeDestinations.initialize(numEdges);
+    if (err != pando::Status::Success) {
+      edgeData.deinitialize();
+      return err;
+    }
+
+    galois::HashTable<uint64_t, uint64_t> tokenToGlobalID;
+    err = tokenToGlobalID.initialize(numEdges);
+    if (err != pando::Status::Success) {
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
+
+    pando::Vector<VertexData> rawNodes;
+    err = rawNodes.initialize(numEdges);
+    if (err != pando::Status::Success) {
+      tokenToGlobalID.deinitialize();
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
+    pando::Vector<uint64_t> edgeCounts;
+    err = edgeCounts.initialize(numEdges);
+    if (err != pando::Status::Success) {
+      rawNodes.deinitialize();
+      tokenToGlobalID.deinitialize();
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
+    pando::Vector<uint64_t> tokenIDs;
+    err = tokenIDs.initialize(numEdges);
+    if (err != pando::Status::Success) {
+      edgeCounts.deinitialize();
+      rawNodes.deinitialize();
+      tokenToGlobalID.deinitialize();
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
+
+    // TODO(Patrick) parallelize this horrible horrible thing
+    for (std::uint64_t e = 0; e < numEdges; e++) {
+      EdgeData edge = edgeData[e];
+      if (!tokenToGlobalID.contains(edge.src)) {
+        tokenIDs[numVertices] = numVertices;
+        VertexData data(edge.src, edge.srcType);
+        PANDO_CHECK(tokenToGlobalID.put(edge.src, numVertices));
+        rawNodes[numVertices] = data;
+        edgeCounts[numVertices] = 1;
+        numVertices++;
+      } else {
+        edgeCounts[numVertices - 1] = edgeCounts[numVertices - 1] + 1;
+      }
+    }
+    for (std::uint64_t e = 0; e < numEdges; e++) {
+      EdgeData edge = edgeData[e];
+      if (!tokenToGlobalID.contains(edge.dst)) {
+        tokenIDs[numVertices] = numVertices;
+        VertexData data(edge.dst, edge.dstType);
+        PANDO_CHECK(tokenToGlobalID.put(edge.dst, numVertices));
+        rawNodes[numVertices] = data;
+        edgeCounts[numVertices] = 0;
+        numVertices++;
+      }
+      uint64_t edgeDst;
+      tokenToGlobalID.get(edge.dst, edgeDst);
+      edgeDestinations[e] = edgeDst;
+    }
+    tokenToGlobalID.deinitialize();
+
+    galois::DistArray<EdgeHandle> offsets;
+    err = offsets.from(edgeCounts, numVertices);
+    edgeCounts.deinitialize();
+    if (err != pando::Status::Success) {
+      tokenIDs.deinitialize();
+      rawNodes.deinitialize();
+      tokenToGlobalID.deinitialize();
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
+    err = computeIndices(offsets);
+    offsets.deinitialize();
+    if (err != pando::Status::Success) {
+      tokenIDs.deinitialize();
+      rawNodes.deinitialize();
+      tokenToGlobalID.deinitialize();
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
+
+    err = vertexData.from(rawNodes, numVertices);
+    rawNodes.deinitialize();
+    if (err != pando::Status::Success) {
+      tokenIDs.deinitialize();
+      tokenToGlobalID.deinitialize();
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
+
+    err = vertexTokenIDs.from(tokenIDs, numVertices);
+    tokenIDs.deinitialize();
+    if (err != pando::Status::Success) {
+      tokenToGlobalID.deinitialize();
+      edgeDestinations.deinitialize();
+      edgeData.deinitialize();
+      return err;
+    }
     return err;
   }
 
@@ -456,6 +584,13 @@ public:
    */
   std::uint64_t size() const noexcept {
     return numVertices;
+  }
+
+  /**
+   * @brief gives the number of edges
+   */
+  std::uint64_t sizeEdges() noexcept {
+    return numEdges;
   }
 
   /**

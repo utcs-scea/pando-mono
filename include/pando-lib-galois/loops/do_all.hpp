@@ -7,6 +7,7 @@
 #include <pando-rt/export.h>
 
 #include <pando-lib-galois/sync/wait_group.hpp>
+#include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
@@ -23,6 +24,25 @@ pando::Place localityOf(pando::GlobalPtr<T> ptr) {
 
 class DoAll {
 private:
+  /**
+   * @brief This function is used to interpose a barrier on do_all functors.
+   *
+   * @tparam F  the function type
+   * @tparam State The type of the state to enable more state to be communicated
+   * @tparam It the iterator pointing to the current object
+   * @param[in] func the function be to run on the iterator
+   * @param[in] s The state to pass into the function
+   * @param[in] curr the iterator pointing to the current object
+   * @param[in] wgh A WaitGroup handle to notify the task of completion
+   *
+   */
+  template <typename F, typename State>
+  static void notifyFuncOnEach(const F& func, State s, galois::IotaRange::iterator curr,
+                               uint64_t totalThreads, WaitGroup::HandleType wgh) {
+    func(s, *curr, totalThreads);
+    wgh.done();
+  }
+
   /**
    * @brief This function is used to interpose a barrier on do_all functors.
    *
@@ -233,6 +253,116 @@ public:
     wg.deinitialize();
     return err;
   }
+
+  /**
+   * @brief This is the do_all loop from galois which takes an integer number of work items and
+   * lifts a function to it, and adds a barrier afterwards.  Work is spread evenly across all pxns
+   *
+   * @tparam State the type of the state to enable closure variables to be communicated
+   * @tparam F the type of the functor.
+   *
+   * @param[in] wgh   A WaitGroup that is used to detect termination
+   * @param[in] s     the state to pass closure variables
+   * @param[in] workItems the amount of work that needs to be spawned
+   * @param[in] func  the functor to lift
+   */
+  template <typename State, typename F>
+  static pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
+                                            const F& func) {
+    pando::Status err = pando::Status::Success;
+
+    uint64_t workPerHost = workItems / pando::getPlaceDims().node.id;
+    if (workPerHost == 0) {
+      workPerHost = 1;
+    }
+    galois::IotaRange range(0, workItems);
+    const auto end = range.end();
+
+    for (auto curr = range.begin(); curr != end; curr++) {
+      int16_t assignedHost = (int16_t)(*curr / workPerHost);
+      if (assignedHost >= pando::getPlaceDims().node.id) {
+        assignedHost = pando::getPlaceDims().node.id - 1;
+      }
+      wgh.addOne();
+      // Required hack without workstealing
+      auto nodePlace = pando::Place{pando::NodeIndex(assignedHost), pando::anyPod, pando::anyCore};
+      err = pando::executeOn(nodePlace, &notifyFuncOnEach<F, State>, func, s, curr, workItems, wgh);
+      if (err != pando::Status::Success) {
+        wgh.done();
+        return err;
+      }
+    }
+    return err;
+  }
+
+  /**
+   * @brief This is the do_all loop from galois which takes an integer number of work items and
+   * lifts a function to it, and adds a barrier afterwards.  Work is spread evenly across all pxns
+   *
+   * @tparam State the type of the state to enable closure variables to be communicated
+   * @tparam F the type of the functor.
+   * @param[in] s the state to pass closure variables
+   * @param[in] workItems the amount of work that needs to be spawned
+   * @param[in] func the functor to lift
+   */
+  template <typename State, typename F>
+  static pando::Status doAllEvenlyPartition(State s, uint64_t workItems, const F& func) {
+    pando::Status err;
+    WaitGroup wg;
+    err = wg.initialize(0);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    doAllEvenlyPartition<State, F>(wg.getHandle(), s, workItems, func);
+    err = wg.wait();
+    wg.deinitialize();
+    return err;
+  }
+
+  /**
+   * @brief This is the on_each loop from Galois it lifts a function and runs it on all threads in
+   * the cluster, and adds a barrier afterwards.
+   *
+   * @tparam State the type of the state to enable closure variables to be communicated
+   * @tparam F the type of the functor.
+   *
+   * @param[in] wgh   A WaitGroup that is used to detect termination
+   * @param[in] s     the state to pass closure variables
+   * @param[in] func  the functor to lift
+   */
+  template <typename State, typename F>
+  static pando::Status onEach(WaitGroup::HandleType wgh, State s, const F& func) {
+    uint64_t coreY = pando::getPlaceDims().core.y;
+    uint64_t cores = pando::getPlaceDims().core.x * coreY;
+    uint64_t threads = pando::getThreadDims().id;
+    uint64_t hosts = pando::getPlaceDims().node.id;
+    uint64_t totalThreads = hosts * cores * threads;
+
+    return doAllEvenlyPartition<State, F>(wgh, s, totalThreads, func);
+  }
+
+  /**
+   * @brief This is the on_each loop from Galois it lifts a function and runs it on all threads in
+   * the cluster, and adds a barrier afterwards.
+   *
+   * @tparam State the type of the state to enable closure variables to be communicated
+   * @tparam F the type of the functor.
+   * @param[in] s the state to pass closure variables
+   * @param[in] func the functor to lift
+   */
+  template <typename State, typename F>
+  static pando::Status onEach(State s, const F& func) {
+    pando::Status err;
+    WaitGroup wg;
+    err = wg.initialize(0);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    onEach<State, F>(wg.getHandle(), s, func);
+    err = wg.wait();
+    wg.deinitialize();
+    return err;
+  }
 };
 
 template <typename State, typename R, typename F, typename L>
@@ -259,6 +389,25 @@ pando::Status doAll(State s, R range, const F& func) {
 template <typename R, typename F>
 pando::Status doAll(R range, const F& func) {
   return DoAll::doAll<R, F>(range, func);
+}
+
+template <typename State, typename F>
+pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
+                                   const F& func) {
+  return DoAll::doAllEvenlyPartition<State, F>(wgh, s, workItems, func);
+}
+template <typename State, typename F>
+pando::Status doAllEvenlyPartition(State s, uint64_t workItems, const F& func) {
+  return DoAll::doAllEvenlyPartition<State, F>(s, workItems, func);
+}
+
+template <typename State, typename F>
+pando::Status onEach(WaitGroup::HandleType wgh, State s, const F& func) {
+  return DoAll::onEach<State, F>(wgh, s, func);
+}
+template <typename State, typename F>
+pando::Status onEach(State s, const F& func) {
+  return DoAll::onEach<State, F>(s, func);
 }
 
 } // namespace galois
