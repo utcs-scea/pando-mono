@@ -49,10 +49,12 @@ TEST(InsertLocalEdgesPerThread, SingleInsertionTest) {
   EXPECT_EQ(e0.src, src);
   EXPECT_EQ(lift(*hashPtr, size), 1);
   EXPECT_EQ(localEdges.sizeAll(), 1);
+
+  localEdges.deinitialize();
 }
 
 TEST(InsertLocalEdgesPerThread, MultiSmallInsertionTest) {
-  constexpr std::uint64_t SIZE = 100;
+  constexpr std::uint64_t SIZE = 1000;
   pando::Status err;
 
   galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
@@ -62,8 +64,8 @@ TEST(InsertLocalEdgesPerThread, MultiSmallInsertionTest) {
   pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> hashPtr;
   pando::LocalStorageGuard hashGuard(hashPtr, localEdges.size());
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
-    *hashPtr = galois::HashTable<std::uint64_t, std::uint64_t>();
-    err = fmap(*hashPtr, initialize, 0);
+    hashPtr[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
+    err = fmap(hashPtr[i], initialize, 0);
     EXPECT_EQ(err, pando::Status::Success);
   }
 
@@ -108,29 +110,70 @@ TEST(InsertLocalEdgesPerThread, MultiSmallInsertionTest) {
   std::fill(correctSrc.begin(), correctSrc.end(), false);
   std::fill(correctDst.begin(), correctDst.end(), false);
 
+  std::uint64_t edgeCount = 0;
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
     galois::HashTable<std::uint64_t, std::uint64_t> table = hashPtr[i];
     pando::Vector<pando::Vector<galois::WMDEdge>> vec = *localEdges.get(i);
+    EXPECT_EQ(table.size(), vec.size());
     for (typename decltype(table)::Entry e : table) {
       EXPECT_FALSE(correctSrc[e.key]);
       correctSrc[e.key] = true;
       ASSERT_EQ(lift(vec[e.value], size), 1);
       galois::WMDEdge edge = fmap(vec[e.value], get, 0);
+      EXPECT_EQ(e.key, edge.src);
+      EXPECT_EQ(e.key + 1, edge.dst);
       EXPECT_FALSE(correctDst[edge.dst - 1]);
       correctDst[edge.dst - 1] = true;
+      edgeCount++;
+      liftVoid(vec[e.value], deinitialize);
     }
+    table.deinitialize();
   }
+
+  EXPECT_EQ(edgeCount, SIZE);
 
   for (std::uint64_t i = 0; i < SIZE; i++) {
     EXPECT_TRUE(correctSrc[i]);
     EXPECT_TRUE(correctDst[i]);
   }
+  correctSrc.deinitialize();
+  correctDst.deinitialize();
 
   localEdges.deinitialize();
+  edges.deinitialize();
+}
+
+galois::WMDEdge genEdge(std::uint64_t i, std::uint64_t j, std::uint64_t SIZE) {
+  switch ((i * SIZE + j) % 8) {
+    case 0:
+      return galois::WMDEdge(i, j, agile::TYPES::SALE, agile::TYPES::PERSON, agile::TYPES::PERSON);
+    case 1:
+      return galois::WMDEdge(i, j, agile::TYPES::AUTHOR, agile::TYPES::PERSON, agile::TYPES::FORUM);
+    case 2:
+      return galois::WMDEdge(i, j, agile::TYPES::AUTHOR, agile::TYPES::PERSON,
+                             agile::TYPES::FORUMEVENT);
+    case 3:
+      return galois::WMDEdge(i, j, agile::TYPES::AUTHOR, agile::TYPES::PERSON,
+                             agile::TYPES::PUBLICATION);
+    case 4:
+      return galois::WMDEdge(i, j, agile::TYPES::INCLUDES, agile::TYPES::FORUM,
+                             agile::TYPES::FORUMEVENT);
+    case 5:
+      return galois::WMDEdge(i, j, agile::TYPES::HASTOPIC, agile::TYPES::FORUM,
+                             agile::TYPES::TOPIC);
+    case 6:
+      return galois::WMDEdge(i, j, agile::TYPES::HASTOPIC, agile::TYPES::FORUMEVENT,
+                             agile::TYPES::TOPIC);
+    case 7:
+      return galois::WMDEdge(i, j, agile::TYPES::HASTOPIC, agile::TYPES::PUBLICATION,
+                             agile::TYPES::TOPIC);
+    default:
+      return galois::WMDEdge(0, 0, agile::TYPES::NONE, agile::TYPES::NONE, agile::TYPES::NONE);
+  }
 }
 
 TEST(InsertLocalEdgesPerThread, MultiBigInsertionTest) {
-  constexpr std::uint64_t SIZE = 100;
+  constexpr std::uint64_t SIZE = 32;
   pando::Status err;
 
   galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
@@ -140,8 +183,8 @@ TEST(InsertLocalEdgesPerThread, MultiBigInsertionTest) {
   pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> hashPtr;
   pando::LocalStorageGuard hashGuard(hashPtr, localEdges.size());
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
-    *hashPtr = galois::HashTable<std::uint64_t, std::uint64_t>();
-    err = fmap(*hashPtr, initialize, 0);
+    hashPtr[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
+    err = fmap(hashPtr[i], initialize, 0);
     EXPECT_EQ(err, pando::Status::Success);
   }
 
@@ -151,10 +194,29 @@ TEST(InsertLocalEdgesPerThread, MultiBigInsertionTest) {
 
   for (std::uint64_t i = 0; i < SIZE; i++) {
     for (std::uint64_t j = 0; j < SIZE; j++) {
-      galois::WMDEdge e0(i, j, agile::TYPES::HASORG, agile::TYPES::PUBLICATION,
-                         agile::TYPES::TOPIC);
-      edges[i] = e0;
+      galois::WMDEdge e = genEdge(i, j, SIZE);
+      EXPECT_NE(e.type, agile::TYPES::NONE);
+      edges[i * SIZE + j] = e;
     }
+  }
+  pando::Array<std::uint64_t> correctSrc;
+  pando::Array<std::uint64_t> correctDst;
+  err = correctSrc.initialize(SIZE);
+  EXPECT_EQ(err, pando::Status::Success);
+  err = correctDst.initialize(SIZE);
+  EXPECT_EQ(err, pando::Status::Success);
+  std::fill(correctSrc.begin(), correctSrc.end(), 0);
+  std::fill(correctDst.begin(), correctDst.end(), 0);
+
+  for (std::uint64_t i = 0; i < SIZE * SIZE; i++) {
+    galois::WMDEdge e = edges[i];
+    correctSrc[e.src] += 1;
+    correctDst[e.dst] += 1;
+  }
+
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    EXPECT_EQ(correctSrc[i], SIZE);
+    EXPECT_EQ(correctDst[i], SIZE);
   }
 
   struct State {
@@ -177,34 +239,41 @@ TEST(InsertLocalEdgesPerThread, MultiBigInsertionTest) {
   }
 
   EXPECT_TRUE(sum >= SIZE);
-  EXPECT_EQ(localEdges.sizeAll(), SIZE);
+  EXPECT_GT(localEdges.sizeAll() + 1, SIZE);
 
-  pando::Array<std::uint64_t> correctSrc;
-  pando::Array<std::uint64_t> correctDst;
-  err = correctSrc.initialize(SIZE);
-  EXPECT_EQ(err, pando::Status::Success);
-  err = correctDst.initialize(SIZE);
-  EXPECT_EQ(err, pando::Status::Success);
   std::fill(correctSrc.begin(), correctSrc.end(), 0);
   std::fill(correctDst.begin(), correctDst.end(), 0);
 
+  auto edgeCount = 0;
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
     galois::HashTable<std::uint64_t, std::uint64_t> table = hashPtr[i];
     pando::Vector<pando::Vector<galois::WMDEdge>> vec = *localEdges.get(i);
     for (typename decltype(table)::Entry e : table) {
       EXPECT_LT(correctSrc[e.key], SIZE);
-      correctSrc[e.key] += 1;
       EXPECT_LT(lift(vec[e.value], size), SIZE + 1);
-      galois::WMDEdge edge = fmap(vec[e.value], get, 0);
-      EXPECT_LT(correctDst[edge.dst], SIZE);
-      correctDst[edge.dst] += 1;
+      EXPECT_GT(lift(vec[e.value], size), 0);
+      for (std::uint64_t j = 0; j < lift(vec[e.value], size); j++) {
+        galois::WMDEdge edge = fmap(vec[e.value], get, j);
+        EXPECT_EQ(edge.src, e.key);
+        EXPECT_EQ(edge, genEdge(e.key, edge.dst, SIZE));
+        EXPECT_LT(correctDst[edge.dst], SIZE);
+        correctSrc[e.key] += 1;
+        correctDst[edge.dst] += 1;
+        edgeCount++;
+      }
+      liftVoid(vec[e.value], deinitialize);
     }
+    table.deinitialize();
   }
+
+  EXPECT_EQ(edgeCount, SIZE * SIZE);
 
   for (std::uint64_t i = 0; i < SIZE; i++) {
     EXPECT_EQ(correctSrc[i], SIZE);
     EXPECT_EQ(correctDst[i], SIZE);
   }
+  correctSrc.deinitialize();
+  correctDst.deinitialize();
 
   localEdges.deinitialize();
 }

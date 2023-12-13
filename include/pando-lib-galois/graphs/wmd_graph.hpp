@@ -117,6 +117,11 @@ public:
     }
   }
 
+  friend bool operator==(const galois::WMDEdge& a, const galois::WMDEdge& b) {
+    return a.src == b.src && a.dst == b.dst && a.type == b.type && a.srcType == b.srcType &&
+           a.dstType == b.dstType;
+  }
+
   uint64_t src;
   uint64_t dst;
   agile::TYPES type;

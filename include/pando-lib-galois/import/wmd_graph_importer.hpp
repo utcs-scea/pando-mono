@@ -41,10 +41,13 @@ template <typename EdgeType>
   if (fmap(hashRef, get, edge.src, result)) { // if token already exists
     pando::GlobalRef<pando::Vector<EdgeType>> vec = fmap(localEdges.getThreadVector(), get, result);
     return fmap(vec, pushBack, edge);
-  } else { // not exist, make a new one
-    fmap(hashRef, put, edge.src, lift(localEdges.getThreadVector(), size));
+  } else {
+    auto err = fmap(hashRef, put, edge.src, lift(localEdges.getThreadVector(), size));
+    if (err != pando::Status::Success) {
+      return err;
+    }
     pando::Vector<EdgeType> v;
-    auto err = v.initialize(1);
+    err = v.initialize(1);
     if (err != pando::Status::Success) {
       return err;
     }
