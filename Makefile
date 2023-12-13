@@ -57,6 +57,7 @@ git-submodules:
 
 docker-image:
 	@mkdir -p dockerbuild
+	@mkdir -p data
 	@docker --context ${CONTAINER_CONTEXT} build \
 	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
 	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \

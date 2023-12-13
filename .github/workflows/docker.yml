@@ -157,7 +157,8 @@ jobs:
       env:
         PANDO_PREP_LOG_LEVEL: warning
       run: |
-        CONTAINER_CMD="bash scripts/run.sh" \
+        mkdir -p data
+        CONTAINER_CMD="bash -c 'export HOST_THREADS=2 && . ~/spack_env && scripts/run.sh'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}" \
           make docker
