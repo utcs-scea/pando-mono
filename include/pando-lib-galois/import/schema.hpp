@@ -81,12 +81,13 @@ struct ParsedGraphStructure {
 template <typename V, typename E>
 class WMDParser {
 public:
-  explicit WMDParser(pando::GlobalPtr<pando::Vector<const char*>> files)
+  WMDParser() = default;
+  explicit WMDParser(pando::GlobalPtr<pando::Vector<pando::Array<char>>> files)
       : csvFields_(10), files_(files) {}
-  WMDParser(uint64_t csvFields, pando::GlobalPtr<pando::Vector<const char*>> files)
+  WMDParser(uint64_t csvFields, pando::GlobalPtr<pando::Vector<pando::Array<char>>> files)
       : csvFields_(csvFields), files_(files) {}
 
-  pando::GlobalPtr<pando::Vector<const char*>> getFiles() {
+  pando::GlobalPtr<pando::Vector<pando::Array<char>>> getFiles() {
     return files_;
   }
   ParsedGraphStructure<V, E> parseLine(const char* line) {
@@ -113,7 +114,7 @@ public:
 
 private:
   uint64_t csvFields_;
-  pando::GlobalPtr<pando::Vector<const char*>> files_;
+  pando::GlobalPtr<pando::Vector<pando::Array<char>>> files_;
 };
 
 } // namespace galois

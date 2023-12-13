@@ -14,15 +14,15 @@ const char* someFile = "some_file.csv";
 const char* someFile2 = "some_file2.csv";
 
 galois::WMDParser<galois::WMDVertex, galois::WMDEdge> getParser() {
-  const auto expected = pando::allocateMemory<pando::Vector<const char*>>(
+  const auto expected = pando::allocateMemory<pando::Vector<pando::Array<char>>>(
       1, pando::getCurrentPlace(), pando::MemoryType::Main);
   EXPECT_EQ(expected.hasValue(), true);
-  pando::GlobalPtr<pando::Vector<const char*>> files_ptr = expected.value();
+  pando::GlobalPtr<pando::Vector<pando::Array<char>>> files_ptr = expected.value();
 
-  pando::Vector<const char*> files;
+  pando::Vector<pando::Array<char>> files;
   EXPECT_EQ(files.initialize(0), pando::Status::Success);
-  EXPECT_EQ(files.pushBack(someFile), pando::Status::Success);
-  EXPECT_EQ(files.pushBack(someFile2), pando::Status::Success);
+  EXPECT_EQ(files.pushBack(galois::StringView(someFile).toArray()), pando::Status::Success);
+  EXPECT_EQ(files.pushBack(galois::StringView(someFile2).toArray()), pando::Status::Success);
   *files_ptr = files;
   return galois::WMDParser<galois::WMDVertex, galois::WMDEdge>(files_ptr);
 }
@@ -64,11 +64,11 @@ void checkParsedEdge(galois::ParsedGraphStructure<galois::WMDVertex, galois::WMD
 
 TEST(ImportSchema, Constructor) {
   galois::WMDParser<galois::WMDVertex, galois::WMDEdge> parser = getParser();
-  pando::GlobalPtr<pando::Vector<const char*>> files_ptr = parser.getFiles();
-  pando::Vector<const char*> files = *files_ptr;
+  pando::GlobalPtr<pando::Vector<pando::Array<char>>> files_ptr = parser.getFiles();
+  pando::Vector<pando::Array<char>> files = *files_ptr;
   EXPECT_EQ(files.size(), 2);
-  EXPECT_EQ(files[0], someFile);
-  EXPECT_EQ(files[1], someFile2);
+  EXPECT_STREQ(galois::StringView(files[0]).get(), someFile);
+  EXPECT_STREQ(galois::StringView(files[1]).get(), someFile2);
 }
 
 TEST(ImportSchema, Parse) {
