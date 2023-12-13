@@ -29,6 +29,8 @@ TEST(HashTable, Empty) {
 
   EXPECT_EQ(table.size(), 0);
   EXPECT_EQ(table.capacity(), 0);
+  int i = 0;
+  EXPECT_FALSE(table.get(0, i));
 }
 
 TEST(HashTable, InitZero) {

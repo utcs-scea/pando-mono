@@ -171,6 +171,9 @@ public:
   // @brief If key is in hashtable, return true and place value into `value`
   // else return false
   bool get(const Key& key, T& value) {
+    if (m_buffer.size() == 0) {
+      return false;
+    }
     Entry e = m_buffer[probe(m_buffer, key)];
 
     if (e.occupied && e.key == key) {
