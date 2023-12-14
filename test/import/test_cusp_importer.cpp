@@ -389,3 +389,41 @@ TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
   }
   edges.deinitialize();
 }
+
+TEST(BuildVirtualToPhysicalMappings, SmallTest) {
+  constexpr std::uint64_t numVirtualHosts = 1024;
+  constexpr std::uint64_t numHostsMax = 32;
+
+  using UPair = galois::Pair<std::uint64_t, std::uint64_t>;
+
+  pando::Status err;
+  pando::Array<UPair> virtHosts;
+  err = virtHosts.initialize(numVirtualHosts);
+  EXPECT_EQ(err, pando::Status::Success);
+
+  virtHosts[0] = UPair{numVirtualHosts - 1, 0};
+  for (std::uint64_t i = 1; i < numVirtualHosts; i++) {
+    virtHosts[i] = UPair{1, i};
+  }
+
+  pando::GlobalPtr<pando::Array<std::uint64_t>> virtualToPhysicalMapping;
+  pando::LocalStorageGuard vTPMGuard(virtualToPhysicalMapping, 1);
+
+  for (std::uint64_t numHosts = 1; numHosts < numHostsMax; numHosts++) {
+    err = galois::internal::buildVirtualToPhysicalMapping(numHosts, virtHosts,
+                                                          virtualToPhysicalMapping);
+    EXPECT_EQ(err, pando::Status::Success);
+    if (numHosts == 1) {
+      for (std::uint64_t i = numVirtualHosts; i < numVirtualHosts; i++) {
+        EXPECT_EQ(static_cast<std::uint64_t>(0), fmap(*virtualToPhysicalMapping, operator[], 0));
+      }
+    } else {
+      EXPECT_EQ(static_cast<std::uint64_t>(0), fmap(*virtualToPhysicalMapping, operator[], 0));
+      std::uint64_t j = 0;
+      for (std::uint64_t i = numVirtualHosts - 1; i > 0; i--, j++) {
+        EXPECT_EQ(1 + (j % (numHosts - 1)), fmap(*virtualToPhysicalMapping, operator[], i));
+      }
+    }
+    liftVoid(*virtualToPhysicalMapping, deinitialize);
+  }
+}
