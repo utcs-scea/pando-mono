@@ -60,7 +60,7 @@ pando::Status galois::importELFileDirOpt(
 
   std::uint64_t src{0}, dst{0};
 
-  pando::Vector<galois::HashTable<std::uint64_t, std::uint64_t>> edgeList;
+  pando::Vector<galois::HashTable<std::uint64_t, std::uint64_t>> edgeList{};
   if ((err = edgeList.initialize(numVertices)) != pando::Status::Success) {
     return err;
   }

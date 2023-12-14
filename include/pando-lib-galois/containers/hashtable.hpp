@@ -28,7 +28,7 @@ public:
   struct Entry {
     Key key;
     T value;
-    bool occupied;
+    bool occupied = false;
   };
 
   // TODO(prydt) constructor with capacity, max load factor
@@ -69,7 +69,7 @@ public:
     Iterator& operator++() {
       mIter++;
       Entry e = *mIter;
-      while (!e.occupied && mIter != mEnd) {
+      while (mIter != mEnd && !e.occupied) {
         mIter++;
         e = *mIter;
       }
@@ -151,6 +151,8 @@ public:
     if (status != pando::Status::Success) {
       return pando::Status::BadAlloc;
     }
+
+    newBuffer.fill(Entry{});
 
     for (std::size_t i = 0; i < m_buffer.size(); i++) {
       Entry e = m_buffer[i];
@@ -236,12 +238,7 @@ public:
 
   Iterator begin() {
     auto i = m_buffer.begin();
-    Entry e = *i;
-    while (i != m_buffer.end() && !e.occupied) {
-      i++;
-      e = *i;
-    }
-    for (auto i = m_buffer.begin(); i != m_buffer.end() && !static_cast<Entry>(*i).occupied; i++) {}
+    for (; i != m_buffer.end() && !static_cast<Entry>(*i).occupied; i++) {}
     return Iterator(i, m_buffer.begin(), m_buffer.end());
   }
   Iterator end() {
