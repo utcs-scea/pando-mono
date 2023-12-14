@@ -11,7 +11,11 @@
 namespace {
 
 inline void convertDoubleToU64(double x, uint64_t& res) {
-  memcpy(&res, &x, sizeof(uint64_t));
+  char* from = reinterpret_cast<char*>(&x);
+  char* to = reinterpret_cast<char*>(&res);
+  for (std::uint64_t i = 0; i < sizeof(uint64_t); i++) {
+    to[i] = from[i];
+  }
 }
 
 } // namespace
