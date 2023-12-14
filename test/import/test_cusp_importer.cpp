@@ -29,7 +29,7 @@ TEST(InsertLocalEdgesPerThread, SingleInsertionTest) {
                galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges,
                galois::WMDEdge edge) {
     pando::Status err;
-    err = galois::internal::insertLocalEdgesPerThread(*hashPtr, localEdges, edge);
+    err = galois::internal::insertLocalEdgesPerThread(*hashPtr, localEdges.getThreadVector(), edge);
     EXPECT_EQ(err, pando::Status::Success);
     done.notify();
   };
@@ -86,7 +86,7 @@ TEST(InsertLocalEdgesPerThread, MultiSmallInsertionTest) {
   auto f = +[](State s, galois::WMDEdge edge) {
     pando::Status err;
     err = galois::internal::insertLocalEdgesPerThread(s.hashPtr[s.localEdges.getLocalVectorID()],
-                                                      s.localEdges, edge);
+                                                      s.localEdges.getThreadVector(), edge);
     EXPECT_EQ(err, pando::Status::Success);
   };
 
@@ -226,7 +226,7 @@ TEST(InsertLocalEdgesPerThread, MultiBigInsertionTest) {
   auto f = +[](State s, galois::WMDEdge edge) {
     pando::Status err;
     err = galois::internal::insertLocalEdgesPerThread(s.hashPtr[s.localEdges.getLocalVectorID()],
-                                                      s.localEdges, edge);
+                                                      s.localEdges.getThreadVector(), edge);
     EXPECT_EQ(err, pando::Status::Success);
   };
 

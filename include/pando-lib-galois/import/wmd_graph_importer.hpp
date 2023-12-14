@@ -35,14 +35,14 @@ namespace galois::internal {
 template <typename EdgeType>
 [[nodiscard]] inline pando::Status insertLocalEdgesPerThread(
     pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef,
-    galois::PerThreadVector<pando::Vector<EdgeType>> localEdges, EdgeType edge) {
+    pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> localEdges, EdgeType edge) {
   uint64_t result;
 
   if (fmap(hashRef, get, edge.src, result)) { // if token already exists
-    pando::GlobalRef<pando::Vector<EdgeType>> vec = fmap(localEdges.getThreadVector(), get, result);
+    pando::GlobalRef<pando::Vector<EdgeType>> vec = fmap(localEdges, get, result);
     return fmap(vec, pushBack, edge);
   } else {
-    auto err = fmap(hashRef, put, edge.src, lift(localEdges.getThreadVector(), size));
+    auto err = fmap(hashRef, put, edge.src, lift(localEdges, size));
     if (err != pando::Status::Success) {
       return err;
     }
@@ -52,7 +52,7 @@ template <typename EdgeType>
       return err;
     }
     v[0] = std::move(edge);
-    return localEdges.pushBack(std::move(v));
+    return fmap(localEdges, pushBack, std::move(v));
   }
 }
 
