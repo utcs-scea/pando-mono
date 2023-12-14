@@ -118,7 +118,8 @@ setup:
 run-tests:
 	. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet qthreads openmpi && \
-	cd ${BUILD_DIR} && ctest --output-on-failure
+	cd ${BUILD_DIR} && ctest --verbose | tee test.out && \
+	! grep Failure test.out
 
 # this command is slow since hooks are not stored in the container image
 # this is mostly for CI use

@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
@@ -160,7 +159,6 @@ TEST(doAll, EvenlyPartition) {
   galois::doAllEvenlyPartition(
       loops, workItems,
       +[](galois::DAccumulator<uint64_t>& loops, uint64_t workItem, uint64_t workItemsLocal) {
-        EXPECT_NE(workItem, workItemsLocal - 2);
         loops.add(workItem);
         uint64_t hosts = pando::getPlaceDims().node.id;
         uint64_t workPerHost = workItemsLocal / hosts;

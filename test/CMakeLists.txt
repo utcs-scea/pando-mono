@@ -11,6 +11,8 @@ function(pando_add_exec TARGET SOURCEFILE)
   pando_compiler_warnings(${TARGET})
 endfunction()
 
+pando_add_driver_test(fail_tests fail_tests.cpp)
+
 add_subdirectory(containers)
 add_subdirectory(graphs)
 add_subdirectory(import)
