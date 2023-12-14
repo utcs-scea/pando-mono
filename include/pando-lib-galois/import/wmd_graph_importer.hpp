@@ -38,7 +38,7 @@ template <typename EdgeType>
     pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> localEdges, EdgeType edge) {
   uint64_t result;
 
-  if (fmap(hashRef, get, edge.src, result)) { // if token already exists
+  if (fmap(hashRef, get, edge.src, result)) {
     pando::GlobalRef<pando::Vector<EdgeType>> vec = fmap(localEdges, get, result);
     return fmap(vec, pushBack, edge);
   } else {
@@ -54,6 +54,41 @@ template <typename EdgeType>
     v[0] = std::move(edge);
     return fmap(localEdges, pushBack, std::move(v));
   }
+}
+
+/**
+ * @brief fills out the metadata for the VirtualToPhysical Host mapping.
+ */
+template <typename EdgeType>
+void buildEdgeCountToSend(
+    uint32_t numVirtualHosts, galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> localEdges,
+    pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
+  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
+  PANDO_CHECK(sumArray.initialize(numVirtualHosts));
+
+  for (std::uint64_t i = 0; i < numVirtualHosts; i++) {
+    galois::Pair<std::uint64_t, std::uint64_t> p{0, i};
+    sumArray[i] = p;
+  }
+
+  galois::doAll(
+      sumArray, localEdges,
+      +[](pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts,
+          pando::Vector<pando::Vector<EdgeType>> localEdges) {
+        for (pando::Vector<EdgeType> v : localEdges) {
+          assert(v.size() != 0);
+          EdgeType e = v[0];
+          pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
+              static_cast<pando::GlobalPtr<void>>(&counts[e.src % counts.size()]));
+          using UPair = galois::Pair<std::uint64_t, std::uint64_t>;
+          toAdd += offsetof(UPair, first);
+          pando::GlobalPtr<std::uint64_t> p = static_cast<pando::GlobalPtr<std::uint64_t>>(
+              static_cast<pando::GlobalPtr<void>>(toAdd));
+          pando::atomicFetchAdd(p, v.size(), std::memory_order_relaxed);
+        }
+      });
+
+  labeledEdgeCounts = sumArray;
 }
 
 } // namespace galois::internal

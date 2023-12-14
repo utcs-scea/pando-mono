@@ -277,3 +277,115 @@ TEST(InsertLocalEdgesPerThread, MultiBigInsertionTest) {
 
   localEdges.deinitialize();
 }
+
+TEST(BuildEdgeCountToSend, SmallSequentialTest) {
+  uint16_t numHosts = pando::getPlaceDims().node.id;
+  uint32_t numVirtualHosts = numHosts;
+
+  pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
+  pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
+
+  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledEdgeCounts;
+  galois::PerHost<pando::Vector<pando::Vector<galois::WMDEdge>>> perHostLocalEdges{};
+  EXPECT_EQ(perHostLocalEdges.initialize(), pando::Status::Success);
+  uint64_t i = 0;
+  for (pando::GlobalRef<pando::Vector<pando::Vector<galois::WMDEdge>>> val : perHostLocalEdges) {
+    galois::WMDVertex v0(i, agile::TYPES::PERSON);
+    galois::WMDVertex v1(numHosts + i, agile::TYPES::PUBLICATION);
+    galois::WMDEdge edge0(v0.id, v1.id, agile::TYPES::AUTHOR, v0.type, v1.type);
+    pando::Vector<pando::Vector<galois::WMDEdge>> localEdges;
+    pando::Vector<galois::WMDEdge> e0;
+    PANDO_CHECK(e0.initialize(0));
+    PANDO_CHECK(e0.pushBack(edge0));
+    PANDO_CHECK(localEdges.initialize(0));
+    PANDO_CHECK(localEdges.pushBack(e0));
+    val = localEdges;
+    i++;
+  }
+
+  galois::internal::buildEdgeCountToSend(numVirtualHosts, perHostLocalEdges, *edgeCounts);
+
+  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts = *edgeCounts;
+  uint64_t cnt = 1;
+  galois::Pair<std::uint64_t, std::uint64_t> p = counts[0];
+  EXPECT_EQ(p.first, cnt);
+}
+
+TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
+  constexpr std::uint64_t SIZE = 32;
+  pando::Status err;
+  pando::Array<galois::WMDEdge> edges;
+  err = edges.initialize(SIZE * SIZE);
+  PANDO_CHECK(err);
+
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    for (std::uint64_t j = 0; j < SIZE; j++) {
+      galois::WMDEdge e = genEdge(i, j, SIZE);
+      EXPECT_NE(e.type, agile::TYPES::NONE);
+      edges[i * SIZE + j] = e;
+    }
+  }
+  for (std::uint32_t numVirtualHosts = 2; numVirtualHosts < 256; numVirtualHosts *= 3) {
+    galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
+    err = localEdges.initialize();
+    EXPECT_EQ(err, pando::Status::Success);
+
+    pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> hashPtr;
+    pando::LocalStorageGuard hashGuard(hashPtr, localEdges.size());
+    for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+      hashPtr[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
+      err = fmap(hashPtr[i], initialize, 0);
+      EXPECT_EQ(err, pando::Status::Success);
+    }
+
+    struct State {
+      pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> hashPtr;
+      galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
+    };
+    auto f = +[](State s, galois::WMDEdge edge) {
+      pando::Status err;
+      err = galois::internal::insertLocalEdgesPerThread(s.hashPtr[s.localEdges.getLocalVectorID()],
+                                                        s.localEdges.getThreadVector(), edge);
+      EXPECT_EQ(err, pando::Status::Success);
+    };
+
+    err = galois::doAll(State{hashPtr, localEdges}, edges, f);
+    EXPECT_EQ(err, pando::Status::Success);
+
+    pando::GlobalPtr<galois::PerHost<pando::Vector<pando::Vector<galois::WMDEdge>>>>
+        perHostLocalEdges;
+    pando::LocalStorageGuard(perHostLocalEdges, 1);
+    err = localEdges.hostFlatten(*perHostLocalEdges);
+    EXPECT_EQ(err, pando::Status::Success);
+
+    pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
+    pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
+
+    galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, *perHostLocalEdges,
+                                                            *edgeCounts);
+
+    pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts = *edgeCounts;
+    std::uint64_t i = 0;
+    for (galois::Pair<std::uint64_t, std::uint64_t> count : counts) {
+      EXPECT_EQ(count.second, i);
+      std::uint64_t j = SIZE / numVirtualHosts;
+      j += (SIZE % numVirtualHosts > i) ? 1 : 0;
+      EXPECT_EQ(count.first, SIZE * j);
+      i++;
+    }
+
+    for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+      galois::HashTable<std::uint64_t, std::uint64_t> table = hashPtr[i];
+      table.deinitialize();
+      pando::Vector<pando::Vector<galois::WMDEdge>> vecVec = *localEdges.get(i);
+      for (pando::Vector<galois::WMDEdge> vec : vecVec) {
+        vec.deinitialize();
+      }
+      table.deinitialize();
+    }
+
+    localEdges.deinitialize();
+    counts.deinitialize();
+  }
+  edges.deinitialize();
+}
