@@ -55,7 +55,7 @@ TEST(HashTable, Initialize) {
 }
 
 TEST(HashTable, Resize) {
-  galois::HashTable<int, int> table;
+  galois::HashTable<int, int> table{};
 
   EXPECT_EQ(table.initialize(8), pando::Status::Success);
   table.put(1, 1);

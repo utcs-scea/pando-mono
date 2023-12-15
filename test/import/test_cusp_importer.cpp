@@ -190,7 +190,7 @@ TEST(InsertLocalEdgesPerThread, MultiBigInsertionTest) {
     EXPECT_EQ(err, pando::Status::Success);
   }
 
-  pando::Array<galois::WMDEdge> edges;
+  galois::DistArray<galois::WMDEdge> edges;
   err = edges.initialize(SIZE * SIZE);
   PANDO_CHECK(err);
 
@@ -288,10 +288,15 @@ TEST(BuildEdgeCountToSend, SmallSequentialTest) {
   pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
 
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledEdgeCounts;
-  galois::PerHost<pando::Vector<pando::Vector<galois::WMDEdge>>> perHostLocalEdges{};
-  EXPECT_EQ(perHostLocalEdges.initialize(), pando::Status::Success);
+  galois::PerThreadVector<pando::Vector<galois::WMDEdge>> perThreadLocalEdges{};
+  EXPECT_EQ(perThreadLocalEdges.initialize(), pando::Status::Success);
+  auto dims = pando::getPlaceDims();
+  auto cores = static_cast<std::uint64_t>(dims.core.x * dims.core.y);
+  auto threads = static_cast<std::uint64_t>(pando::getThreadDims().id);
   uint64_t i = 0;
-  for (pando::GlobalRef<pando::Vector<pando::Vector<galois::WMDEdge>>> val : perHostLocalEdges) {
+  for (std::uint64_t j = 0; j < perThreadLocalEdges.size(); j += cores * threads) {
+    pando::GlobalRef<pando::Vector<pando::Vector<galois::WMDEdge>>> val =
+        *perThreadLocalEdges.get(j);
     galois::WMDVertex v0(i, agile::TYPES::PERSON);
     galois::WMDVertex v1(numHosts + i, agile::TYPES::PUBLICATION);
     galois::WMDEdge edge0(v0.id, v1.id, agile::TYPES::AUTHOR, v0.type, v1.type);
@@ -305,7 +310,7 @@ TEST(BuildEdgeCountToSend, SmallSequentialTest) {
     i++;
   }
 
-  galois::internal::buildEdgeCountToSend(numVirtualHosts, perHostLocalEdges, *edgeCounts);
+  galois::internal::buildEdgeCountToSend(numVirtualHosts, perThreadLocalEdges, *edgeCounts);
 
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts = *edgeCounts;
   uint64_t cnt = 1;
@@ -354,16 +359,10 @@ TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
     err = galois::doAll(State{hashPtr, localEdges}, edges, f);
     EXPECT_EQ(err, pando::Status::Success);
 
-    pando::GlobalPtr<galois::PerHost<pando::Vector<pando::Vector<galois::WMDEdge>>>>
-        perHostLocalEdges;
-    pando::LocalStorageGuard(perHostLocalEdges, 1);
-    err = localEdges.hostFlatten(*perHostLocalEdges);
-    EXPECT_EQ(err, pando::Status::Success);
-
     pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
     pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
 
-    galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, *perHostLocalEdges,
+    galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges,
                                                             *edgeCounts);
 
     pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts = *edgeCounts;
@@ -532,6 +531,111 @@ TEST(BuildVertexPartition, SmallTest) {
   readPartitions.deinitialize();
 }
 
+TEST(PartitionEdgesSerially, Serially) {
+  constexpr std::uint64_t SIZE = 32;
+  pando::Status err;
+
+  std::uint64_t numVirtualHosts = 16;
+  std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+
+  galois::DistArray<galois::WMDEdge> edges;
+  err = edges.initialize(SIZE * SIZE);
+  PANDO_CHECK(err);
+
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    for (std::uint64_t j = 0; j < SIZE; j++) {
+      galois::WMDEdge e = genEdge(i, j, SIZE);
+      EXPECT_NE(e.type, agile::TYPES::NONE);
+      edges[i * SIZE + j] = e;
+    }
+  }
+
+  galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
+  err = localEdges.initialize();
+  EXPECT_EQ(err, pando::Status::Success);
+
+  pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> hashPtr;
+  pando::LocalStorageGuard hashGuard(hashPtr, localEdges.size());
+  for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+    hashPtr[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
+    err = fmap(hashPtr[i], initialize, 0);
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+
+  struct State {
+    pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> hashPtr;
+    galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
+  };
+
+  auto f = +[](State s, galois::WMDEdge edge) {
+    pando::Status err;
+    err = galois::internal::insertLocalEdgesPerThread(s.hashPtr[s.localEdges.getLocalVectorID()],
+                                                      s.localEdges.getThreadVector(), edge);
+    EXPECT_EQ(err, pando::Status::Success);
+  };
+
+  err = galois::doAll(State{hashPtr, localEdges}, edges, f);
+  EXPECT_EQ(err, pando::Status::Success);
+
+  pando::Array<std::uint64_t> v2PM;
+  err = v2PM.initialize(numVirtualHosts);
+  EXPECT_EQ(err, pando::Status::Success);
+  for (std::uint64_t i = 0; i < numVirtualHosts; i++) {
+    v2PM[i] = i % numHosts;
+  }
+
+  galois::PerHost<pando::Vector<pando::Vector<galois::WMDEdge>>> partitionedEdges;
+  err = partitionedEdges.initialize();
+  EXPECT_EQ(err, pando::Status::Success);
+  for (pando::GlobalRef<pando::Vector<pando::Vector<galois::WMDEdge>>> vvec : partitionedEdges) {
+    err = fmap(vvec, initialize, 0);
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+
+  auto g = +[](pando::NotificationHandle done, decltype(localEdges) le,
+               decltype(v2PM) virtual2Physical, decltype(partitionedEdges) pe) {
+    auto err = galois::internal::partitionEdgesSerially<galois::WMDEdge>(le, virtual2Physical, pe);
+    PANDO_CHECK(err);
+    done.notify();
+  };
+  pando::Notification notify;
+  err = notify.init();
+  EXPECT_EQ(err, pando::Status::Success);
+
+  auto place = pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore};
+  err = pando::executeOn(place, g, notify.getHandle(), localEdges, v2PM, partitionedEdges);
+  EXPECT_EQ(err, pando::Status::Success);
+  notify.wait();
+
+  for (pando::Vector<pando::Vector<galois::WMDEdge>> vVec : partitionedEdges) {
+    EXPECT_EQ(vVec.size(), SIZE / numHosts);
+    std::sort(vVec.begin(), vVec.end(),
+              [](const pando::Vector<galois::WMDEdge>& a,
+                 const pando::Vector<galois::WMDEdge>& b) -> bool {
+                galois::WMDEdge edgeA = a[0];
+                galois::WMDEdge edgeB = b[0];
+                return edgeA.src < edgeB.src;
+              });
+    for (pando::Vector<galois::WMDEdge> vec : vVec) {
+      EXPECT_EQ(vec.size(), SIZE);
+      galois::WMDEdge edge = vec[0];
+      std::uint64_t edgeSrc = edge.src;
+      std::cout << "Edge src: " << edgeSrc << std::endl;
+      for (galois::WMDEdge val : vec) {
+        EXPECT_EQ(val.src, edgeSrc);
+      }
+      // vec.deinitialize();
+    }
+    std::cout << "vec End " << std::endl;
+    // vVec.deinitialize();
+  }
+  partitionedEdges.deinitialize();
+  for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+    liftVoid(hashPtr[i], deinitialize);
+  }
+  localEdges.deinitialize();
+}
+
 TEST(Integration, InsertEdgeCountVirtual2Physical) {
   constexpr std::uint64_t SIZE = 32;
   pando::Status err;
@@ -578,19 +682,13 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
     err = galois::doAll(State{hashPtr, localEdges}, edges, f);
     EXPECT_EQ(err, pando::Status::Success);
 
-    pando::GlobalPtr<galois::PerHost<pando::Vector<pando::Vector<galois::WMDEdge>>>>
-        perHostLocalEdges;
-    pando::LocalStorageGuard(perHostLocalEdges, 1);
-    err = localEdges.hostFlatten(*perHostLocalEdges);
-    EXPECT_EQ(err, pando::Status::Success);
-
     pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
     pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
 
-    galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, *perHostLocalEdges,
+    galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges,
                                                             *edgeCounts);
 
-    for (std::uint64_t numHosts = 2; numHosts <= numVirtualHosts; numHosts *= 9) {
+    for (std::uint64_t numHosts = 2; numHosts <= numVirtualHosts; numHosts *= 3) {
       err = galois::internal::buildVirtualToPhysicalMapping(numHosts, *edgeCounts,
                                                             virtualToPhysicalMapping);
       if (numHosts == 1) {
@@ -607,7 +705,6 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
           std::uint64_t i = fmap(*virtualToPhysicalMapping, operator[], edge.src % numVirtualHosts);
           interArray[i] += 1;
         }
-        // Find that min and max differ by no more than 2*SIZE
 
         std::uint64_t dif = ((SIZE / numVirtualHosts) + 1) * SIZE;
         std::uint64_t max = 0;

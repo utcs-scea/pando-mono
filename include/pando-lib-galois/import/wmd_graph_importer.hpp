@@ -61,7 +61,7 @@ template <typename EdgeType>
  */
 template <typename EdgeType>
 void buildEdgeCountToSend(
-    uint32_t numVirtualHosts, galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> localEdges,
+    uint32_t numVirtualHosts, galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
     pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
   PANDO_CHECK(sumArray.initialize(numVirtualHosts));
@@ -178,6 +178,46 @@ template <typename VertexType>
   }
 
   *partitionedVertices = partitioned;
+  return pando::Status::Success;
+}
+
+/**
+ * @brief Serially build the edgeLists
+ */
+template <typename EdgeType>
+[[nodiscard]] pando::Status partitionEdgesSerially(
+    galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
+    pando::Array<std::uint64_t> virtualToPhysicalMapping,
+    galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges) {
+  galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
+  auto err = renamePerHost.initialize();
+  if (err != pando::Status::Success) {
+    return err;
+  }
+  for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
+    galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
+    err = hash.initialize(0);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    hashRef = hash;
+  }
+
+  for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+    pando::Vector<pando::Vector<EdgeType>> threadLocalEdges = *localEdges.get(i);
+    for (pando::Vector<EdgeType> vec : threadLocalEdges) {
+      for (EdgeType edge : vec) {
+        auto tgtHost = getPhysical(edge.src, virtualToPhysicalMapping);
+        pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> edges =
+            partitionedEdges.get(tgtHost);
+        err = insertLocalEdgesPerThread(renamePerHost.get(tgtHost), edges, edge);
+        if (err != pando::Status::Success) {
+          return err;
+        }
+      }
+    }
+  }
+  renamePerHost.deinitialize();
   return pando::Status::Success;
 }
 

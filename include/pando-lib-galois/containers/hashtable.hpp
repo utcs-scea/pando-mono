@@ -158,7 +158,7 @@ public:
       Entry e = m_buffer[i];
       if (e.occupied) {
         auto insert = bufferInsert(newBuffer, e.key, e.value);
-        if (insert != pando::Status::Success) {
+        if (insert) {
           return pando::Status::Error;
         }
       }
@@ -205,9 +205,10 @@ public:
       }
     }
 
-    bufferInsert(m_buffer, key, value);
-
-    m_size++;
+    bool wasOccupied = bufferInsert(m_buffer, key, value);
+    if (!wasOccupied) {
+      m_size++;
+    }
     return pando::Status::Success;
   }
 
@@ -265,7 +266,7 @@ private:
   // returns the index a key would be in the hashtable
   // if it is present in the hashtable.
   std::size_t probe(pando::Array<Entry>& buf, const Key& key) {
-    auto h = hashIndex(key);
+    auto h = hashIndex(key, buf.size());
     Entry e = buf[h];
     std::size_t idx = h;
 
@@ -281,29 +282,29 @@ private:
     return idx;
   }
 
-  pando::Status bufferInsert(pando::Array<Entry>& buf, const Key& key, T value) {
+  bool bufferInsert(pando::Array<Entry>& buf, const Key& key, T value) {
     std::size_t idx = probe(buf, key);
     Entry e = buf[idx];
 
     // e is not occupied or e.key = key, due to probe
+    bool wasOccupied = e.occupied;
     e.key = key;
     e.value = value;
     e.occupied = true;
     buf[idx] = e;
-    return pando::Status::Success;
+    return wasOccupied;
   }
 
   std::size_t nextCapacity() {
-    // TODO(prydt) maybe try prime sizes instead
     if (m_buffer.size() == 0)
       return 8;
     return m_buffer.size() * 2;
   }
 
-  inline std::size_t hashIndex(const Key& key) {
+  inline std::size_t hashIndex(const Key& key, std::uint64_t size) {
     std::size_t i = std::hash<Key>{}(key);
 
-    return i % m_buffer.size();
+    return i % size;
   }
 };
 } // namespace galois
