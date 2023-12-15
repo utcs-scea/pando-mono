@@ -22,6 +22,14 @@ pando::Place localityOf(pando::GlobalPtr<T> ptr) {
   return (ptr == nullptr) ? pando::getCurrentPlace() : pando::localityOf(ptr);
 }
 
+static inline uint64_t getTotalThreads() {
+  uint64_t coreY = pando::getPlaceDims().core.y;
+  uint64_t cores = pando::getPlaceDims().core.x * coreY;
+  uint64_t threads = pando::getThreadDims().id;
+  uint64_t hosts = pando::getPlaceDims().node.id;
+  return hosts * cores * threads;
+}
+
 class DoAll {
 private:
   /**
@@ -270,16 +278,28 @@ public:
   static pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
                                             const F& func) {
     pando::Status err = pando::Status::Success;
-
-    uint64_t workPerHost = workItems / pando::getPlaceDims().node.id;
-    if (workPerHost == 0) {
-      workPerHost = 1;
+    if (workItems == 0) {
+      return err;
     }
+
+    uint64_t hosts = pando::getPlaceDims().node.id;
+    uint64_t workPerHost = workItems / hosts;
     galois::IotaRange range(0, workItems);
     const auto end = range.end();
 
     for (auto curr = range.begin(); curr != end; curr++) {
-      int16_t assignedHost = (int16_t)(*curr / workPerHost);
+      int16_t assignedHost;
+      if (workPerHost > 0) {
+        assignedHost = (int16_t)(*curr / workPerHost);
+      } else if (hosts % workItems == 0) {
+        // Given that we have 8 pxns and we schedule 4 workItems, this will place the workers on the
+        // even numbered pxns
+        assignedHost = (int16_t)(*curr * (hosts / workItems));
+      } else {
+        // Given that workItems < hosts and workItems does not divide hosts, assign the work
+        // sequentially
+        assignedHost = (int16_t)(*curr);
+      }
       if (assignedHost >= pando::getPlaceDims().node.id) {
         assignedHost = pando::getPlaceDims().node.id - 1;
       }
@@ -332,13 +352,7 @@ public:
    */
   template <typename State, typename F>
   static pando::Status onEach(WaitGroup::HandleType wgh, State s, const F& func) {
-    uint64_t coreY = pando::getPlaceDims().core.y;
-    uint64_t cores = pando::getPlaceDims().core.x * coreY;
-    uint64_t threads = pando::getThreadDims().id;
-    uint64_t hosts = pando::getPlaceDims().node.id;
-    uint64_t totalThreads = hosts * cores * threads;
-
-    return doAllEvenlyPartition<State, F>(wgh, s, totalThreads, func);
+    return doAllEvenlyPartition<State, F>(wgh, s, getTotalThreads(), func);
   }
 
   /**

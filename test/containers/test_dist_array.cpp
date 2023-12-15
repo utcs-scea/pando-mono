@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 #include <pando-rt/export.h>
 
+#include <algorithm>
+
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/utility/pair.hpp>
 #include <pando-rt/containers/vector.hpp>
@@ -27,6 +29,7 @@ TEST(DistArray, Empty) {
     EXPECT_EQ(array.initialize(vec.begin(), vec.end(), 0), pando::Status::Success);
     EXPECT_EQ(array.size(), 0);
     array.deinitialize();
+    vec.deinitialize();
 
     done.notify();
   };
@@ -63,6 +66,7 @@ TEST(DistArray, Initialize) {
   }
 
   array.deinitialize();
+  vec.deinitialize();
 }
 
 TEST(DistArray, Swap) {
@@ -143,6 +147,7 @@ TEST(DistArray, Iterator) {
   }
 
   array.deinitialize();
+  vec.deinitialize();
 }
 
 TEST(DistArray, IteratorManual) {
@@ -174,6 +179,7 @@ TEST(DistArray, IteratorManual) {
   }
 
   array.deinitialize();
+  vec.deinitialize();
 }
 
 TEST(DistArray, ReverseIterator) {
@@ -205,6 +211,7 @@ TEST(DistArray, ReverseIterator) {
   }
 
   array.deinitialize();
+  vec.deinitialize();
 }
 
 TEST(DistArray, IteratorExecuteOn) {
@@ -244,6 +251,7 @@ TEST(DistArray, IteratorExecuteOn) {
   notif.wait();
 
   array.deinitialize();
+  vec.deinitialize();
 }
 
 TEST(DistArray, Sort) {
@@ -270,6 +278,8 @@ TEST(DistArray, Sort) {
     EXPECT_EQ(val, i);
     i++;
   }
+  array.deinitialize();
+  vec.deinitialize();
 }
 
 TEST(DistArray, SortPair) {
@@ -300,6 +310,8 @@ TEST(DistArray, SortPair) {
       EXPECT_EQ(totest, expect);
     }
   }
+  array.deinitialize();
+  vec.deinitialize();
 }
 
 TEST(DistArray, From) {
@@ -316,4 +328,25 @@ TEST(DistArray, From) {
   for (uint64_t i = 0; i < size; i++) {
     EXPECT_EQ(array[i], i);
   }
+  array.deinitialize();
+  vec.deinitialize();
+}
+
+TEST(DistArray, DistributedSort) {
+  const std::uint64_t size = 1031;
+  galois::DistArray<std::uint64_t> array;
+  EXPECT_EQ(array.initialize(size), pando::Status::Success);
+  for (uint64_t i = 0; i < array.size(); i++) {
+    array[i] = i;
+  }
+  std::random_shuffle(array.begin(), array.end());
+  EXPECT_EQ(array.sort(), pando::Status::Success);
+  for (uint64_t i = 1; i < array.size(); i++) {
+    uint64_t val1 = array[i - 1];
+    uint64_t val2 = array[i];
+    EXPECT_LE(val1, val2);
+    EXPECT_EQ(val1, i - 1);
+    EXPECT_EQ(val2, i);
+  }
+  array.deinitialize();
 }

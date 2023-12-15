@@ -4,6 +4,7 @@
 #ifndef PANDO_LIB_GALOIS_CONTAINERS_DIST_ARRAY_HPP_
 #define PANDO_LIB_GALOIS_CONTAINERS_DIST_ARRAY_HPP_
 
+#include <algorithm>
 #include <cstdint>
 #include <iterator>
 #include <utility>
@@ -42,6 +43,17 @@ private:
 
     galois::DistArray<T> to;
     pando::Vector<T> from;
+  };
+
+  struct SortState {
+    SortState() = default;
+    SortState(DistArray<T> from_, DistArray<T> to_, uint64_t subArraySize_, uint64_t workArraySize_)
+        : from(from_), to(to_), subArraySize(subArraySize_), workArraySize(workArraySize_) {}
+
+    DistArray<T> from;
+    DistArray<T> to;
+    uint64_t subArraySize;
+    uint64_t workArraySize;
   };
 
 public:
@@ -179,6 +191,91 @@ public:
     return err;
   }
 
+  pando::Status sort() {
+    // must be a power of 2 since this is a simple merge sort
+    uint64_t actualThreads = galois::getTotalThreads();
+    uint64_t totalThreads = pando::up2(actualThreads);
+    if (actualThreads < totalThreads) {
+      totalThreads /= 2;
+    }
+    uint64_t subArraySize = capacity() / totalThreads;
+    if (subArraySize <= 0) {
+      std::sort(begin(), end());
+      return pando::Status::Success;
+    }
+    if (subArraySize * totalThreads < size()) {
+      subArraySize++;
+    }
+
+    DistArray<T> tmp;
+    pando::Status err = tmp.initialize(size());
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    galois::doAllEvenlyPartition(
+        *this, totalThreads,
+        +[](galois::DistArray<T>& arr, uint64_t thread, uint64_t totalThreads) {
+          uint64_t workPerHost = arr.capacity() / totalThreads;
+          if (workPerHost * totalThreads < arr.size()) {
+            workPerHost++;
+          }
+          uint64_t start = thread * workPerHost;
+          uint64_t end = start + workPerHost;
+          if (thread == totalThreads - 1 || end > arr.size()) {
+            end = arr.size();
+          }
+          if (start >= end) {
+            return;
+          }
+          std::sort(arr.begin() + start, arr.begin() + end);
+        });
+    uint64_t threads = totalThreads / 2;
+    while (subArraySize < size()) {
+      uint64_t workArraySize = subArraySize * 2;
+      SortState state(*this, tmp, subArraySize, workArraySize);
+      galois::doAllEvenlyPartition(
+          state, threads, +[](SortState& state, uint64_t thread, uint64_t total_threads) {
+            uint64_t startA = thread * state.workArraySize;
+            uint64_t startB = startA + state.subArraySize;
+            uint64_t endA = startB;
+            uint64_t endB = startA + state.workArraySize;
+            if (thread == total_threads - 1) {
+              endB = state.from.size();
+            }
+            // for uneven numbers of threads
+            if (endA >= endB) {
+              return;
+            }
+            uint64_t i = 0;
+            uint64_t a = startA;
+            uint64_t b = startB;
+            T val1 = state.from[a];
+            T val2 = state.from[b];
+            while (a < endA && b < endB) {
+              if (val1 < val2) {
+                state.to[startA + i++] = val1;
+                val1 = state.from[++a];
+              } else {
+                state.to[startA + i++] = val2;
+                val2 = state.from[++b];
+              }
+            }
+            while (a < endA) {
+              state.to[startA + i++] = state.from[a++];
+            }
+            while (b < endB) {
+              state.to[startA + i++] = state.from[b++];
+            }
+          });
+      subArraySize *= 2;
+      threads = threads / 2;
+      tmp.m_data = state.to.m_data;
+      std::swap(m_data, tmp.m_data);
+    }
+    tmp.deinitialize();
+    return pando::Status::Success;
+  }
+
   /**
    * @brief Deinitializes the array.
    */
@@ -213,6 +310,22 @@ public:
 
   constexpr std::uint64_t size() const noexcept {
     return size_;
+  }
+
+  constexpr std::uint64_t capacity() noexcept {
+    if (size() == 0) {
+      return 0;
+    }
+    pando::Array<T> arr = m_data[0];
+    return m_data.size() * arr.size();
+  }
+
+  constexpr std::uint64_t capacity() const noexcept {
+    if (size() == 0) {
+      return 0;
+    }
+    pando::Array<T> arr = m_data[0];
+    return m_data.size() * arr.size();
   }
 
   /**
