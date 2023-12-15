@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 #include <pando-rt/export.h>
 
+#include <numeric>
+
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
@@ -314,7 +316,7 @@ TEST(BuildEdgeCountToSend, SmallSequentialTest) {
 TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
   constexpr std::uint64_t SIZE = 32;
   pando::Status err;
-  pando::Array<galois::WMDEdge> edges;
+  galois::DistArray<galois::WMDEdge> edges;
   err = edges.initialize(SIZE * SIZE);
   PANDO_CHECK(err);
 
@@ -426,4 +428,111 @@ TEST(BuildVirtualToPhysicalMappings, SmallTest) {
     }
     liftVoid(*virtualToPhysicalMapping, deinitialize);
   }
+}
+
+TEST(Integration, InsertEdgeCountVirtual2Physical) {
+  constexpr std::uint64_t SIZE = 32;
+  pando::Status err;
+
+  galois::DistArray<galois::WMDEdge> edges;
+  err = edges.initialize(SIZE * SIZE);
+  PANDO_CHECK(err);
+
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    for (std::uint64_t j = 0; j < SIZE; j++) {
+      galois::WMDEdge e = genEdge(i, j, SIZE);
+      EXPECT_NE(e.type, agile::TYPES::NONE);
+      edges[i * SIZE + j] = e;
+    }
+  }
+
+  pando::GlobalPtr<pando::Array<std::uint64_t>> virtualToPhysicalMapping;
+  pando::LocalStorageGuard vTPMGuard(virtualToPhysicalMapping, 1);
+
+  for (std::uint32_t numVirtualHosts = 2; numVirtualHosts < 256; numVirtualHosts *= 13) {
+    galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
+    err = localEdges.initialize();
+    EXPECT_EQ(err, pando::Status::Success);
+
+    pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> hashPtr;
+    pando::LocalStorageGuard hashGuard(hashPtr, localEdges.size());
+    for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+      hashPtr[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
+      err = fmap(hashPtr[i], initialize, 0);
+      EXPECT_EQ(err, pando::Status::Success);
+    }
+
+    struct State {
+      pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> hashPtr;
+      galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
+    };
+    auto f = +[](State s, galois::WMDEdge edge) {
+      pando::Status err;
+      err = galois::internal::insertLocalEdgesPerThread(s.hashPtr[s.localEdges.getLocalVectorID()],
+                                                        s.localEdges.getThreadVector(), edge);
+      EXPECT_EQ(err, pando::Status::Success);
+    };
+
+    err = galois::doAll(State{hashPtr, localEdges}, edges, f);
+    EXPECT_EQ(err, pando::Status::Success);
+
+    pando::GlobalPtr<galois::PerHost<pando::Vector<pando::Vector<galois::WMDEdge>>>>
+        perHostLocalEdges;
+    pando::LocalStorageGuard(perHostLocalEdges, 1);
+    err = localEdges.hostFlatten(*perHostLocalEdges);
+    EXPECT_EQ(err, pando::Status::Success);
+
+    pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
+    pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
+
+    galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, *perHostLocalEdges,
+                                                            *edgeCounts);
+
+    for (std::uint64_t numHosts = 2; numHosts <= numVirtualHosts; numHosts *= 9) {
+      err = galois::internal::buildVirtualToPhysicalMapping(numHosts, *edgeCounts,
+                                                            virtualToPhysicalMapping);
+      if (numHosts == 1) {
+        for (std::uint64_t i = 0; i < numVirtualHosts; i++) {
+          EXPECT_EQ(static_cast<std::uint64_t>(0), fmap(*virtualToPhysicalMapping, operator[], i));
+        }
+      } else {
+        pando::Array<std::uint64_t> interArray;
+        err = interArray.initialize(numHosts);
+        interArray.fill(0);
+
+        // Rebuild intermediate array
+        for (galois::WMDEdge edge : edges) {
+          std::uint64_t i = fmap(*virtualToPhysicalMapping, operator[], edge.src % numVirtualHosts);
+          interArray[i] += 1;
+        }
+        // Find that min and max differ by no more than 2*SIZE
+
+        std::uint64_t dif = ((SIZE / numVirtualHosts) + 1) * SIZE;
+        std::uint64_t max = 0;
+        std::uint64_t min = UINT64_MAX;
+        std::uint64_t sum = 0;
+        for (std::uint64_t val : interArray) {
+          min = (val < min) ? val : min;
+          max = (val > max) ? val : max;
+          sum += val;
+        }
+        EXPECT_LT(max - min, dif + 1);
+        EXPECT_EQ(sum, SIZE * SIZE);
+        interArray.deinitialize();
+      }
+      liftVoid(*virtualToPhysicalMapping, deinitialize);
+    }
+    for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+      galois::HashTable<std::uint64_t, std::uint64_t> table = hashPtr[i];
+      table.deinitialize();
+      pando::Vector<pando::Vector<galois::WMDEdge>> vecVec = *localEdges.get(i);
+      for (pando::Vector<galois::WMDEdge> vec : vecVec) {
+        vec.deinitialize();
+      }
+      table.deinitialize();
+    }
+    localEdges.deinitialize();
+  }
+
+  edges.deinitialize();
 }
