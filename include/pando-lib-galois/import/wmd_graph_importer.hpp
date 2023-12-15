@@ -221,6 +221,122 @@ template <typename EdgeType>
   return pando::Status::Success;
 }
 
+/*
+ * Load graph info from the file.
+ * Expect a WMD format csv
+ *
+ * @param filename loaded file for the graph
+ * @param segmentsPerHost the number of file segments each host will load.
+ * If value is 1, no file striping is performed. The file is striped into
+ * (segementsPerHost * numHosts) segments.
+ *
+ * @details File striping is used to randomize the order of nodes/edges
+ * loaded from the graph. WMD dataset csv typically grouped nodes/edges by its types,
+ * which will produce an imbalanced graph if you break the file evenly among hosts.
+ * So file striping make each host be able to load multiple segments in different positions of the
+ * file, which produced a more balanced graph.
+ *
+ * @note per thread method
+ */
+template <typename VertexType, typename EdgeType>
+void loadGraphFilePerThread(
+    pando::NotificationHandle done, pando::Array<char> filename, uint64_t segmentsPerThread,
+    std::uint64_t numThreads, std::uint64_t threadID,
+    galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
+    pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
+    galois::PerThreadVector<VertexType> localVertices) {
+  pando::Vector<char> line;
+  PANDO_CHECK(line.initialize(0));
+
+  galois::ifstream graphFile;
+  PANDO_CHECK(graphFile.open(filename));
+
+  uint64_t numSegments = numThreads * segmentsPerThread;
+  uint64_t fileSize = graphFile.size();
+  uint64_t bytesPerSegment = fileSize / numSegments; // file size / number of segments
+
+  // init per thread data struct
+
+  // for each host N, it will read segment like:
+  // N, N + numHosts, N + numHosts * 2, ..., N + numHosts * (segmentsPerHost - 1)
+  for (uint64_t cur = 0; cur < segmentsPerThread; cur++) {
+    uint64_t segmentID = (uint64_t)threadID + cur * numThreads;
+    uint64_t start = segmentID * bytesPerSegment;
+    uint64_t end = start + bytesPerSegment;
+
+    // check for partial line at start
+    if (segmentID != 0) {
+      graphFile.seekg(start - 1);
+      graphFile.getline(line, '\n');
+
+      // if not at start of a line, discard partial line
+      if (!line.empty())
+        start += line.size();
+    }
+
+    // check for partial line at end
+    line.deinitialize();
+    PANDO_CHECK(line.initialize(0));
+    if (segmentID != numSegments - 1) {
+      graphFile.seekg(end - 1);
+      graphFile.getline(line, '\n');
+
+      // if not at end of a line, include next line
+      if (!line.empty())
+        end += line.size();
+    } else { // last locale processes to end of file
+      end = fileSize;
+    }
+
+    line.deinitialize();
+    graphFile.seekg(start);
+
+    // load segment into memory
+    uint64_t segmentLength = end - start;
+    char* segmentBuffer = new char[segmentLength];
+    graphFile.read(segmentBuffer, segmentLength);
+
+    // A parallel loop that parse the segment
+    // task 1: get token to global id mapping
+    // task 2: get token to edges mapping
+    char* currentLine = segmentBuffer;
+    char* endLine = currentLine + segmentLength;
+
+    while (currentLine < endLine) {
+      assert(std::strchr(currentLine, '\n'));
+      char* nextLine = std::strchr(currentLine, '\n') + 1;
+
+      // skip comments
+      if (currentLine[0] == '#') {
+        currentLine = nextLine;
+        continue;
+      }
+
+      auto vfunc = [&localVertices](VertexType v) {
+        PANDO_CHECK(localVertices.pushBack(v));
+      };
+      pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef =
+          perThreadRename[threadID];
+      auto efunc = [&localEdges, hashRef](EdgeType e, agile::TYPES inverseEdgeType) {
+        EdgeType inverseE = e;
+        inverseE.type = inverseEdgeType;
+        std::swap(inverseE.src, inverseE.dst);
+        std::swap(inverseE.srcType, inverseE.dstType);
+        PANDO_CHECK(insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), e));
+        PANDO_CHECK(insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), inverseE));
+      };
+
+      galois::genParse<VertexType, EdgeType>(10, currentLine, vfunc, efunc);
+      currentLine = nextLine;
+    }
+    delete[] segmentBuffer;
+  }
+
+  graphFile.close();
+
+  done.notify();
+}
+
 } // namespace galois::internal
 
 #endif // PANDO_LIB_GALOIS_IMPORT_WMD_GRAPH_IMPORTER_HPP_

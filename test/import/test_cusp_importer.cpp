@@ -735,3 +735,84 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
 
   edges.deinitialize();
 }
+
+void getNumVerticesAndEdges(std::string& filename, uint64_t& numVertices, uint64_t& numEdges) {
+  std::cout << "filename: " << filename << "\n";
+  std::ifstream file(filename);
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.find("//") != std::string::npos) {
+      continue;
+    } else if (line.find("/*") != std::string::npos || line.find("*/") != std::string::npos) {
+      continue;
+    } else {
+      std::istringstream iss(line);
+      std::string word;
+      std::getline(iss, word, ',');
+      if (word == "Person" || word == "Publication" || word == "Forum" || word == "ForumEvent" ||
+          word == "Topic")
+        numVertices++;
+      else if (word == "Author" || word == "Sale" || word == "Includes" || word == "HasTopic" ||
+               word == "HasOrg")
+        numEdges++;
+    }
+  }
+  return;
+}
+
+TEST(loadGraphFilePerThread, loadGraph) {
+  uint64_t numThreads = 2;
+  uint64_t segmentsPerThread = 1;
+  galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
+  EXPECT_EQ(localEdges.initialize(), pando::Status::Success);
+  galois::PerThreadVector<galois::WMDVertex> localVertices;
+  EXPECT_EQ(localVertices.initialize(), pando::Status::Success);
+  pando::Array<char> filename;
+  std::string wmdFile = "/pando/graphs/simple_wmd.csv";
+  PANDO_CHECK(filename.initialize(wmdFile.size()));
+  for (uint64_t i = 0; i < wmdFile.size(); i++)
+    filename[i] = wmdFile[i];
+
+  pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
+  PANDO_CHECK(perThreadRename.initialize(numThreads));
+  for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+    perThreadRename[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
+    pando::Status err = fmap(perThreadRename[i], initialize, 0);
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+
+  for (std::uint64_t i = 0; i < numThreads; i++) {
+    perThreadRename[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
+    pando::Status err = fmap(perThreadRename[i], initialize, 0);
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+
+  pando::Place place = pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore};
+  pando::NotificationArray done;
+  PANDO_CHECK(done.init(numThreads));
+  for (uint64_t i = 0; i < numThreads; i++) {
+    pando::Status err = pando::executeOn(
+        place, &galois::internal::loadGraphFilePerThread<galois::WMDVertex, galois::WMDEdge>,
+        done.getHandle(i), filename, segmentsPerThread, numThreads, i, localEdges, perThreadRename,
+        localVertices);
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+  done.wait();
+  uint64_t numVertices = 0;
+  uint64_t numEdges = 0;
+  getNumVerticesAndEdges(wmdFile, numVertices, numEdges);
+  uint64_t vert = 0;
+  for (uint64_t i = 0; i < localVertices.size(); i++) {
+    pando::Vector<galois::WMDVertex> vec = *localVertices.get(i);
+    vert += vec.size();
+  }
+  uint64_t edges = 0;
+  for (uint64_t i = 0; i < localEdges.size(); i++) {
+    for (uint64_t j = 0; j < localEdges.get(i)->size(); j++) {
+      pando::Vector<galois::WMDEdge> vec = localEdges.get(i)->get(j);
+      edges += vec.size();
+    }
+  }
+  EXPECT_EQ(vert, numVertices);
+  EXPECT_EQ(edges, 2 * numEdges);
+}
