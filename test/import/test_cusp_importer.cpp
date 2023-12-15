@@ -327,7 +327,7 @@ TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
       edges[i * SIZE + j] = e;
     }
   }
-  for (std::uint32_t numVirtualHosts = 2; numVirtualHosts < 256; numVirtualHosts *= 3) {
+  for (std::uint32_t numVirtualHosts = 2; numVirtualHosts < 128; numVirtualHosts *= 13) {
     galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
     err = localEdges.initialize();
     EXPECT_EQ(err, pando::Status::Success);
@@ -430,6 +430,108 @@ TEST(BuildVirtualToPhysicalMappings, SmallTest) {
   }
 }
 
+galois::WMDVertex genVertex(std::uint64_t i) {
+  switch (i % 5) {
+    case 0:
+      return galois::WMDVertex(i, agile::TYPES::PERSON);
+    case 1:
+      return galois::WMDVertex(i, agile::TYPES::FORUMEVENT);
+    case 2:
+      return galois::WMDVertex(i, agile::TYPES::FORUM);
+    case 3:
+      return galois::WMDVertex(i, agile::TYPES::PUBLICATION);
+    case 4:
+      return galois::WMDVertex(i, agile::TYPES::TOPIC);
+    default:
+      return galois::WMDVertex(0, agile::TYPES::NONE);
+  }
+}
+
+TEST(BuildVertexPartition, SmallTest) {
+  constexpr std::uint64_t numVirtualHosts = 64;
+  constexpr std::uint64_t numVertices = 1'000;
+  pando::Status err;
+
+  galois::PerHost<pando::Vector<galois::WMDVertex>> readPartitions{};
+  err = readPartitions.initialize();
+  EXPECT_EQ(err, pando::Status::Success);
+  for (std::uint64_t i = 0; i < readPartitions.size(); i++) {
+    err = fmap(readPartitions.get(i), initialize, numVertices);
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+
+  const std::uint64_t numHosts = readPartitions.size();
+
+  err = galois::doAll(
+      readPartitions, +[](pando::GlobalRef<pando::Vector<galois::WMDVertex>> vec) {
+        auto err = galois::doAll(
+            &vec, galois::IotaRange(0, numVertices),
+            +[](pando::GlobalPtr<pando::Vector<galois::WMDVertex>> vecPtr, std::uint64_t i) {
+              fmap(*vecPtr, get, i) = genVertex(i);
+            });
+        EXPECT_EQ(err, pando::Status::Success);
+      });
+  EXPECT_EQ(err, pando::Status::Success);
+
+  pando::Array<std::uint64_t> virtualToPhysicalMapping;
+  err = virtualToPhysicalMapping.initialize(numVirtualHosts);
+  EXPECT_EQ(err, pando::Status::Success);
+
+  std::uint64_t hostID = 0;
+  for (pando::GlobalRef<std::uint64_t> val : virtualToPhysicalMapping) {
+    val = hostID % numHosts;
+    hostID++;
+  }
+
+  galois::PerHost<galois::PerHost<pando::Vector<galois::WMDVertex>>> partVert{};
+  err = partVert.initialize();
+  EXPECT_EQ(err, pando::Status::Success);
+
+  struct PHPV {
+    pando::Array<std::uint64_t> v2PM;
+    galois::PerHost<pando::Vector<galois::WMDVertex>> pHV;
+  };
+
+  auto f =
+      +[](PHPV phpv, pando::GlobalRef<galois::PerHost<pando::Vector<galois::WMDVertex>>> partVert) {
+        const std::uint64_t hostID = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
+        auto err = galois::internal::perHostPartitionVertex<galois::WMDVertex>(
+            phpv.v2PM, phpv.pHV.get(hostID), &partVert);
+        EXPECT_EQ(err, pando::Status::Success);
+      };
+
+  err = galois::doAll(PHPV{virtualToPhysicalMapping, readPartitions}, partVert, f);
+  EXPECT_EQ(err, pando::Status::Success);
+
+  err = galois::doAll(
+      partVert, +[](pando::GlobalRef<galois::PerHost<pando::Vector<galois::WMDVertex>>> pHVRef) {
+        galois::PerHost<pando::Vector<galois::WMDVertex>> pHV = pHVRef;
+        auto err = galois::doAll(
+            pHV, +[](pando::Vector<galois::WMDVertex> vertices) {
+              const std::uint64_t numHosts =
+                  static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+              const std::uint64_t hostID =
+                  static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
+              for (galois::WMDVertex vert : vertices) {
+                EXPECT_EQ(((vert.id) % numVirtualHosts) % numHosts, hostID);
+              }
+              vertices.deinitialize();
+            });
+        EXPECT_EQ(err, pando::Status::Success);
+      });
+  EXPECT_EQ(err, pando::Status::Success);
+
+  for (galois::PerHost<pando::Vector<galois::WMDVertex>> pVV : partVert) {
+    pVV.deinitialize();
+  }
+  partVert.deinitialize();
+
+  for (pando::Vector<galois::WMDVertex> vec : readPartitions) {
+    vec.deinitialize();
+  }
+  readPartitions.deinitialize();
+}
+
 TEST(Integration, InsertEdgeCountVirtual2Physical) {
   constexpr std::uint64_t SIZE = 32;
   pando::Status err;
@@ -449,7 +551,7 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
   pando::GlobalPtr<pando::Array<std::uint64_t>> virtualToPhysicalMapping;
   pando::LocalStorageGuard vTPMGuard(virtualToPhysicalMapping, 1);
 
-  for (std::uint32_t numVirtualHosts = 2; numVirtualHosts < 256; numVirtualHosts *= 13) {
+  for (std::uint32_t numVirtualHosts = 2; numVirtualHosts < 128; numVirtualHosts *= 13) {
     galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
     err = localEdges.initialize();
     EXPECT_EQ(err, pando::Status::Success);

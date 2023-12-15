@@ -137,6 +137,50 @@ void buildEdgeCountToSend(
   return pando::Status::Success;
 }
 
+inline std::uint64_t getPhysical(std::uint64_t id,
+                                 pando::Array<std::uint64_t> virtualToPhysicalMapping) {
+  return virtualToPhysicalMapping[id % virtualToPhysicalMapping.size()];
+}
+
+/**
+ * @brief PerHostVertex decomposition by partition
+ *
+ * TODO(AdityaAtulTewari) parallelize this
+ */
+template <typename VertexType>
+[[nodiscard]] pando::Status perHostPartitionVertex(
+    pando::Array<std::uint64_t> virtualToPhysicalMapping, pando::Vector<VertexType> vertices,
+    pando::GlobalPtr<galois::PerHost<pando::Vector<VertexType>>> partitionedVertices) {
+  pando::Status err;
+  galois::PerHost<pando::Vector<VertexType>> partitioned;
+  err = partitioned.initialize();
+  if (err != pando::Status::Success) {
+    return err;
+  }
+
+  std::uint64_t initSize = vertices.size() / lift(*partitionedVertices, size);
+  for (pando::GlobalRef<pando::Vector<VertexType>> vec : partitioned) {
+    err = fmap(vec, initialize, 0);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    err = fmap(vec, reserve, initSize);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+  }
+
+  for (VertexType vert : vertices) {
+    err = fmap(partitioned.get(getPhysical(vert.id, virtualToPhysicalMapping)), pushBack, vert);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+  }
+
+  *partitionedVertices = partitioned;
+  return pando::Status::Success;
+}
+
 } // namespace galois::internal
 
 #endif // PANDO_LIB_GALOIS_IMPORT_WMD_GRAPH_IMPORTER_HPP_

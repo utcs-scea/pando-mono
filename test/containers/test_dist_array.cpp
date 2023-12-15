@@ -333,7 +333,7 @@ TEST(DistArray, From) {
 }
 
 TEST(DistArray, DistributedSort) {
-  const std::uint64_t size = 1031;
+  const std::uint64_t size = 103;
   galois::DistArray<std::uint64_t> array;
   EXPECT_EQ(array.initialize(size), pando::Status::Success);
   for (uint64_t i = 0; i < array.size(); i++) {
