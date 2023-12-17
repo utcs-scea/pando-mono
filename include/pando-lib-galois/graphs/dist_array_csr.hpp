@@ -423,7 +423,7 @@ public:
         edgeCounts[numVertices] = 0;
         numVertices++;
       }
-      uint64_t edgeDst;
+      uint64_t edgeDst{};
       tokenToGlobalID.get(edge.dst, edgeDst);
       edgeDestinations[e] = edgeDst;
     }
