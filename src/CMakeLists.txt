@@ -21,6 +21,8 @@ target_sources(pando-lib-galois
         ${CMAKE_CURRENT_LIST_DIR}/edge_list_importer.cpp
         ${CMAKE_CURRENT_LIST_DIR}/ifstream.cpp
         ${CMAKE_CURRENT_LIST_DIR}/schema.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/edge_exchange.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/lcsr.cpp
 )
 
 pando_compiler_options(pando-lib-galois)
