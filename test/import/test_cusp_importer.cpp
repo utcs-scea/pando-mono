@@ -592,9 +592,15 @@ TEST(PartitionEdgesSerially, Serially) {
     EXPECT_EQ(err, pando::Status::Success);
   }
 
+  galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> perHostRename{};
+  err = perHostRename.initialize();
+  EXPECT_EQ(err, pando::Status::Success);
+
   auto g = +[](pando::NotificationHandle done, decltype(localEdges) le,
-               decltype(v2PM) virtual2Physical, decltype(partitionedEdges) pe) {
-    auto err = galois::internal::partitionEdgesSerially<galois::WMDEdge>(le, virtual2Physical, pe);
+               decltype(v2PM) virtual2Physical, decltype(partitionedEdges) pe,
+               decltype(perHostRename) phr) {
+    auto err =
+        galois::internal::partitionEdgesSerially<galois::WMDEdge>(le, virtual2Physical, pe, phr);
     PANDO_CHECK(err);
     done.notify();
   };
@@ -603,7 +609,8 @@ TEST(PartitionEdgesSerially, Serially) {
   EXPECT_EQ(err, pando::Status::Success);
 
   auto place = pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore};
-  err = pando::executeOn(place, g, notify.getHandle(), localEdges, v2PM, partitionedEdges);
+  err = pando::executeOn(place, g, notify.getHandle(), localEdges, v2PM, partitionedEdges,
+                         perHostRename);
   EXPECT_EQ(err, pando::Status::Success);
   notify.wait();
 
@@ -624,14 +631,16 @@ TEST(PartitionEdgesSerially, Serially) {
       for (galois::WMDEdge val : vec) {
         EXPECT_EQ(val.src, edgeSrc);
       }
-      // vec.deinitialize();
+      vec.deinitialize();
     }
-    std::cout << "vec End " << std::endl;
-    // vVec.deinitialize();
+    vVec.deinitialize();
   }
   partitionedEdges.deinitialize();
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
     liftVoid(hashPtr[i], deinitialize);
+  }
+  for (auto hashRef : perHostRename) {
+    liftVoid(hashRef, deinitialize);
   }
   localEdges.deinitialize();
 }

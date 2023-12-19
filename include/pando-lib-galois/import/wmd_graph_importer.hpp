@@ -188,12 +188,9 @@ template <typename EdgeType>
 [[nodiscard]] pando::Status partitionEdgesSerially(
     galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
     pando::Array<std::uint64_t> virtualToPhysicalMapping,
-    galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges) {
-  galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
-  auto err = renamePerHost.initialize();
-  if (err != pando::Status::Success) {
-    return err;
-  }
+    galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
+    galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
+  pando::Status err;
   for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
     galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
     err = hash.initialize(0);
@@ -217,7 +214,6 @@ template <typename EdgeType>
       }
     }
   }
-  renamePerHost.deinitialize();
   return pando::Status::Success;
 }
 
