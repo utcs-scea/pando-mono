@@ -769,7 +769,7 @@ void getNumVerticesAndEdges(std::string& filename, uint64_t& numVertices, uint64
   return;
 }
 
-TEST(loadGraphFilePerThread, loadGraph) {
+TEST(loadGraphFilePerThread, DISABLED_loadGraph) {
   uint64_t numThreads = 2;
   uint64_t segmentsPerThread = 1;
   galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;

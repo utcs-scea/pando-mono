@@ -6,8 +6,10 @@ SHELL := /bin/bash
 IMAGE_NAME ?= pando-galois
 SRC_DIR ?= $(shell pwd)
 GALOIS_VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev)
-ROOT_IMAGE_VERSION ?= $(shell cd pando-rt/ && git log --pretty="%h" -1 docker)
+CI_GALOIS_VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.ci)
+ROOT_IMAGE_VERSION ?= $(shell cd pando-rt/ && git log --pretty="%h" -1 docker/Dockerfile)
 VERSION ?= ${GALOIS_VERSION}-${ROOT_IMAGE_VERSION}
+CI_VERSION ?= ${CI_GALOIS_VERSION}-${ROOT_IMAGE_VERSION}
 
 CONTAINER_SRC_DIR ?= /pando
 CONTAINER_BUILD_DIR ?= /pando/dockerbuild
@@ -30,6 +32,8 @@ PANDO_BUILD_DOCS ?= OFF
 # Developer variables that should be set as env vars in startup files like .profile
 PANDO_CONTAINER_MOUNTS ?=
 PANDO_CONTAINER_ENV ?=
+
+.PHONY: docker
 
 dependencies: dependencies-asdf
 
@@ -54,6 +58,25 @@ pre-commit:
 
 git-submodules:
 	@git submodule update --init --recursive
+
+ci-image:
+	@mkdir -p dockerbuild
+	@mkdir -p data
+	@docker --context ${CONTAINER_CONTEXT} build \
+	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
+	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
+  -t pando-rt:latest \
+	--file pando-rt/docker/Dockerfile \
+	./pando-rt/docker
+	@docker --context ${CONTAINER_CONTEXT} build \
+	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
+	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
+	--build-arg UNAME=runner \
+  --build-arg UID=1001 \
+  --build-arg GID=127 \
+	-t pando:${CI_VERSION} \
+	--file Dockerfile.ci .
+	docker save pando:${CI_VERSION} | gzip > docker/ci-image.tar.gz
 
 docker-image:
 	@mkdir -p dockerbuild
@@ -116,10 +139,11 @@ setup:
   -DCMAKE_C_COMPILER=gcc-12
 
 run-tests:
+	set -o pipefail && \
 	. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet qthreads openmpi && \
 	cd ${BUILD_DIR} && ctest --verbose | tee test.out && \
-	! grep Failure test.out
+	! grep -E "Failure" test.out
 
 # this command is slow since hooks are not stored in the container image
 # this is mostly for CI use

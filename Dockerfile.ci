@@ -23,24 +23,29 @@ RUN apt update -y \
     &&  update-locale
 
 # CMake
-RUN apt install -y ca-certificates gpg wget
-RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null \
-    && echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null \
-    && apt-get update -y && rm /usr/share/keyrings/kitware-archive-keyring.gpg && apt-get install -y kitware-archive-keyring \
-    && apt-get update -y \
-    && apt-get install -y cmake cmake-curses-gui \
-    && apt-get clean -y \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y \
+&&  apt install -y ca-certificates gpg wget \
+&&  wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null \
+&&  echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null \
+&&  apt-get update -y \
+&&  rm /usr/share/keyrings/kitware-archive-keyring.gpg \
+&&  apt-get install -y kitware-archive-keyring \
+&&  apt-get update -y \
+&&  apt-get install -y cmake cmake-curses-gui \
+&&  apt-get purge -y gpg wget \
+&&  apt-get autoremove -y \
+&&  apt-get clean -y \
+&&  rm -rf /var/lib/apt/lists/*
 
 WORKDIR /dependencies
 
 RUN git clone --depth 1 --branch v0.20.1 https://github.com/spack/spack.git \
-    &&  . /dependencies/spack/share/spack/setup-env.sh \
-    &&  spack compiler find \
-    &&  spack install -j`nproc` openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
-                                qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
-    &&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
-    &&  spack install -j`nproc` gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} conduits=smp,mpi target=x86_64
+&&  . /dependencies/spack/share/spack/setup-env.sh \
+&&  spack compiler find \
+&&  spack install -j`nproc` openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
+                            qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
+&&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
+&&  spack install -j`nproc` gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} conduits=smp,mpi target=x86_64
 
 ENV GCC_VERSION=${GCC_VERSION}
 ENV QTHEADS_VERSION=${QTHEADS_VERSION}
@@ -60,20 +65,9 @@ FROM pando-rt AS pando-lib-galois
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update -y \
-    &&  apt install -y \
-    vim \
-    gdb \
-    universal-ctags \
-    powerline \
-    zsh \
-    valgrind \
-    sudo \
-    doxygen \
-    texlive-latex-extra \
-    texlive-font-utils \
-    shfmt \
-    &&  apt clean \
-    &&  update-locale
+&&  apt install -y shfmt \
+&&  apt clean -y \
+&&  update-locale
 
 ARG SRC_DIR=/pando
 ARG BUILD_DIR=/pando/dockerbuild
@@ -91,7 +85,7 @@ USER ${UNAME}
 WORKDIR /home/${UNAME}
 ENV BUILD_DIR=${BUILD_DIR}
 
-RUN pip3 install compdb pre-commit cpplint "clang-format>=12.0.1"
+RUN pip3 install pre-commit cpplint "clang-format>=12.0.1"
 
 RUN echo "export SRC_DIR=${SRC_DIR}" >> /home/${UNAME}/.profile
 RUN echo "export BUILD_DIR=${BUILD_DIR}" >> /home/${UNAME}/.profile
