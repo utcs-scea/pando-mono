@@ -233,3 +233,48 @@ TEST(PerThreadVector, PerHostVector) {
     }
   }
 }
+
+TEST(PerThreadVector, Clear) {
+  constexpr std::uint64_t size = 32;
+  pando::Status err;
+
+  galois::PerThreadVector<std::uint64_t> ptv;
+  err = ptv.initialize();
+  EXPECT_EQ(err, pando::Status::Success);
+
+  galois::PerHost<std::uint64_t> phu{};
+
+  galois::doAll(
+      ptv, phu, +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t) {
+        galois::doAll(
+            ptv, galois::IotaRange(0, size),
+            +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t i) {
+              pando::Status err;
+              err = ptv.pushBack(i);
+              EXPECT_EQ(err, pando::Status::Success);
+            });
+      });
+
+  galois::DAccumulator<std::uint64_t> accum;
+  err = lift(accum, initialize);
+  EXPECT_EQ(err, pando::Status::Success);
+
+  err = galois::doAll(
+      accum, ptv,
+      +[](galois::DAccumulator<std::uint64_t> accum,
+          pando::GlobalRef<pando::Vector<std::uint64_t>> refVec) {
+        accum.add(lift(refVec, size));
+      });
+  EXPECT_EQ(err, pando::Status::Success);
+  EXPECT_EQ(accum.reduce(), size * static_cast<std::uint64_t>(pando::getPlaceDims().node.id));
+
+  ptv.clear();
+
+  galois::doAll(
+      ptv, +[](pando::GlobalRef<pando::Vector<std::uint64_t>> refVec) {
+        EXPECT_EQ(0, lift(refVec, size));
+      });
+
+  accum.deinitialize();
+  ptv.deinitialize();
+}

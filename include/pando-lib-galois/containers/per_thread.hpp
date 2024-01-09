@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
-
 #ifndef PANDO_LIB_GALOIS_CONTAINERS_PER_THREAD_HPP_
 #define PANDO_LIB_GALOIS_CONTAINERS_PER_THREAD_HPP_
 
@@ -190,6 +189,13 @@ public:
    */
   size_t size() const {
     return m_data.size();
+  }
+
+  void clear() {
+    indices_computed = false;
+    for (std::uint64_t i = 0; i < m_data.size(); i++) {
+      liftVoid(m_data[i], clear);
+    }
   }
 
   // TODO(AdityaAtulTewari) Whenever it is time for performance counters they need to be encoded
