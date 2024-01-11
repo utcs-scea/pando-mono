@@ -133,17 +133,13 @@ public:
     const std::uint64_t bucketSize = (size / buckets) + (size % buckets ? 1 : 0);
 
     pando::Status err = m_data.initialize(buckets);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
 
     for (std::uint64_t i = 0; beg != end; i++, beg++) {
       pando::Array<T> arr;
       typename std::iterator_traits<It>::value_type val = *beg;
       err = arr.initialize(bucketSize, val.place, val.memType);
-      if (err != pando::Status::Success) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(err);
       m_data[i] = arr;
     }
     return err;
@@ -159,9 +155,8 @@ public:
     size_ = size;
     pando::Array<PlaceType> hostsPlaces;
     pando::Status err = hostsPlaces.initialize(pando::getPlaceDims().node.id);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
+
     for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
       hostsPlaces[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                                  pando::MemoryType::Main};
@@ -173,9 +168,8 @@ public:
 
   [[nodiscard]] pando::Status from(pando::Vector<T> data, uint64_t size) {
     pando::Status err = initialize(size);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
+
     galois::onEach(
         FromState(*this, data), +[](FromState& state, uint64_t thread, uint64_t total_threads) {
           uint64_t workPerHost = state.to.size() / total_threads;
@@ -209,9 +203,8 @@ public:
 
     DistArray<T> tmp;
     pando::Status err = tmp.initialize(size());
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
+
     galois::doAllEvenlyPartition(
         *this, totalThreads,
         +[](galois::DistArray<T>& arr, uint64_t thread, uint64_t totalThreads) {

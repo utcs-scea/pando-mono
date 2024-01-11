@@ -5,7 +5,9 @@
 #include <utility>
 
 #include "pando-rt/export.h"
+
 #include <pando-rt/containers/vector.hpp>
+#include <pando-rt/pando-rt.hpp>
 
 #ifndef PANDO_LIB_GALOIS_CONTAINERS_STACK_HPP_
 #define PANDO_LIB_GALOIS_CONTAINERS_STACK_HPP_
@@ -44,9 +46,7 @@ private:
     pando::Array<T> newArray;
     auto status =
         newArray.initialize(nextCapacity, pando::localityOf(m_buf.data()), m_buf.getMemoryType());
-    if (status != pando::Status::Success) {
-      return status;
-    }
+    PANDO_CHECK_RETURN(status);
 
     for (std::uint64_t i = 0; i < size(); i++) {
       newArray[i] = std::move<T>(m_buf[i]);
@@ -121,9 +121,7 @@ public:
   [[nodiscard]] pando::Status emplace(T elt) {
     if (m_size >= m_buf.size()) {
       pando::Status err = grow();
-      if (err != pando::Status::Success) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(err);
     }
     m_buf[m_size++] = elt;
     return pando::Status::Success;

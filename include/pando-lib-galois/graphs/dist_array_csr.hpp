@@ -184,9 +184,7 @@ public:
     pando::Status err;
     pando::Vector<galois::PlaceType> vec;
     err = vec.initialize(pando::getPlaceDims().node.id);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
 
     for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
       vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
@@ -269,9 +267,8 @@ public:
     pando::Status err;
 
     err = vertices.assign(vertexData);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
+
     err = edges.assign(edgeData);
     if (err != pando::Status::Success) {
       vertices.deinitialize();
@@ -481,9 +478,7 @@ public:
     pando::Status err;
     pando::Vector<galois::PlaceType> vec;
     err = vec.initialize(pando::getPlaceDims().node.id);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
 
     for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
       vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},

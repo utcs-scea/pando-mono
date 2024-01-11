@@ -92,16 +92,12 @@ public:
     hosts = pando::getPlaceDims().node.id;
 
     pando::Status err = m_data.initialize(hosts * cores * threads);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
 
     for (std::uint64_t i = 0; i < m_data.size(); i++) {
       pando::Vector<T> vec;
       err = vec.initialize(0);
-      if (err != pando::Status::Success) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(err);
       m_data[i] = vec;
     }
     return err;
@@ -158,9 +154,7 @@ public:
   [[nodiscard]] pando::Status pushBack(T val) {
     pando::Vector<T> copy = m_data[getLocalVectorID()];
     pando::Status err = copy.pushBack(val);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
     set(copy);
     return err;
   }
@@ -213,14 +207,10 @@ public:
     pando::Status err;
     if (!indices_computed) {
       err = computeIndices();
-      if (err != pando::Status::Success) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(err);
     }
     err = to.initialize(sizeAll());
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
     galois::onEach(
         AssignState<galois::DistArray>(*this, to),
         +[](AssignState<galois::DistArray>& state, uint64_t i, uint64_t) {
@@ -240,15 +230,11 @@ public:
       pando::GlobalRef<galois::PerHost<pando::Vector<T>>> flat) {
     pando::Status err;
     err = lift(flat, initialize);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
 
     if (!indices_computed) {
       err = computeIndices();
-      if (err != pando::Status::Success) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(err);
     }
 
     // TODO(AdityaAtulTewari) Make this properly parallel.
@@ -260,9 +246,7 @@ public:
           (i == 0) ? 0 : m_indices[static_cast<std::uint64_t>(i) * cores * threads - 1];
       std::uint64_t end = m_indices[static_cast<std::uint64_t>(i + 1) * cores * threads - 1];
       err = fmap(ref, initialize, end - start, place, pando::MemoryType::Main);
-      if (err != pando::Status::Success) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(err);
     }
 
     // Reduce into the per host vectors
@@ -289,9 +273,8 @@ public:
       return pando::Status::AlreadyInit;
     }
     pando::Status err = m_indices.initialize(hosts * cores * threads);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
+
     using SRC = galois::DistArray<pando::Vector<T>>;
     using DST = galois::DistArray<uint64_t>;
     using SRC_Val = pando::Vector<T>;
@@ -300,9 +283,8 @@ public:
     galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute, scan_op, combiner, galois::DistArray>
         prefixSum(m_data, m_indices);
     err = prefixSum.initialize();
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(err);
+
     prefixSum.computePrefixSum(m_indices.size());
     indices_computed = true;
 
