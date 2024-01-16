@@ -152,6 +152,7 @@ TEST(PerThreadVector, DoAll) {
         EXPECT_EQ(perThreadVec.pushBack(x), pando::Status::Success);
 
         pando::Vector<uint64_t> localVec = perThreadVec.getThreadVector();
+        EXPECT_EQ(pando::localityOf(localVec.data()).node.id, pando::getCurrentPlace().node.id);
         EXPECT_GT(localVec.size(), 0);
         EXPECT_LT(localVec.size(), workItems);
         EXPECT_EQ(localVec.size(), staleVec.size() + 1);

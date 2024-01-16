@@ -96,7 +96,7 @@ public:
 
     for (std::uint64_t i = 0; i < m_data.size(); i++) {
       pando::Vector<T> vec;
-      err = vec.initialize(0);
+      err = vec.initialize(0, pando::localityOf(m_data.get(i)), pando::MemoryType::Main);
       PANDO_CHECK_RETURN(err);
       m_data[i] = vec;
     }
