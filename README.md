@@ -31,6 +31,13 @@ make run-tests
 Developers can run a hello-world smoke test inside their containers by running
 `bash scripts/run.sh`.
 
+## Running on Drive X
+
+To run workloads on Drive X run `make drive-deps` followed by `make setup-drv`
+when the repo is setup or Drive X is updated.
+
+Workloads can then be run via `bash scripts/run-drv.sh`.
+
 ## Tools
 
 ### [asdf](https://asdf-vm.com)

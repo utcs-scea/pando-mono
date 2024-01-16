@@ -24,7 +24,7 @@ TEST(doALL, SimpleCopy) {
 
     err = src.initialize(size);
     EXPECT_EQ(err, pando::Status::Success);
-    for (std::uint64_t i; i < src.size(); i++) {
+    for (std::uint64_t i = 0; i < src.size(); i++) {
       src[i] = i;
     }
     auto plusOne = +[](pando::GlobalRef<std::uint64_t> v) {

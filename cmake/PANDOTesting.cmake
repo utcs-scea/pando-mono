@@ -63,22 +63,40 @@ function(pando_add_driver_test TARGET SOURCEFILE)
     set(DRIVER_DISCOVERY_TIMEOUT ${PANDO_TEST_DISCOVERY_TIMEOUT})
   endif ()
 
-  if (${GASNet_CONDUIT} STREQUAL "smp")
-    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
-  elseif (${GASNet_CONDUIT} STREQUAL "mpi")
-    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun_mpi.sh)
+  if (PANDO_RT_BACKEND STREQUAL "DRVX")
+    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/drvxrun.sh)
   else ()
-    message(FATAL_ERROR "No runner script for GASNet conduit ${GASNet_CONDUIT}")
-  endif ()
+    if (${GASNet_CONDUIT} STREQUAL "smp")
+      set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
+    elseif (${GASNet_CONDUIT} STREQUAL "mpi")
+      set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun_mpi.sh)
+    else ()
+      message(FATAL_ERROR "No runner script for GASNet conduit ${GASNet_CONDUIT}")
+    endif ()
+  endif()
   set(NUM_PXNS 2)
   set(NUM_CORES 4)
 
-  add_executable(${TARGET} ${PROJECT_SOURCE_DIR}/test/test_driver.cpp ${SOURCEFILE})
-  target_link_libraries(${TARGET}
-    PRIVATE
-      GTest::gtest
-      pando-lib-galois::pando-lib-galois
-  )
+  pando_add_executable(${TARGET} ${PROJECT_SOURCE_DIR}/test/test_driver.cpp ${SOURCEFILE})
+
+  if (PANDO_RT_BACKEND STREQUAL "DRVX")
+    target_link_libraries(${TARGET} PRIVATE
+      "$<LINK_LIBRARY:WHOLE_ARCHIVE,GTest::gtest>")
+    set_target_properties(gtest PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+    # create a dummy executable as a different target but with the same name for ctest to discover the right test programs
+    add_executable(${TARGET}-drvx ${PROJECT_SOURCE_DIR}/test/test_dummy.cpp)
+    set_target_properties(${TARGET}-drvx PROPERTIES OUTPUT_NAME ${TARGET})
+
+    # Robust method to bail on error: create regex variable to track failed tests via stdout/stderr rather than rely on return code of drvx-sst
+    set(FAIL_REGEX "FAIL_REGULAR_EXPRESSION;Failed;FAIL_REGULAR_EXPRESSION;ERROR;FAIL_REGULAR_EXPRESSION;FAILED;")
+  else()
+    target_link_libraries(${TARGET}
+      PRIVATE
+        GTest::gtest
+    )
+  endif()
+
   pando_compiler_options(${TARGET})
   pando_compiler_warnings(${TARGET})
 
@@ -96,17 +114,19 @@ function(pando_add_driver_test TARGET SOURCEFILE)
 endfunction()
 
 function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
-  if (${GASNet_CONDUIT} STREQUAL "smp")
-    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
-  elseif (${GASNet_CONDUIT} STREQUAL "mpi")
-    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun_mpi.sh)
-  else ()
-    message(FATAL_ERROR "No runner script for GASNet conduit ${GASNet_CONDUIT}")
-  endif ()
+  if (NOT PANDO_RT_BACKEND STREQUAL "DRVX")
+    if (${GASNet_CONDUIT} STREQUAL "smp")
+      set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
+    elseif (${GASNet_CONDUIT} STREQUAL "mpi")
+      set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun_mpi.sh)
+    else ()
+      message(FATAL_ERROR "No runner script for GASNet conduit ${GASNet_CONDUIT}")
+    endif ()
 
-  set(NUM_PXNS 2)
-  set(NUM_CORES 4)
+    set(NUM_PXNS 2)
+    set(NUM_CORES 4)
 
-  add_test(NAME ${TARGET}-${INPUTFILE}-${OKFILE}
-    COMMAND bash -c "diff -Z <(${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE}) ${OKFILE}")
+    add_test(NAME ${TARGET}-${INPUTFILE}-${OKFILE}
+      COMMAND bash -c "diff -Z <(${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE}) ${OKFILE}")
+  endif()
 endfunction()

@@ -29,6 +29,10 @@ PANDO_TEST_DISCOVERY_TIMEOUT ?= 150
 PANDO_EXTRA_CXX_FLAGS ?= ""
 PANDO_BUILD_DOCS ?= OFF
 
+# Drive X variables
+DRV_BUILD_DIR ?= /pando/dockerbuild-drv
+DRV_ROOT ?=
+
 # Developer variables that should be set as env vars in startup files like .profile
 PANDO_CONTAINER_MOUNTS ?=
 PANDO_CONTAINER_ENV ?=
@@ -137,6 +141,28 @@ setup:
 	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
+
+drive-deps:
+	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-core.git pando-drv/deps/sst-core-src
+	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-elements.git pando-drv/deps/sst-elements-src
+
+setup-drv:
+	@bash scripts/build_drvx_deps.sh
+	@make -C pando-drv install
+	@make cmake-drv
+
+cmake-drv:
+	@cmake \
+	-S ${SRC_DIR} \
+	-B ${DRV_BUILD_DIR} \
+	-DDRVX_ROOT=${DRV_ROOT} \
+	-DPANDO_RT_BACKEND=DRVX \
+	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
+	-DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+	-DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
+	-DBUILD_TESTING=ON \
+	-DBUILD_EXAMPLES=ON \
+	-DBUILD_DOCS=OFF
 
 run-tests:
 	set -o pipefail && \

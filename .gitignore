@@ -44,3 +44,6 @@ logs/
 
 #Tags Files
 tags
+
+#Stats Files
+*stats.csv

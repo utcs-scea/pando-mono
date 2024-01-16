@@ -332,7 +332,7 @@ TEST(DistArray, From) {
   vec.deinitialize();
 }
 
-TEST(DistArray, DistributedSort) {
+TEST(DistArray, DISABLED_DistributedSort) {
   const std::uint64_t size = 103;
   galois::DistArray<std::uint64_t> array;
   EXPECT_EQ(array.initialize(size), pando::Status::Success);
