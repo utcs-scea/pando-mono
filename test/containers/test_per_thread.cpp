@@ -227,12 +227,57 @@ TEST(PerThreadVector, PerHostVector) {
   galois::PerHost<pando::Vector<std::uint64_t>> phvNoRef = *phv;
 
   for (pando::GlobalRef<pando::Vector<std::uint64_t>> vecRef : phvNoRef) {
+    EXPECT_EQ(lift(vecRef, size), size);
     std::sort(lift(vecRef, begin), lift(vecRef, end));
     pando::Vector<std::uint64_t> vec = vecRef;
     for (std::uint64_t i = 0; i < size; i++) {
       EXPECT_EQ(vec[i], i);
     }
   }
+}
+
+TEST(PerThreadVector, PerHostVectorAppend) {
+  constexpr std::uint64_t size = 32;
+  pando::Status err;
+
+  galois::PerThreadVector<std::uint64_t> ptv;
+  err = ptv.initialize();
+  EXPECT_EQ(err, pando::Status::Success);
+
+  galois::PerHost<std::uint64_t> phu{};
+
+  galois::doAll(
+      ptv, phu, +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t) {
+        galois::doAll(
+            ptv, galois::IotaRange(0, size),
+            +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t i) {
+              pando::Status err;
+              err = ptv.pushBack(i);
+              EXPECT_EQ(err, pando::Status::Success);
+            });
+      });
+
+  galois::PerHost<pando::Vector<std::uint64_t>> phv{};
+  EXPECT_EQ(phv.initialize(), pando::Status::Success);
+
+  for (std::int16_t i = 0; i < static_cast<std::int16_t>(phv.getNumHosts()); i++) {
+    auto place = pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore};
+    auto ref = phv.get(i);
+    EXPECT_EQ(fmap(ref, initialize, 0, place, pando::MemoryType::Main), pando::Status::Success);
+  }
+
+  err = ptv.hostFlattenAppend(phv);
+  EXPECT_EQ(err, pando::Status::Success);
+
+  for (pando::GlobalRef<pando::Vector<std::uint64_t>> vecRef : phv) {
+    EXPECT_EQ(lift(vecRef, size), size);
+    std::sort(lift(vecRef, begin), lift(vecRef, end));
+    pando::Vector<std::uint64_t> vec = vecRef;
+    for (std::uint64_t i = 0; i < size; i++) {
+      EXPECT_EQ(vec[i], i);
+    }
+  }
+  phv.deinitialize();
 }
 
 TEST(PerThreadVector, Clear) {

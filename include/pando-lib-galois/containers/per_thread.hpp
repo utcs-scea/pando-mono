@@ -272,6 +272,52 @@ public:
     return pando::Status::Success;
   }
 
+  [[nodiscard]] pando::Status hostFlattenAppend(galois::PerHost<pando::Vector<T>> flat) {
+    pando::Status err;
+
+    if (!indices_computed) {
+      err = computeIndices();
+      if (err != pando::Status::Success && err != pando::Status::AlreadyInit) {
+        return err;
+      }
+    }
+
+    // TODO(AdityaAtulTewari) Make this properly parallel.
+    // Initialize the per host vectors
+    for (std::int16_t i = 0; i < static_cast<std::int16_t>(flat.getNumHosts()); i++) {
+      auto ref = flat.get(i);
+      std::uint64_t start =
+          (i == 0) ? 0 : m_indices[static_cast<std::uint64_t>(i) * cores * threads - 1];
+      std::uint64_t end = m_indices[static_cast<std::uint64_t>(i + 1) * cores * threads - 1];
+      err = fmap(ref, reserve, lift(ref, size) + end - start);
+      PANDO_CHECK_RETURN(err);
+      for (std::uint64_t j = 0; j < end - start; j++) {
+        PANDO_CHECK_RETURN(fmap(ref, pushBack, T()));
+      }
+    }
+
+    // Reduce into the per host vectors
+    auto f = +[](AssignState<PHV> assign, std::uint64_t i, uint64_t) {
+      std::uint64_t host = i / (assign.data.cores * assign.data.threads);
+      std::uint64_t index =
+          static_cast<std::uint64_t>(host) * assign.data.cores * assign.data.threads - 1;
+      std::uint64_t start = (host == 0) ? 0 : assign.data.m_indices[index];
+      std::uint64_t curr = (i == 0) ? 0 : assign.data.m_indices[i - 1];
+      std::uint64_t end =
+          assign.data.m_indices[(host + 1) * assign.data.cores * assign.data.threads - 1];
+
+      auto ref = assign.to.get(host);
+      pando::Vector<T> localVec = assign.data[i];
+      std::uint64_t size = lift(ref, size) - (end - start);
+      for (T elt : localVec) {
+        fmap(ref, get, size + curr - start) = elt;
+        curr++;
+      }
+    };
+    galois::onEach(AssignState<PHV>(*this, flat), f);
+    return pando::Status::Success;
+  }
+
   [[nodiscard]] pando::Status computeIndices() {
     if (m_indices.m_data.data() != nullptr) {
       return pando::Status::AlreadyInit;
