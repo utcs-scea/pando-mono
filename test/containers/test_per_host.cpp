@@ -36,6 +36,25 @@ TEST(PerHost, Init) {
   dones.wait();
 
   ph.deinitialize();
+
+  EXPECT_EQ(ph.initialize(), pando::Status::Success);
+  i = 0;
+  for (pando::GlobalRef<std::uint64_t> val : ph) {
+    val = i;
+    i++;
+  }
+
+  dones.reset();
+  EXPECT_EQ(err, pando::Status::Success);
+  for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
+    auto place =
+        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
+    err = pando::executeOn(place, f, ph, i, dones.getHandle(i));
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+  dones.wait();
+
+  ph.deinitialize();
 }
 
 TEST(PerHost, DoAll) {

@@ -207,7 +207,9 @@ public:
     pando::Status err;
     if (!indices_computed) {
       err = computeIndices();
-      PANDO_CHECK_RETURN(err);
+      if (err != pando::Status::Success && err != pando::Status::AlreadyInit) {
+        return err;
+      }
     }
     err = to.initialize(sizeAll());
     PANDO_CHECK_RETURN(err);
@@ -234,7 +236,9 @@ public:
 
     if (!indices_computed) {
       err = computeIndices();
-      PANDO_CHECK_RETURN(err);
+      if (err != pando::Status::Success && err != pando::Status::AlreadyInit) {
+        return err;
+      }
     }
 
     // TODO(AdityaAtulTewari) Make this properly parallel.
