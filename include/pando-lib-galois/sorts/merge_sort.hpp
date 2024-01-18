@@ -86,7 +86,7 @@ void merge_sort_n(pando::Vector<T> arr, bool (*comp)(T, T), std::uint64_t n) {
  */
 template <class T>
 void merge_sort(pando::Vector<T> arr, bool (*comp)(T, T)) {
-  merge_sort(arr, comp, arr.size());
+  merge_sort_n(arr, comp, arr.size());
 }
 
 } // namespace galois
