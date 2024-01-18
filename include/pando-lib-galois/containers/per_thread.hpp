@@ -207,9 +207,7 @@ public:
     pando::Status err;
     if (!indices_computed) {
       err = computeIndices();
-      if (err != pando::Status::Success && err != pando::Status::AlreadyInit) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(err);
     }
     err = to.initialize(sizeAll());
     PANDO_CHECK_RETURN(err);
@@ -235,10 +233,7 @@ public:
     PANDO_CHECK_RETURN(err);
 
     if (!indices_computed) {
-      err = computeIndices();
-      if (err != pando::Status::Success && err != pando::Status::AlreadyInit) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(computeIndices());
     }
 
     // TODO(AdityaAtulTewari) Make this properly parallel.
@@ -276,10 +271,7 @@ public:
     pando::Status err;
 
     if (!indices_computed) {
-      err = computeIndices();
-      if (err != pando::Status::Success && err != pando::Status::AlreadyInit) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(computeIndices());
     }
 
     // TODO(AdityaAtulTewari) Make this properly parallel.
@@ -319,11 +311,10 @@ public:
   }
 
   [[nodiscard]] pando::Status computeIndices() {
-    if (m_indices.m_data.data() != nullptr) {
-      return pando::Status::AlreadyInit;
+    if (m_indices.m_data.data() == nullptr) {
+      pando::Status err = m_indices.initialize(hosts * cores * threads);
+      PANDO_CHECK_RETURN(err);
     }
-    pando::Status err = m_indices.initialize(hosts * cores * threads);
-    PANDO_CHECK_RETURN(err);
 
     using SRC = galois::DistArray<pando::Vector<T>>;
     using DST = galois::DistArray<uint64_t>;
@@ -332,8 +323,7 @@ public:
 
     galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute, scan_op, combiner, galois::DistArray>
         prefixSum(m_data, m_indices);
-    err = prefixSum.initialize();
-    PANDO_CHECK_RETURN(err);
+    PANDO_CHECK_RETURN(prefixSum.initialize());
 
     prefixSum.computePrefixSum(m_indices.size());
     indices_computed = true;

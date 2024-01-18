@@ -324,3 +324,135 @@ TEST(PerThreadVector, Clear) {
   accum.deinitialize();
   ptv.deinitialize();
 }
+
+TEST(PerThreadVector, ClearCompute) {
+  pando::GlobalPtr<galois::PerThreadVector<uint64_t>> perThreadVecPtr =
+      getGlobalObject<galois::PerThreadVector<uint64_t>>();
+  galois::PerThreadVector<uint64_t> perThreadVec;
+  EXPECT_EQ(perThreadVec.initialize(), pando::Status::Success);
+  *perThreadVecPtr = perThreadVec;
+
+  static uint64_t workItems = 1000;
+  galois::DistArray<uint64_t> work;
+  EXPECT_EQ(work.initialize(workItems), pando::Status::Success);
+  for (uint64_t i = 0; i < workItems; i++) {
+    work[i] = i;
+  }
+
+  galois::DAccumulator<uint64_t> sum;
+  EXPECT_EQ(sum.initialize(), pando::Status::Success);
+  EXPECT_EQ(sum.get(), 0);
+
+  galois::doAll(
+      perThreadVec, work, +[](galois::PerThreadVector<uint64_t>& perThreadVec, uint64_t x) {
+        uint64_t originalID = pando::getCurrentThread().id;
+        EXPECT_GE(originalID, 0);
+        EXPECT_LT(originalID, pando::getThreadDims().id);
+        pando::Vector<uint64_t> staleVec = perThreadVec.getThreadVector();
+
+        EXPECT_EQ(perThreadVec.pushBack(x), pando::Status::Success);
+
+        pando::Vector<uint64_t> localVec = perThreadVec.getThreadVector();
+        EXPECT_EQ(pando::localityOf(localVec.data()).node.id, pando::getCurrentPlace().node.id);
+        EXPECT_GT(localVec.size(), 0);
+        EXPECT_LT(localVec.size(), workItems);
+        EXPECT_EQ(localVec.size(), staleVec.size() + 1);
+      });
+  EXPECT_EQ(perThreadVec.sizeAll(), workItems);
+
+  EXPECT_EQ(perThreadVec.computeIndices(), pando::Status::Success);
+  EXPECT_EQ(perThreadVec.m_indices[perThreadVec.m_indices.size() - 1], perThreadVec.sizeAll());
+
+  galois::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+  galois::doAll(
+      wg.getHandle(), State(wg.getHandle(), sum), perThreadVec,
+      +[](State state, pando::GlobalRef<pando::Vector<uint64_t>> vec) {
+        pando::Vector<uint64_t> v = vec;
+        for (uint64_t i = 0; i < v.size(); i++) {
+          EXPECT_LT(v[i], workItems);
+        }
+        galois::doAll(
+            state.first, state.second, v, +[](galois::DAccumulator<uint64_t> sum, uint64_t ref) {
+              EXPECT_LT(ref, workItems);
+              sum.add(ref);
+            });
+      });
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  EXPECT_EQ(sum.reduce(), ((workItems - 1) + 0) * (workItems / 2));
+
+  galois::DistArray<uint64_t> copy;
+  EXPECT_EQ(perThreadVec.assign(copy), pando::Status::Success);
+  EXPECT_EQ(copy.size(), workItems);
+  uint64_t copy_sum = 0;
+  for (uint64_t elt : copy) {
+    copy_sum += elt;
+  }
+  EXPECT_EQ(copy_sum, ((workItems - 1) + 0) * (workItems / 2));
+
+  copy.deinitialize();
+  sum.deinitialize();
+  work.deinitialize();
+  wg.deinitialize();
+  perThreadVec.clear();
+
+  workItems = 100;
+  EXPECT_EQ(work.initialize(workItems), pando::Status::Success);
+  for (uint64_t i = 0; i < workItems; i++) {
+    work[i] = i;
+  }
+
+  EXPECT_EQ(sum.initialize(), pando::Status::Success);
+  EXPECT_EQ(sum.get(), 0);
+
+  galois::doAll(
+      perThreadVec, work, +[](galois::PerThreadVector<uint64_t>& perThreadVec, uint64_t x) {
+        uint64_t originalID = pando::getCurrentThread().id;
+        EXPECT_GE(originalID, 0);
+        EXPECT_LT(originalID, pando::getThreadDims().id);
+        pando::Vector<uint64_t> staleVec = perThreadVec.getThreadVector();
+
+        EXPECT_EQ(perThreadVec.pushBack(x), pando::Status::Success);
+
+        pando::Vector<uint64_t> localVec = perThreadVec.getThreadVector();
+        EXPECT_EQ(pando::localityOf(localVec.data()).node.id, pando::getCurrentPlace().node.id);
+        EXPECT_GT(localVec.size(), 0);
+        EXPECT_LT(localVec.size(), workItems);
+        EXPECT_EQ(localVec.size(), staleVec.size() + 1);
+      });
+  EXPECT_EQ(perThreadVec.sizeAll(), workItems);
+
+  EXPECT_EQ(perThreadVec.computeIndices(), pando::Status::Success);
+  EXPECT_EQ(perThreadVec.m_indices[perThreadVec.m_indices.size() - 1], perThreadVec.sizeAll());
+
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+  galois::doAll(
+      wg.getHandle(), State(wg.getHandle(), sum), perThreadVec,
+      +[](State state, pando::GlobalRef<pando::Vector<uint64_t>> vec) {
+        pando::Vector<uint64_t> v = vec;
+        for (uint64_t i = 0; i < v.size(); i++) {
+          EXPECT_LT(v[i], workItems);
+        }
+        galois::doAll(
+            state.first, state.second, v, +[](galois::DAccumulator<uint64_t> sum, uint64_t ref) {
+              EXPECT_LT(ref, workItems);
+              sum.add(ref);
+            });
+      });
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  EXPECT_EQ(sum.reduce(), ((workItems - 1) + 0) * (workItems / 2));
+
+  EXPECT_EQ(perThreadVec.assign(copy), pando::Status::Success);
+  EXPECT_EQ(copy.size(), workItems);
+  copy_sum = 0;
+  for (uint64_t elt : copy) {
+    copy_sum += elt;
+  }
+  EXPECT_EQ(copy_sum, ((workItems - 1) + 0) * (workItems / 2));
+
+  copy.deinitialize();
+  sum.deinitialize();
+  work.deinitialize();
+  wg.deinitialize();
+  perThreadVec.deinitialize();
+}
