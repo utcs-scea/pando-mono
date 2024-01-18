@@ -769,7 +769,7 @@ void getNumVerticesAndEdges(std::string& filename, uint64_t& numVertices, uint64
   return;
 }
 
-TEST(loadGraphFilePerThread, DISABLED_loadGraph) {
+TEST(loadGraphFilePerThread, loadGraph) {
   uint64_t numThreads = 2;
   uint64_t segmentsPerThread = 1;
   galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
@@ -817,7 +817,7 @@ TEST(loadGraphFilePerThread, DISABLED_loadGraph) {
   }
   uint64_t edges = 0;
   for (uint64_t i = 0; i < localEdges.size(); i++) {
-    for (uint64_t j = 0; j < localEdges.get(i)->size(); j++) {
+    for (uint64_t j = 0; j < lift(*localEdges.get(i), size); j++) {
       pando::Vector<galois::WMDEdge> vec = localEdges.get(i)->get(j);
       edges += vec.size();
     }
