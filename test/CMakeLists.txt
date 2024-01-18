@@ -18,6 +18,7 @@ add_subdirectory(graphs)
 add_subdirectory(import)
 add_subdirectory(loops)
 add_subdirectory(sync)
+add_subdirectory(sorts)
 add_subdirectory(utility)
 
 if (NOT PANDO_RT_BACKEND STREQUAL "DRVX")
