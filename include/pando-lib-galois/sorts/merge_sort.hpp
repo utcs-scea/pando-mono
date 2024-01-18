@@ -49,12 +49,11 @@ void merge(pando::Vector<T> arr, pando::Vector<T> temp, std::int64_t l1, std::in
 }
 
 /**
- * @brief a function to iteratively merge sort a vector
+ * @brief a function to iteratively merge sort a vector upto the first n values.
  */
 template <class T>
-void merge_sort(pando::Vector<T> arr, bool (*comp)(T, T)) {
+void merge_sort_n(pando::Vector<T> arr, bool (*comp)(T, T), std::uint64_t n) {
   std::uint64_t len = 1;
-  auto n = arr.size();
 
   pando::Vector<T> temp;
   PANDO_CHECK(temp.initialize(n));
@@ -79,6 +78,15 @@ void merge_sort(pando::Vector<T> arr, bool (*comp)(T, T)) {
     }
     len = len * 2;
   }
+  temp.deinitialize();
+}
+
+/**
+ * @brief a function to iteratively merge sort a vector
+ */
+template <class T>
+void merge_sort(pando::Vector<T> arr, bool (*comp)(T, T)) {
+  merge_sort(arr, comp, arr.size());
 }
 
 } // namespace galois
