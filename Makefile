@@ -162,7 +162,9 @@ cmake-drv:
 	-DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
 	-DBUILD_TESTING=ON \
 	-DBUILD_EXAMPLES=ON \
-	-DBUILD_DOCS=OFF
+	-DBUILD_DOCS=OFF \
+	-DCMAKE_CXX_COMPILER=g++-12 \
+  -DCMAKE_C_COMPILER=gcc-12
 
 run-tests:
 	set -o pipefail && \
