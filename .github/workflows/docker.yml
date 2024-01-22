@@ -2,7 +2,7 @@
 # Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
 name: Docker / Ubuntu 22.04 / PREP / gasnet-smp-par
-run-name: docker-prep-smp-ubuntu-2204 performed by @${{ github.actor }}
+run-name: docker-prep-smp-ubuntu-2204 performed by @${{ github.triggering_actor }}
 
 on:
   push:
