@@ -76,8 +76,8 @@ ci-image:
 	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
 	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
 	--build-arg UNAME=runner \
-  --build-arg UID=1001 \
-  --build-arg GID=127 \
+  --build-arg UID=1078 \
+  --build-arg GID=504 \
 	-t pando:${CI_VERSION} \
 	--file Dockerfile.ci .
 	docker save pando:${CI_VERSION} | gzip > docker/ci-image.tar.gz
@@ -111,7 +111,25 @@ docker:
 	${IMAGE_NAME}:${VERSION} \
 	${CONTAINER_CMD}
 
-setup:
+setup-ci:
+	@echo "Must be run from inside the dev Docker container"
+	@. /dependencies/spack/share/spack/setup-env.sh && \
+	spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
+	cmake \
+  -S ${SRC_DIR} \
+  -B ${BUILD_DIR} \
+  -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
+	-DPANDO_PREP_GASNET_CONDUIT=mpi \
+  -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
+  -DBUILD_TESTING=ON \
+  -DBUILD_EXAMPLES=ON \
+  -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
+	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
+	-DCMAKE_CXX_COMPILER=g++-12 \
+  -DCMAKE_C_COMPILER=gcc-12
+
+setup: setup-drv cmake-drv
 	@echo "Must be run from inside the dev Docker container"
 	@. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
@@ -179,4 +197,4 @@ docker-pre-commit:
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} --privileged \
 	--workdir=${CONTAINER_WORKDIR} -t \
-	${IMAGE_NAME}:${VERSION} bash -lc "make hooks && make pre-commit"
+	${IMAGE_NAME}:${VERSION} bash -lc "git config --global --add safe.directory /pando && make hooks && make pre-commit"
