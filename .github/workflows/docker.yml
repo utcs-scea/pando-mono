@@ -38,12 +38,12 @@ jobs:
     strategy:
       matrix:
         build-type: ['Release', 'RelWithDebInfo']
-        sanitizer-type: ['nosan', 'asan', 'ubsan']
+        sanitizer-type: ['nosan', 'san']
         exclude:
+          - build-type: 'RelWithDebInfo'
+            sanitizer-type: 'nosan'
           - build-type: 'Release'
-            sanitizer-type: 'asan'
-          - build-type: 'Release'
-            sanitizer-type: 'ubsan'
+            sanitizer-type: 'san'
 
     steps:
 
@@ -64,14 +64,10 @@ jobs:
         echo "SRC_DIR=$(pwd)" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$(git log --pretty="%h" -1 Dockerfile.ci)" >> $GITHUB_ENV
         echo "ROOT_IMAGE_VERSION=$(cd pando-rt/ && git log --pretty="%h" -1 docker/Dockerfile)" >> $GITHUB_ENV
-        if [ ${{ matrix.sanitizer-type }} == 'asan' ]; then
-          echo "PANDO_TEST_DISCOVERY_TIMEOUT=150" >> $GITHUB_ENV
+        echo "PANDO_TEST_DISCOVERY_TIMEOUT=150" >> $GITHUB_ENV
+        if [ ${{ matrix.sanitizer-type }} == 'san' ]; then
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -e=PANDO_EXTRA_CXX_FLAGS=-fsanitize=address" >> $GITHUB_ENV
-        elif [ ${{ matrix.sanitizer-type }} == 'ubsan' ]; then
-          echo "PANDO_TEST_DISCOVERY_TIMEOUT=150" >> $GITHUB_ENV
-          echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -e=PANDO_EXTRA_CXX_FLAGS=-fsanitize=undefined" >> $GITHUB_ENV
+          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -e=PANDO_EXTRA_CXX_FLAGS='\"-fsanitize=address -fsanitize=undefined\"'" >> $GITHUB_ENV
         fi
         cat $GITHUB_ENV
 
@@ -97,7 +93,7 @@ jobs:
           make docker
 
     - name: Build
-      timeout-minutes: 10
+      timeout-minutes: 15
       run: |
         CONTAINER_CMD="setarch `uname -m` -R bash -c '. ~/spack_env && make -j`nproc` || make -j`nproc`'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
