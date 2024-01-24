@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-name: Docker / Ubuntu 22.04 / PREP / gasnet-mpi-par
-run-name: docker-prep-mpi-ubuntu-2204 performed by @${{ github.triggering_actor }}
+name: Docker / Ubuntu 22.04 / DRIVEX
+run-name: docker-drivex-ubuntu-2204 performed by @${{ github.triggering_actor }}
 
 on:
   push:
@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prep-smp-ubuntu-2204-docker:
+  docker-drivex-ubuntu-2204:
     name: gcc / ${{ matrix.build-type }} / ${{ matrix.sanitizer-type }}
     runs-on: self-hosted
     permissions:
@@ -27,7 +27,7 @@ jobs:
     env:
       IMAGE_NAME: pando
       CONTAINER_SRC_DIR: "/pando"
-      CONTAINER_BUILD_DIR: "/pando/dockerbuild"
+      CONTAINER_BUILD_DIR: "/pando/dockerbuild-drv"
       CONTAINER_WORK_DIR: "/pando"
       INTERACTIVE: ""
     defaults:
@@ -35,13 +35,8 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        build-type: ['Release', 'RelWithDebInfo']
-        sanitizer-type: ['nosan', 'san']
-        exclude:
-          - build-type: 'RelWithDebInfo'
-            sanitizer-type: 'nosan'
-          - build-type: 'Release'
-            sanitizer-type: 'san'
+        build-type: ['Release']
+        sanitizer-type: ['nosan']
 
     steps:
 
@@ -62,16 +57,12 @@ jobs:
         echo "SRC_DIR=$(pwd)" >> $GITHUB_ENV
         echo "PANDO_TEST_DISCOVERY_TIMEOUT=600" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$(git log --pretty="%h" -1 Dockerfile.dev)" >> $GITHUB_ENV
-        if [ ${{ matrix.sanitizer-type }} == 'san' ]; then
-          echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -e=PANDO_EXTRA_CXX_FLAGS='\"-fsanitize=address -fsanitize=undefined\"'" >> $GITHUB_ENV
-        fi
         cat $GITHUB_ENV
 
     - name: Configure
       timeout-minutes: 10
       run: |
-        CONTAINER_CMD="make setup-ci" \
+        CONTAINER_CMD="bash -lc 'make cmake-drv'" \
           CONTAINER_OPTS="-e=BUILD_TYPE=${{ matrix.build-type }}" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
@@ -80,7 +71,7 @@ jobs:
     - name: Build
       timeout-minutes: 15
       run: |
-        CONTAINER_CMD="setarch `uname -m` -R bash -c '. ~/spack_env && make -j8 || make || make'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -lc 'make -j8 || make || make'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           CONTAINER_WORKDIR="${{ env.CONTAINER_BUILD_DIR }}" \
@@ -92,7 +83,7 @@ jobs:
         PANDO_PREP_LOG_LEVEL: warning
       run: |
         mkdir -p data
-        CONTAINER_CMD="setarch `uname -m` -R bash -c 'export HOST_THREADS=8 && . ~/spack_env && scripts/run.sh'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -lc 'export HOST_THREADS=8 && scripts/run-drv.sh dockerbuild-drv/pando-rt/examples/libhelloworld.so'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           make docker
@@ -102,7 +93,8 @@ jobs:
       env:
         PANDO_PREP_LOG_LEVEL: warning
       run: |
-        CONTAINER_CMD="setarch `uname -m` -R make run-tests" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -lc 'make run-tests'" \
+          CONTAINER_OPTS="-e=CONTAINER_BUILD_DIR=${{ env.CONTAINER_BUILD_DIR }}" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           make docker

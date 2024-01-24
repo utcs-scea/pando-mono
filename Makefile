@@ -3,13 +3,15 @@
 
 SHELL := /bin/bash
 
-IMAGE_NAME ?= pando-galois
+UNAME ?= $(shell whoami)
+UID ?= $(shell id -u)
+GID ?= $(shell id -g)
+
+BASE_IMAGE_NAME ?= pando-galois
+IMAGE_NAME ?= ${UNAME}-${BASE_IMAGE_NAME}
 SRC_DIR ?= $(shell pwd)
-GALOIS_VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev)
-CI_GALOIS_VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.ci)
-ROOT_IMAGE_VERSION ?= $(shell cd pando-rt/ && git log --pretty="%h" -1 docker/Dockerfile)
-VERSION ?= ${GALOIS_VERSION}-${ROOT_IMAGE_VERSION}
-CI_VERSION ?= ${CI_GALOIS_VERSION}-${ROOT_IMAGE_VERSION}
+VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev)
+DRIVEX_VERSION ?= $(shell cd pando-drv && git log --pretty="%h" -1)
 
 CONTAINER_SRC_DIR ?= /pando
 CONTAINER_BUILD_DIR ?= /pando/dockerbuild
@@ -18,9 +20,6 @@ CONTAINER_CONTEXT ?= default
 CONTAINER_OPTS ?=
 CONTAINER_CMD ?= setarch `uname -m` -R bash -l
 INTERACTIVE ?= i
-UNAME ?= $(shell whoami)
-UID ?= $(shell id -u)
-GID ?= $(shell id -g)
 
 BUILD_TYPE ?= Release
 
@@ -64,42 +63,46 @@ git-submodules:
 	@git submodule update --init --recursive
 
 ci-image:
-	@mkdir -p dockerbuild
-	@mkdir -p data
-	@docker --context ${CONTAINER_CONTEXT} build \
-	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
-	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
-  -t pando-rt:latest \
-	--file pando-rt/docker/Dockerfile \
-	./pando-rt/docker
+	@${MAKE} docker-image-dependencies
 	@docker --context ${CONTAINER_CONTEXT} build \
 	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
 	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
 	--build-arg UNAME=runner \
   --build-arg UID=1078 \
   --build-arg GID=504 \
-	-t pando:${CI_VERSION} \
-	--file Dockerfile.ci .
-	docker save pando:${CI_VERSION} | gzip > docker/ci-image.tar.gz
+	--build-arg DRIVEX_IMAGE=drivex:${DRIVEX_VERSION} \
+	-t pando:${VERSION} \
+	--file Dockerfile.dev \
+	--target ci .
+	docker save pando:${VERSION} | gzip > docker/ci-image.tar.gz
 
 docker-image:
-	@mkdir -p dockerbuild
-	@mkdir -p data
-	@docker --context ${CONTAINER_CONTEXT} build \
-	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
-	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
-  -t pando-rt:latest \
-	--file pando-rt/docker/Dockerfile \
-	./pando-rt/docker
+	@${MAKE} docker-image-dependencies
 	@docker --context ${CONTAINER_CONTEXT} build \
 	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
 	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
 	--build-arg UNAME=${UNAME} \
   --build-arg UID=${UID} \
   --build-arg GID=${GID} \
+	--build-arg DRIVEX_IMAGE=drivex:${DRIVEX_VERSION} \
 	-t ${IMAGE_NAME}:${VERSION} \
 	--file Dockerfile.dev \
 	--target dev .
+
+docker-image-dependencies:
+	@mkdir -p dockerbuild
+	@mkdir -p data
+	@docker image inspect pando-gasnet:latest >/dev/null 2>&1 || \
+	docker --context ${CONTAINER_CONTEXT} build \
+	-t pando-gasnet:latest \
+	--file Dockerfile.dev \
+	--target gasnet .
+	@docker image inspect drivex:${DRIVEX_VERSION} >/dev/null 2>&1 || \
+	docker --context ${CONTAINER_CONTEXT} build \
+	--build-arg GASNET_IMAGE=pando-gasnet:latest \
+	-t drivex:${DRIVEX_VERSION} \
+	--file Dockerfile.dev \
+	--target drivex .
 
 docker:
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
@@ -129,7 +132,7 @@ setup-ci:
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
 
-setup: setup-drv cmake-drv
+setup: cmake-drv
 	@echo "Must be run from inside the dev Docker container"
 	@. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
@@ -160,15 +163,6 @@ setup: setup-drv cmake-drv
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
 
-drive-deps:
-	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-core.git pando-drv/deps/sst-core-src
-	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-elements.git pando-drv/deps/sst-elements-src
-
-setup-drv:
-	@bash scripts/build_drvx_deps.sh
-	@make -C pando-drv install
-	@make cmake-drv
-
 cmake-drv:
 	@cmake \
 	-S ${SRC_DIR} \
@@ -184,11 +178,16 @@ cmake-drv:
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
 
+drive-deps:
+	@mkdir -p pando-drv/deps
+	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-core.git pando-drv/deps/sst-core-src
+	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-elements.git pando-drv/deps/sst-elements-src
+
 run-tests:
 	set -o pipefail && \
 	. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet qthreads openmpi && \
-	cd ${BUILD_DIR} && ctest --verbose | tee test.out && \
+	cd ${CONTAINER_BUILD_DIR} && ctest --verbose | tee test.out && \
 	! grep -E "Failure" test.out
 
 # this command is slow since hooks are not stored in the container image

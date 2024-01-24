@@ -1,24 +1,107 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2023. University of Texas at Austin. All rights reserved.
-ARG BUILD_IMAGE=pando-rt:latest
-FROM ${BUILD_IMAGE} AS dev
+ARG GASNET_IMAGE=gasnet
+ARG DRIVEX_IMAGE=drivex
+ARG BUILD_IMAGE=ubuntu:22.04
+
+# Build Gasnet
+FROM ubuntu:22.04 AS gasnet
+
+ARG COMPILER=g++-12
+ARG GCC_VERSION=12.3.0
+ARG QTHEADS_VERSION=1.16
+ARG GASNET_VERSION=2023.3.0
+ARG OMPI_VERSION=4.1.5
+
+RUN apt update -y \
+      &&  apt install -y \
+      git \
+      python3 \
+      python3-pip \
+      language-pack-en\
+      pkg-config\
+      ${COMPILER}=${GCC_VERSION}* \
+      gfortran-12 \
+      &&  apt clean \
+      &&  update-locale
+
+WORKDIR /dependencies
+
+RUN git clone --depth 1 --branch v0.20.1 https://github.com/spack/spack.git
+
+RUN . /dependencies/spack/share/spack/setup-env.sh \
+      &&  spack compiler find \
+      &&  spack install -j`nproc` qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
+      openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
+      &&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} \
+      &&  spack install -j`nproc` gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} conduits=smp,mpi target=x86_64
+
+# Build Drive X
+FROM ${GASNET_IMAGE} AS drivex
+
+COPY pando-drv /dependencies/pando-drv
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -y \
+      &&  apt-get install -y \
+      wget \
+      clang-11 \
+      clang++-11 \
+      libtool-bin \
+      &&  apt-get clean
+
+COPY scripts/build_drvx_deps.sh /tmp/build_drvx_deps.sh
+WORKDIR /dependencies
+
+ARG GCC_VERSION=12.3.0
+ARG OMPI_VERSION=4.1.5
+
+RUN cd /dependencies/pando-drv && \
+      . ./load_drvx.sh && \
+      . /dependencies/spack/share/spack/setup-env.sh && \
+      spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
+      cd /dependencies && \
+      bash /tmp/build_drvx_deps.sh && \
+      DRV_DIR=/dependencies/pando-drv make -C /dependencies/pando-drv install
+
+FROM ${DRIVEX_IMAGE} AS drivex_wrapper
+
+# Base ci image
+FROM ${BUILD_IMAGE} AS ci
+
+ARG COMPILER=g++-12
+ARG GCC_VERSION=12.3.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update -y \
       &&  apt install -y \
-      vim \
-      gdb \
-      universal-ctags \
-      powerline \
-      zsh \
-      valgrind \
-      sudo \
-      doxygen \
-      texlive-latex-extra \
-      texlive-font-utils \
+      git \
+      python3 \
+      python3-pip \
+      language-pack-en\
+      pkg-config\
+      ${COMPILER}=${GCC_VERSION}* \
+      gfortran-12 \
       shfmt \
       &&  apt clean \
       &&  update-locale
+
+# CMake
+RUN apt-get update -y \
+      &&  apt install -y ca-certificates gpg wget \
+      &&  wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null \
+      &&  echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null \
+      &&  apt-get update -y \
+      &&  rm /usr/share/keyrings/kitware-archive-keyring.gpg \
+      &&  apt-get install -y kitware-archive-keyring \
+      &&  apt-get update -y \
+      &&  apt-get install -y cmake cmake-curses-gui \
+      &&  apt-get purge -y gpg wget \
+      &&  apt-get autoremove -y \
+      &&  apt-get clean -y \
+      &&  rm -rf /var/lib/apt/lists/*
+
+COPY --from=drivex_wrapper /dependencies /dependencies
 
 ARG SRC_DIR=/pando
 ARG BUILD_DIR=/pando/dockerbuild
@@ -38,6 +121,11 @@ ENV BUILD_DIR=${BUILD_DIR}
 
 RUN pip3 install compdb pre-commit cpplint "clang-format>=12.0.1"
 
+ARG GCC_VERSION=12.3.0
+ARG QTHEADS_VERSION=1.16
+ARG GASNET_VERSION=2023.3.0
+ARG OMPI_VERSION=4.1.5
+
 RUN echo "export SRC_DIR=${SRC_DIR}" >> /home/${UNAME}/.profile
 RUN echo "export BUILD_DIR=${BUILD_DIR}" >> /home/${UNAME}/.profile
 RUN echo ". /dependencies/spack/share/spack/setup-env.sh" >> /home/${UNAME}/spack_env \
@@ -46,15 +134,43 @@ RUN echo ". /dependencies/spack/share/spack/setup-env.sh" >> /home/${UNAME}/spac
       openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION}" >> /home/${UNAME}/spack_env \
       &&  echo ". ${HOME}/spack_env" | tee -a /home/${UNAME}/.zshenv >> /home/${UNAME}/.bashrc
 
-USER root
-RUN apt-get update -y \
-      &&  apt-get install -y \
-      wget \
-      clang-11 \
-      clang++-11 \
-      &&  apt-get clean
-USER ${UNAME}
-
 RUN echo "PATH=/home/${UNAME}/.local/bin/:\$PATH" >> /home/${UNAME}/.zshenv
-RUN echo "cd ${SRC_DIR}/pando-drv && . ./load_drvx.sh && cd ~-" >> /home/${UNAME}/.profile
+RUN echo "cd /dependencies/pando-drv && . ./load_drvx.sh && cd ~-" >> /home/${UNAME}/.profile
 WORKDIR ${SRC_DIR}
+
+ENV GCC_VERSION=${GCC_VERSION}
+ENV QTHEADS_VERSION=${QTHEADS_VERSION}
+ENV GASNET_VERSION=${GASNET_VERSION}
+ENV OMPI_VERSION=${OMPI_VERSION}
+ENV TERM=xterm-256color
+ENV USER=${UNAME}
+ENV LANG="C.UTF-8"
+ENV LC_COLLATE="C.UTF-8"
+ENV LC_CTYPE="C.UTF-8"
+ENV LC_MESSAGES="C.UTF-8"
+ENV LC_MONETARY="C.UTF-8"
+ENV LC_NUMERIC="C.UTF-8"
+ENV LC_TIME="C.UTF-8"
+
+# Main image
+FROM ci AS dev
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update -y \
+      &&  apt install -y \
+      vim \
+      gdb \
+      universal-ctags \
+      powerline \
+      zsh \
+      valgrind \
+      sudo \
+      doxygen \
+      texlive-latex-extra \
+      texlive-font-utils \
+      &&  apt clean \
+      &&  update-locale
+
+ARG UNAME
+USER ${UNAME}

@@ -6,8 +6,6 @@
 # Build dependencies for DrvX
 set -eo pipefail
 
-mkdir -p pando-drv/deps
-
 cd pando-drv/deps
 
 if [ ! -d sst-core-src ]; then
