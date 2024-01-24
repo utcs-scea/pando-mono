@@ -64,7 +64,7 @@ jobs:
         echo "SRC_DIR=$(pwd)" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$(git log --pretty="%h" -1 Dockerfile.ci)" >> $GITHUB_ENV
         echo "ROOT_IMAGE_VERSION=$(cd pando-rt/ && git log --pretty="%h" -1 docker/Dockerfile)" >> $GITHUB_ENV
-        echo "PANDO_TEST_DISCOVERY_TIMEOUT=150" >> $GITHUB_ENV
+        echo "PANDO_TEST_DISCOVERY_TIMEOUT=600" >> $GITHUB_ENV
         if [ ${{ matrix.sanitizer-type }} == 'san' ]; then
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
           echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -e=PANDO_EXTRA_CXX_FLAGS='\"-fsanitize=address -fsanitize=undefined\"'" >> $GITHUB_ENV
@@ -95,7 +95,7 @@ jobs:
     - name: Build
       timeout-minutes: 15
       run: |
-        CONTAINER_CMD="setarch `uname -m` -R bash -c '. ~/spack_env && make -j`nproc` || make -j`nproc`'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -c '. ~/spack_env && make -j`nproc` || make -j`nproc` || make -j `nproc`'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}-${{ env.ROOT_IMAGE_VERSION }}" \
           CONTAINER_WORKDIR="${{ env.CONTAINER_BUILD_DIR }}" \

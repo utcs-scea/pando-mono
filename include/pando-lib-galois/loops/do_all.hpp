@@ -108,16 +108,22 @@ public:
 
     const auto end = range.end();
 
+    std::uint64_t iter = 0;
+    std::uint64_t size = range.size();
+    wgh.add(size);
+
     for (auto curr = range.begin(); curr != end; curr++) {
-      wgh.addOne();
       // Required hack without workstealing
       auto nodePlace = pando::Place{localityFunc(s, *curr).node, pando::anyPod, pando::anyCore};
       err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
                              wgh);
       if (err != pando::Status::Success) {
-        wgh.done();
+        for (std::uint64_t i = iter; i < size; i++) {
+          wgh.done();
+        }
         return err;
       }
+      iter++;
     }
     return err;
   }
@@ -141,16 +147,22 @@ public:
 
     const auto end = range.end();
 
+    std::uint64_t iter = 0;
+    std::uint64_t size = range.size();
+    wgh.add(size);
+
     for (auto curr = range.begin(); curr != end; curr++) {
-      wgh.addOne();
       // Required hack without workstealing
       auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
       err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
                              wgh);
       if (err != pando::Status::Success) {
-        wgh.done();
+        for (std::uint64_t i = iter; i < size; i++) {
+          wgh.done();
+        }
         return err;
       }
+      iter++;
     }
     return err;
   }
@@ -174,15 +186,21 @@ public:
 
     const auto end = range.end();
 
+    std::uint64_t iter = 0;
+    const std::uint64_t size = range.size();
+    wgh.add(size);
+
     for (auto curr = range.begin(); curr != end; curr++) {
-      wgh.addOne();
       // Required hack without workstealing
       auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
       err = pando::executeOn(nodePlace, &notifyFunc<F, typename R::iterator>, func, curr, wgh);
       if (err != pando::Status::Success) {
-        wgh.done();
+        for (std::uint64_t i = iter; i < size; i++) {
+          wgh.done();
+        }
         return err;
       }
+      iter++;
     }
     return err;
   }
