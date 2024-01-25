@@ -128,5 +128,21 @@ function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
 
     add_test(NAME ${TARGET}-${INPUTFILE}-${OKFILE}
       COMMAND bash -c "diff -Z <(${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE}) ${OKFILE}")
+  else()
+
+    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/scripts/run-drv.sh)
+
+    set(NUM_PXNS 2)
+    set(NUM_CORES 4)
+    set(NUM_HTHREADS 8)
+
+    get_filename_component(FNAME ${TARGET} NAME)
+
+    add_test(NAME ${TARGET}-${INPUTFILE}-${OKFILE}
+      COMMAND bash -c "diff -Z <(LAUNCH_DIR=${CMAKE_SOURCE_DIR} ${DRIVER_SCRIPT} -p ${NUM_HTHREADS} -n ${NUM_PXNS} -c ${NUM_CORES} \
+      ${CMAKE_CURRENT_BINARY_DIR}/lib${FNAME}.so ${ARGS} ${INPUTFILE} \
+      | grep -v 'memBackendConverter:' |grep -v 'PANDOHammerDrvX:' |grep -v 'Simulation is complete, simulated time:' | tail -n +3) \
+      ${OKFILE}")
+
   endif()
 endfunction()

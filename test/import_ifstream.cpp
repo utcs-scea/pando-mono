@@ -16,7 +16,7 @@
 #include <pando-rt/pando-rt.hpp>
 
 void printUsageExit(char* argv0) {
-  std::cerr << "Usage: " << argv0 << "-f filepath" << std::endl;
+  std::cerr << "Usage: " << argv0 << " -f filepath" << std::endl;
   std::cerr << "The expected input is a file of integers then two newlines in a row, then it tests "
                "getline"
             << std::endl;
@@ -26,6 +26,8 @@ void printUsageExit(char* argv0) {
 
 int pandoMain(int argc, char** argv) {
   char* filepath = nullptr;
+
+  optind = 0;
   int opt;
 
   while ((opt = getopt(argc, argv, "f:")) != -1) {

@@ -28,6 +28,7 @@ using G = pando::GlobalPtr<T>;
 int pandoMain(int argc, char** argv) {
   std::uint64_t numVertices = 0;
   char* filepath = nullptr;
+  optind = 0;
   int opt;
 
   while ((opt = getopt(argc, argv, "n:f:")) != -1) {
@@ -56,12 +57,8 @@ int pandoMain(int argc, char** argv) {
     PANDO_CHECK(galois::importELFile(numVertices, filepath, *listcsrPtr));
     pando::Vector<pando::Vector<std::uint64_t>> listcsr = *listcsrPtr;
     for (pando::Vector<std::uint64_t> vec : listcsr) {
-      std::vector<std::uint64_t> stdvec;
+      std::sort(vec.begin(), vec.end());
       for (std::uint64_t val : vec) {
-        stdvec.push_back(val);
-      }
-      std::sort(stdvec.begin(), stdvec.end());
-      for (std::uint64_t val : stdvec) {
         std::cout << val << ' ';
       }
       std::cout << std::endl;

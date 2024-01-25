@@ -28,6 +28,7 @@ using G = pando::GlobalPtr<T>;
 int pandoMain(int argc, char** argv) {
   std::uint64_t numVertices = 0;
   char* filepath = nullptr;
+  optind = 0;
   int opt;
 
   while ((opt = getopt(argc, argv, "n:f:")) != -1) {
