@@ -166,3 +166,19 @@ TEST(LCSR, DataRange) {
 
   graph.deinitialize();
 }
+
+TEST(LCSR, VertexIndex) {
+  constexpr std::uint64_t SIZE = 10;
+  Graph graph;
+  auto vec = generateFullyConnectedGraph(SIZE);
+  EXPECT_EQ(graph.initialize(vec), pando::Status::Success);
+  auto err = deleteVectorVector<std::uint64_t>(vec);
+  EXPECT_EQ(err, pando::Status::Success);
+  EXPECT_EQ(graph.size(), SIZE);
+  std::uint64_t id = 0;
+  for (typename galois::graph_traits<Graph>::VertexTopologyID vert : graph.vertices()) {
+    EXPECT_EQ(id, graph.getVertexIndex(vert));
+    id++;
+  }
+  graph.deinitialize();
+}

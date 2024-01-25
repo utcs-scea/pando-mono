@@ -156,6 +156,13 @@ private:
 
 public:
   /**
+   * @brief gets the dense ID of the vertex in the local topology
+   */
+  std::uint64_t getVertexIndex(VertexTopologyID vertex) {
+    return findIndex(vertex, vertexEdgeOffsets);
+  }
+
+  /**
    * @brief Sets the value of the vertex provided
    */
   void setData(VertexTopologyID vertex, VertexData data) {
