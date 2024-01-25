@@ -20,6 +20,7 @@ Quick Setup:
 git submodule update --init --recursive
 make dependencies
 make hooks
+make drive-deps
 make docker-image
 make docker
 # These commands are run in the container `make docker` drops you into
@@ -33,8 +34,7 @@ Developers can run a hello-world smoke test inside their containers by running
 
 ## Running on Drive X
 
-To run workloads on Drive X run `make drive-deps` followed by `make setup-drv`
-when the repo is setup or Drive X is updated.
+Inside the container run `make cmake-drv`.
 
 Workloads can then be run via `bash scripts/run-drv.sh`.
 

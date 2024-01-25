@@ -73,8 +73,7 @@ ci-image:
 	--build-arg DRIVEX_IMAGE=drivex:${DRIVEX_VERSION} \
 	-t pando:${VERSION} \
 	--file Dockerfile.dev \
-	--target ci .
-	docker save pando:${VERSION} | gzip > docker/ci-image.tar.gz
+	--target dev .
 
 docker-image:
 	@${MAKE} docker-image-dependencies
@@ -82,6 +81,7 @@ docker-image:
 	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
 	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
 	--build-arg UNAME=${UNAME} \
+	--build-arg IS_CI=false \
   --build-arg UID=${UID} \
   --build-arg GID=${GID} \
 	--build-arg DRIVEX_IMAGE=drivex:${DRIVEX_VERSION} \
@@ -114,7 +114,7 @@ docker:
 	${IMAGE_NAME}:${VERSION} \
 	${CONTAINER_CMD}
 
-setup-ci:
+cmake-mpi:
 	@echo "Must be run from inside the dev Docker container"
 	@. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
@@ -132,23 +132,10 @@ setup-ci:
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
 
-setup: cmake-drv
+cmake-smp:
 	@echo "Must be run from inside the dev Docker container"
 	@. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
-	cmake \
-  -S ${SRC_DIR} \
-  -B ${BUILD_DIR} \
-  -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
-	-DPANDO_PREP_GASNET_CONDUIT=mpi \
-  -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
-  -DBUILD_TESTING=ON \
-  -DBUILD_EXAMPLES=ON \
-  -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
-	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
-	-DCMAKE_CXX_COMPILER=g++-12 \
-  -DCMAKE_C_COMPILER=gcc-12 && \
 	cmake \
   -S ${SRC_DIR} \
   -B ${BUILD_DIR}-smp\
@@ -178,17 +165,35 @@ cmake-drv:
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
 
+setup-ci: cmake-mpi
+
+setup: cmake-mpi cmake-smp
+
 drive-deps:
 	@mkdir -p pando-drv/deps
 	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-core.git pando-drv/deps/sst-core-src
 	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-elements.git pando-drv/deps/sst-elements-src
 
-run-tests:
+run-tests-mpi:
 	set -o pipefail && \
 	. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet qthreads openmpi && \
 	cd ${CONTAINER_BUILD_DIR} && ctest --verbose | tee test.out && \
 	! grep -E "Failure" test.out
+
+run-tests-smp:
+	set -o pipefail && \
+	. /dependencies/spack/share/spack/setup-env.sh && \
+	spack load gasnet qthreads&& \
+	cd ${CONTAINER_BUILD_DIR}-smp && ctest --verbose | tee test.out && \
+	! grep -E "Failure" test.out
+
+run-tests-drv:
+	set -o pipefail && \
+	cd ${DRV_BUILD_DIR} && ctest --verbose | tee test.out && \
+	! grep -E "Failure" test.out
+
+run-tests: run-tests-mpi
 
 # this command is slow since hooks are not stored in the container image
 # this is mostly for CI use

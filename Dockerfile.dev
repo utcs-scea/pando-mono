@@ -67,7 +67,7 @@ RUN cd /dependencies/pando-drv && \
 FROM ${DRIVEX_IMAGE} AS drivex_wrapper
 
 # Base ci image
-FROM ${BUILD_IMAGE} AS ci
+FROM ${BUILD_IMAGE} AS dev
 
 ARG COMPILER=g++-12
 ARG GCC_VERSION=12.3.0
@@ -102,6 +102,24 @@ RUN apt-get update -y \
       &&  rm -rf /var/lib/apt/lists/*
 
 COPY --from=drivex_wrapper /dependencies /dependencies
+
+ARG IS_CI=true
+
+RUN if [ "${IS_CI}" != "true" ] ; then \
+  apt update -y \
+    &&  apt install -y \
+    vim \
+    gdb \
+    universal-ctags \
+    powerline \
+    zsh \
+    valgrind \
+    sudo \
+    doxygen \
+    texlive-latex-extra \
+    texlive-font-utils \
+    &&  apt clean \
+    &&  update-locale; fi
 
 ARG SRC_DIR=/pando
 ARG BUILD_DIR=/pando/dockerbuild
@@ -152,25 +170,4 @@ ENV LC_MONETARY="C.UTF-8"
 ENV LC_NUMERIC="C.UTF-8"
 ENV LC_TIME="C.UTF-8"
 
-# Main image
-FROM ci AS dev
-
-USER root
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update -y \
-      &&  apt install -y \
-      vim \
-      gdb \
-      universal-ctags \
-      powerline \
-      zsh \
-      valgrind \
-      sudo \
-      doxygen \
-      texlive-latex-extra \
-      texlive-font-utils \
-      &&  apt clean \
-      &&  update-locale
-
-ARG UNAME
 USER ${UNAME}
