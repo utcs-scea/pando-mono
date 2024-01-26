@@ -11,6 +11,7 @@
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/atomic.hpp>
 #include <pando-rt/sync/notification.hpp>
+#include <pando-rt/tracing.hpp>
 
 namespace galois {
 /**
@@ -121,6 +122,7 @@ public:
       return ready;
     });
     pando::atomicThreadFence(std::memory_order_acquire);
+    PANDO_MEM_STAT_NEW_PHASE();
     if (*m_count < static_cast<std::int64_t>(0)) {
       return pando::Status::Error;
     }
