@@ -31,7 +31,7 @@ THREADD=$((${HOST_THREADS} * ${HOSTS} / ${PROCS}))
 THREADS="${THREADS:-${THREADD}}"
 # 8GB Main memory size by default
 MAIN_MEMORY_SIZE="${MAIN_MEMORY_SIZE-8589934592}"
-LAUNCH_DIR="${LAUNCH_DIR:-$(realpath .)}"
+LAUNCH_DIR="${LAUNCH_DIR:-$(realpath ${DRV_ROOT}/../../)}"
 LAUNCH_SCRIPT="${LAUNCH_SCRIPT:-${LAUNCH_DIR}/pando-drv/tests/PANDOHammerDrvX.py}"
 
 while getopts "p:n:c:t:h" option; do
@@ -43,12 +43,15 @@ while getopts "p:n:c:t:h" option; do
 	n) # number of emulated PXNs
 		HOSTS=${OPTARG}
 		;;
+
 	c) # number of emulated cores per PXN
 		CORES=${OPTARG}
 		;;
+
 	t) # number of emulated cores per PXN
 		HARTS=${OPTARG}
 		;;
+
 	h) # help
 		show_help
 		exit
