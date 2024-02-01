@@ -9,6 +9,7 @@
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-lib-galois/containers/per_thread.hpp>
+#include <pando-lib-galois/graphs/graph_traits.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/vector.hpp>
 
@@ -24,37 +25,135 @@ struct GenericEdge {
   EdgeType data;
 };
 
+template <typename VertexType, typename EdgeType>
+class DistArrayCSR;
+
+namespace DACSRDetail {
+using VertexTokenID = std::uint64_t;
+using VertexTopologyID = std::uint64_t;
+using EdgeHandle = std::uint64_t;
+using EdgeRange = DistArraySlice<EdgeHandle>;
+template <typename VertexType, typename EdgeType>
+using VertexRange = DistArrayCSR<VertexType, EdgeType>;
+template <typename VertexType>
+using VertexDataRange = DistArraySlice<VertexType>;
+template <typename EdgeType>
+using EdgeDataRange = DistArraySlice<EdgeType>;
+
+static_assert(!std::is_same<VertexTopologyID, EdgeRange>::value);
+
+/**
+ * @brief topology id and edge ranges in order to ensure proper depromotion for doAll inference
+ */
+struct VertexInfo {
+  VertexTopologyID lid;
+  EdgeRange edges;
+  operator VertexTopologyID() {
+    return lid;
+  }
+  operator EdgeRange() {
+    return edges;
+  }
+};
+
+/**
+ * @brief Vertex Iterator since the graph itself is returned as the range
+ */
+template <typename VertexType, typename EdgeType>
+class VertexIt {
+  DistArray<EdgeHandle> m_vertexEdgeOffsets;
+  DistArray<VertexTopologyID> m_edgeDestinations;
+  VertexTopologyID m_vertex;
+
+public:
+  using iterator_category = std::random_access_iterator_tag;
+  using difference_type = std::int64_t;
+  using value_type = VertexInfo;
+
+  VertexIt(DistArrayCSR<VertexType, EdgeType>& dacsr, VertexTopologyID vertex)
+      : m_vertexEdgeOffsets(dacsr.vertexEdgeOffsets),
+        m_edgeDestinations(dacsr.edgeDestinations),
+        m_vertex(vertex) {}
+  constexpr VertexIt() noexcept = default;
+  constexpr VertexIt(VertexIt&&) noexcept = default;
+  constexpr VertexIt(const VertexIt&) noexcept = default;
+  ~VertexIt() = default;
+
+  constexpr VertexIt& operator=(const VertexIt&) noexcept = default;
+  constexpr VertexIt& operator=(VertexIt&&) noexcept = default;
+
+  value_type operator*() const noexcept {
+    std::uint64_t beg = (m_vertex == 0) ? 0 : m_vertexEdgeOffsets[m_vertex - 1];
+    return VertexInfo{m_vertex, EdgeRange(m_edgeDestinations, beg, m_vertexEdgeOffsets[m_vertex])};
+  }
+
+  value_type operator*() noexcept {
+    std::uint64_t beg = (m_vertex == 0) ? 0 : m_vertexEdgeOffsets[m_vertex - 1];
+    return VertexInfo{m_vertex, EdgeRange(m_edgeDestinations, beg, m_vertexEdgeOffsets[m_vertex])};
+  }
+
+  VertexIt& operator++() {
+    m_vertex++;
+    return *this;
+  }
+
+  VertexIt operator++(int) {
+    VertexIt tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  VertexIt& operator--() {
+    m_vertex--;
+    return *this;
+  }
+
+  VertexIt operator--(int) {
+    VertexIt tmp = *this;
+    --(*this);
+    return tmp;
+  }
+
+  friend bool operator==(const VertexIt& a, const VertexIt& b) {
+    return a.m_vertex == b.m_vertex && isSame(a.m_vertexEdgeOffsets, b.m_vertexEdgeOffsets) &&
+           isSame(a.m_edgeDestinations, b.m_edgeDestinations);
+  }
+
+  friend bool operator!=(const VertexIt& a, const VertexIt& b) {
+    return !(a == b);
+  }
+
+  friend pando::Place localityOf(VertexIt& a) {
+    std::uint64_t beg = (a.m_vertex == 0) ? 0 : a.m_vertexEdgeOffsets[a.m_vertex - 1];
+    pando::GlobalPtr<VertexTopologyID> ptr = &a.m_edgeDestinations[beg];
+    return galois::localityOf(ptr);
+  }
+};
+
+} // namespace DACSRDetail
 /**
  * @brief This is a csr built upon a distributed arrays
  */
 template <typename VertexType, typename EdgeType>
 class DistArrayCSR {
 public:
-  using VertexTokenID = std::uint64_t;
-  using VertexTopologyID = std::uint64_t;
+  using VertexTokenID = DACSRDetail::VertexTokenID;
+  using VertexTopologyID = DACSRDetail::VertexTopologyID;
   // This is an opaque edge type, and this could be either a graph topology edge ID
   // or could be a pointer depending on the graph type.
-  using EdgeHandle = std::uint64_t;
+  using EdgeHandle = DACSRDetail::EdgeHandle;
   using VertexData = VertexType;
   using EdgeData = EdgeType;
-  using EdgeRange = DistArraySlice<EdgeHandle>;
+  using EdgeRange = DACSRDetail::EdgeRange;
+  using VertexRange = DACSRDetail::VertexRange<VertexType, EdgeType>;
+  using VertexDataRange = DACSRDetail::VertexDataRange<VertexType>;
+  using EdgeDataRange = DACSRDetail::EdgeDataRange<EdgeType>;
+
+  using iterator = DACSRDetail::VertexIt<VertexType, EdgeType>;
+  friend iterator;
 
   template <typename, typename>
   friend class DistArrayCSR;
-
-  /**
-   * @brief topology id and edge ranges in order to ensure proper depromotion for doAll inference
-   */
-  struct VertexInfo {
-    VertexTopologyID lid;
-    EdgeRange edges;
-    operator VertexTopologyID() {
-      return lid;
-    }
-    operator EdgeRange() {
-      return edges;
-    }
-  };
 
   template <typename Graph, typename Projection, typename V, typename E>
   struct ProjectionState {
@@ -78,89 +177,6 @@ public:
     galois::PerThreadVector<uint64_t> projectedEdgeDestinations;
     galois::PerThreadVector<EdgeHandle> projectedEdgeCounts;
   };
-
-  static_assert(!std::is_same<VertexTopologyID, EdgeRange>::value);
-
-  /**
-   * @brief Vertex Iterator since the graph itself is returned as the range
-   */
-  class VertexIt {
-    DistArray<EdgeHandle> m_vertexEdgeOffsets;
-    DistArray<VertexTopologyID> m_edgeDestinations;
-    VertexTopologyID m_vertex;
-
-  public:
-    using iterator_category = std::random_access_iterator_tag;
-    using difference_type = std::int64_t;
-    using value_type = VertexInfo;
-
-    VertexIt(DistArrayCSR& dacsr, VertexTopologyID vertex)
-        : m_vertexEdgeOffsets(dacsr.vertexEdgeOffsets),
-          m_edgeDestinations(dacsr.edgeDestinations),
-          m_vertex(vertex) {}
-    constexpr VertexIt() noexcept = default;
-    constexpr VertexIt(VertexIt&&) noexcept = default;
-    constexpr VertexIt(const VertexIt&) noexcept = default;
-    ~VertexIt() = default;
-
-    constexpr VertexIt& operator=(const VertexIt&) noexcept = default;
-    constexpr VertexIt& operator=(VertexIt&&) noexcept = default;
-
-    value_type operator*() const noexcept {
-      std::uint64_t beg = (m_vertex == 0) ? 0 : m_vertexEdgeOffsets[m_vertex - 1];
-      return VertexInfo{m_vertex,
-                        EdgeRange(m_edgeDestinations, beg, m_vertexEdgeOffsets[m_vertex])};
-    }
-
-    value_type operator*() noexcept {
-      std::uint64_t beg = (m_vertex == 0) ? 0 : m_vertexEdgeOffsets[m_vertex - 1];
-      return VertexInfo{m_vertex,
-                        EdgeRange(m_edgeDestinations, beg, m_vertexEdgeOffsets[m_vertex])};
-    }
-
-    VertexIt& operator++() {
-      m_vertex++;
-      return *this;
-    }
-
-    VertexIt operator++(int) {
-      VertexIt tmp = *this;
-      ++(*this);
-      return tmp;
-    }
-
-    VertexIt& operator--() {
-      m_vertex--;
-      return *this;
-    }
-
-    VertexIt operator--(int) {
-      VertexIt tmp = *this;
-      --(*this);
-      return tmp;
-    }
-
-    friend bool operator==(const VertexIt& a, const VertexIt& b) {
-      return a.m_vertex == b.m_vertex && isSame(a.m_vertexEdgeOffsets, b.m_vertexEdgeOffsets) &&
-             isSame(a.m_edgeDestinations, b.m_edgeDestinations);
-    }
-
-    friend bool operator!=(const VertexIt& a, const VertexIt& b) {
-      return !(a == b);
-    }
-
-    friend pando::Place localityOf(VertexIt& a) {
-      std::uint64_t beg = (a.m_vertex == 0) ? 0 : a.m_vertexEdgeOffsets[a.m_vertex - 1];
-      pando::GlobalPtr<VertexTopologyID> ptr = &a.m_edgeDestinations[beg];
-      return galois::localityOf(ptr);
-    }
-  };
-
-  using VertexRange = DistArrayCSR<VertexType, EdgeType>;
-  using VertexDataRange = DistArraySlice<VertexType>;
-  using EdgeDataRange = DistArraySlice<EdgeType>;
-
-  using iterator = VertexIt;
 
   constexpr DistArrayCSR() noexcept = default;
   constexpr DistArrayCSR(DistArrayCSR&&) noexcept = default;
@@ -589,6 +605,13 @@ public:
   }
 
   /**
+   * @brief gives the number of edges
+   */
+  std::uint64_t sizeEdges() const noexcept {
+    return numEdges;
+  }
+
+  /**
    * @brief get the token ID as input
    */
   VertexTokenID getTokenID(VertexTopologyID vertex) {
@@ -601,6 +624,14 @@ public:
    * @warning unimplemented
    */
   VertexTopologyID getTopologyID(VertexTokenID vertex) {
+    return vertex;
+  }
+
+  /**
+   * @brief get the index as input
+   *
+   */
+  std::uint64_t getVertexIndex(VertexTopologyID vertex) {
     return vertex;
   }
 
@@ -791,7 +822,7 @@ public:
   /**
    * @brief Get the Vertices range
    */
-  VertexRange& vertices() {
+  VertexRange vertices() {
     return *this;
   }
 
@@ -860,6 +891,26 @@ public:
     return EdgeDataRange(edgeData, beg, end);
   }
 
+  VertexTopologyID addVertexTopologyOnly(VertexTokenID token) {
+    return UINT64_MAX;
+  }
+  VertexTopologyID addVertex(VertexTokenID token, VertexData data) {
+    return UINT64_MAX;
+  }
+
+  pando::Status addEdgesTopologyOnly(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts) {
+    return pando::Status::Error;
+  }
+
+  pando::Status addEdges(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts,
+                         pando::Vector<EdgeData> data) {
+    return pando::Status::Error;
+  }
+
+  pando::Status deleteEdges(VertexTopologyID src, pando::Vector<EdgeHandle> edges) {
+    return pando::Status::Error;
+  }
+
 private:
   ///@brief Stores the number of vertices, size may differ from DistArray sizes
   uint64_t numVertices;
@@ -876,6 +927,8 @@ private:
   ///@brief Stores the data for each edge
   galois::DistArray<EdgeData> edgeData;
 };
+
+static_assert(graph_checker<DistArrayCSR<std::uint64_t, std::uint64_t>>::value);
 
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_GRAPHS_DIST_ARRAY_CSR_HPP_

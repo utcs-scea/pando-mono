@@ -107,7 +107,7 @@ TEST(LCSR, EdgeData) {
 
   for (typename galois::graph_traits<Graph>::VertexTopologyID vert : graph.vertices()) {
     std::uint64_t j = 0;
-    for (typename galois::graph_traits<Graph>::EdgeHandle eh : Graph::makeEdgeRange(vert)) {
+    for (typename galois::graph_traits<Graph>::EdgeHandle eh : Graph::edges(vert)) {
       graph.setEdgeData(eh, j);
       graph.setEdgeData(vert, j, j);
       j++;
@@ -116,7 +116,7 @@ TEST(LCSR, EdgeData) {
 
   for (typename galois::graph_traits<Graph>::VertexTopologyID vert : graph.vertices()) {
     std::uint64_t j = 0;
-    for (typename galois::graph_traits<Graph>::EdgeHandle eh : Graph::makeEdgeRange(vert)) {
+    for (typename galois::graph_traits<Graph>::EdgeHandle eh : Graph::edges(vert)) {
       EXPECT_EQ(graph.getEdgeData(eh), j);
       EXPECT_EQ(graph.getEdgeData(vert, j), j);
       j++;

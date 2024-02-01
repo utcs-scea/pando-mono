@@ -55,7 +55,7 @@ public:
   constexpr LCSR& operator=(const LCSR&) noexcept = default;
   constexpr LCSR& operator=(LCSR&&) noexcept = default;
 
-  static EdgeRange makeEdgeRange(pando::GlobalRef<galois::Vertex> vertex) {
+  static EdgeRange edges(pando::GlobalRef<galois::Vertex> vertex) {
     pando::GlobalPtr<Vertex> vPtr = &vertex;
     Vertex v = *vPtr;
     Vertex v1 = *(vPtr + 1);
@@ -134,6 +134,20 @@ public:
     return vertexEdgeOffsets.size() - 1;
   }
 
+  /**
+   * @brief gives the total number of edges
+   */
+  std::uint64_t sizeEdges() {
+    return edgeDestinations.size();
+  }
+
+  /**
+   * @brief gives the total number of edges
+   */
+  std::uint64_t sizeEdges() const noexcept {
+    return edgeDestinations.size();
+  }
+
 private:
   template <typename T>
   std::uint64_t findIndex(pando::GlobalRef<T> location, pando::Array<T> base) {
@@ -160,6 +174,20 @@ public:
    */
   std::uint64_t getVertexIndex(VertexTopologyID vertex) {
     return findIndex(vertex, vertexEdgeOffsets);
+  }
+
+  /**
+   * @brief gets the dense ID of the vertex in the local topology
+   */
+  std::uint64_t getTokenID(VertexTopologyID vertex) {
+    return findIndex(vertex, vertexEdgeOffsets);
+  }
+
+  /**
+   * @brief gets the Topology ID from the given token;
+   */
+  VertexTopologyID getTopologyID(VertexTokenID token) {
+    return vertexEdgeOffsets[token];
   }
 
   /**
@@ -269,11 +297,33 @@ public:
     return EdgeDataRange(edgeData.begin() + beg, end - beg);
   }
 
+  VertexTopologyID addVertexTopologyOnly(VertexTokenID token) {
+    return *vertexEdgeOffsets.end();
+  }
+
+  VertexTopologyID addVertex(VertexTokenID token, VertexData data) {
+    return *vertexEdgeOffsets.end();
+  }
+
+  pando::Status addEdgesTopologyOnly(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts) {
+    return pando::Status::Error;
+  }
+
+  pando::Status addEdges(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts,
+                         pando::Vector<EdgeData> data) {
+    return pando::Status::Error;
+  }
+
+  pando::Status deleteEdges(VertexTopologyID src, pando::Vector<EdgeHandle> edges) {
+    return pando::Status::Error;
+  }
+
 private:
   pando::Array<Vertex> vertexEdgeOffsets;
   pando::Array<HalfEdge> edgeDestinations;
   pando::Array<VertexData> vertexData;
   pando::Array<EdgeData> edgeData;
 };
+static_assert(graph_checker<LCSR<std::uint64_t, std::uint64_t>>::value);
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_GRAPHS_LOCAL_CSR_HPP_

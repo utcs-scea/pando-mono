@@ -8,6 +8,7 @@
 #include "pando-rt/export.h"
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
+#include <pando-lib-galois/graphs/graph_traits.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-rt/containers/vector.hpp>
@@ -55,6 +56,7 @@ TEST(DistArrayCSR, FullyConnected) {
   graph.initialize(vec);
   auto err = deleteVectorVector<std::uint64_t>(vec);
   EXPECT_EQ(err, pando::Status::Success);
+
   for (std::uint64_t i = 0; i < SIZE; i++) {
     EXPECT_EQ(graph.getNumEdges(i), SIZE);
     graph.setData(i, value);
