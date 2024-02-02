@@ -44,6 +44,13 @@ public:
     edges = 0;
   }
 
+  constexpr WMDVertex(WMDVertex&&) noexcept = default;
+  constexpr WMDVertex(const WMDVertex&) noexcept = default;
+  ~WMDVertex() = default;
+
+  constexpr WMDVertex& operator=(const WMDVertex&) noexcept = default;
+  constexpr WMDVertex& operator=(WMDVertex&&) noexcept = default;
+
   uint64_t id;
   uint64_t edges;
   agile::TYPES type;
@@ -121,6 +128,13 @@ public:
     return a.src == b.src && a.dst == b.dst && a.type == b.type && a.srcType == b.srcType &&
            a.dstType == b.dstType;
   }
+
+  constexpr WMDEdge(WMDEdge&&) noexcept = default;
+  constexpr WMDEdge(const WMDEdge&) noexcept = default;
+  ~WMDEdge() = default;
+
+  constexpr WMDEdge& operator=(const WMDEdge&) noexcept = default;
+  constexpr WMDEdge& operator=(WMDEdge&&) noexcept = default;
 
   uint64_t src;
   uint64_t dst;
