@@ -190,6 +190,10 @@ public:
     return vertexEdgeOffsets[token];
   }
 
+  VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
+    return vertexEdgeOffsets[index];
+  }
+
   /**
    * @brief Sets the value of the vertex provided
    */
@@ -324,6 +328,7 @@ private:
   pando::Array<VertexData> vertexData;
   pando::Array<EdgeData> edgeData;
 };
+
 static_assert(graph_checker<LCSR<std::uint64_t, std::uint64_t>>::value);
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_GRAPHS_LOCAL_CSR_HPP_

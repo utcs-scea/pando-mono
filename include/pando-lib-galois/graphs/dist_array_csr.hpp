@@ -627,6 +627,10 @@ public:
     return vertex;
   }
 
+  VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
+    return index;
+  }
+
   /**
    * @brief get the index as input
    *

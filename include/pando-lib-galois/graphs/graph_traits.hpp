@@ -45,6 +45,7 @@ struct graph {
 
   /** Vertex Manipulation **/
   VertexTopologyID getTopologyID(VertexTokenID token);
+  VertexTopologyID getTopologyIDFromIndex(std::uint64_t index);
   VertexTokenID getTokenID(VertexTopologyID vertex);
   std::uint64_t getVertexIndex(VertexTopologyID vertex);
   pando::Place getLocalityVertex(VertexTopologyID vertex);
@@ -102,6 +103,9 @@ struct graph_checker {
   static Yes& getTopologyID(
       decltype(std::declval<G>().getTopologyID(std::declval<typename GT::VertexTokenID>()))*);
   static No& getTopologyID(...);
+  static Yes& getTopologyIDFromIndex(
+      decltype(std::declval<G>().getTopologyIDFromIndex(std::declval<std::uint64_t>()))*);
+  static No& getTopologyIDFromIndex(...);
   static Yes& getTokenID(
       decltype(std::declval<G>().getTokenID(std::declval<typename GT::VertexTopologyID>()))*);
   static No& getTokenID(...);
@@ -171,15 +175,16 @@ struct graph_checker {
       sizeof(size(0)) == sizeof(Yes) && sizeof(csize(0)) == sizeof(Yes) &&
       sizeof(sizeEdges(0)) == sizeof(Yes) && sizeof(csizeEdges(0)) == sizeof(Yes) &&
       sizeof(getNumEdges(0)) == sizeof(Yes) && sizeof(getTopologyID(0)) == sizeof(Yes) &&
-      sizeof(getTokenID(0)) == sizeof(Yes) && sizeof(getVertexIndex(0)) == sizeof(Yes) &&
-      sizeof(getLocalityVertex(0)) == sizeof(Yes) && sizeof(mintEdgeHandle(0)) == sizeof(Yes) &&
-      sizeof(getEdgeDst(0)) == sizeof(Yes) && sizeof(setData(0)) == sizeof(Yes) &&
-      sizeof(getData(0)) == sizeof(Yes) && sizeof(setEdgeData(0)) == sizeof(Yes) &&
-      sizeof(getEdgeData(0)) == sizeof(Yes) && sizeof(vertices(0)) == sizeof(Yes) &&
-      sizeof(edges(0)) == sizeof(Yes) && sizeof(vertexDataRange(0)) == sizeof(Yes) &&
-      sizeof(edgeDataRange(0)) == sizeof(Yes) && sizeof(addVertexTopologyOnly(0)) == sizeof(Yes) &&
-      sizeof(addVertex(0)) == sizeof(Yes) && sizeof(addEdgesTopologyOnly(0)) == sizeof(Yes) &&
-      sizeof(addEdges(0)) == sizeof(Yes) && sizeof(deleteEdges(0)) == sizeof(Yes);
+      sizeof(getTopologyIDFromIndex(0)) == sizeof(Yes) && sizeof(getTokenID(0)) == sizeof(Yes) &&
+      sizeof(getVertexIndex(0)) == sizeof(Yes) && sizeof(getLocalityVertex(0)) == sizeof(Yes) &&
+      sizeof(mintEdgeHandle(0)) == sizeof(Yes) && sizeof(getEdgeDst(0)) == sizeof(Yes) &&
+      sizeof(setData(0)) == sizeof(Yes) && sizeof(getData(0)) == sizeof(Yes) &&
+      sizeof(setEdgeData(0)) == sizeof(Yes) && sizeof(getEdgeData(0)) == sizeof(Yes) &&
+      sizeof(vertices(0)) == sizeof(Yes) && sizeof(edges(0)) == sizeof(Yes) &&
+      sizeof(vertexDataRange(0)) == sizeof(Yes) && sizeof(edgeDataRange(0)) == sizeof(Yes) &&
+      sizeof(addVertexTopologyOnly(0)) == sizeof(Yes) && sizeof(addVertex(0)) == sizeof(Yes) &&
+      sizeof(addEdgesTopologyOnly(0)) == sizeof(Yes) && sizeof(addEdges(0)) == sizeof(Yes) &&
+      sizeof(deleteEdges(0)) == sizeof(Yes);
 };
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_GRAPHS_GRAPH_TRAITS_HPP_
