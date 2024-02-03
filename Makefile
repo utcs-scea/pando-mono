@@ -179,19 +179,19 @@ run-tests-mpi:
 	. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet qthreads openmpi && \
 	cd ${CONTAINER_BUILD_DIR} && ctest --verbose | tee test.out && \
-	! grep -E "Failure" test.out
+	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-smp:
 	set -o pipefail && \
 	. /dependencies/spack/share/spack/setup-env.sh && \
 	spack load gasnet qthreads&& \
 	cd ${CONTAINER_BUILD_DIR}-smp && ctest --verbose | tee test.out && \
-	! grep -E "Failure" test.out
+	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-drv:
 	set -o pipefail && \
 	cd ${DRV_BUILD_DIR} && ctest --verbose | tee test.out && \
-	! grep -E "Failure" test.out
+	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests: run-tests-mpi
 
