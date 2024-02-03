@@ -62,7 +62,7 @@ template <typename EdgeType>
  */
 template <typename EdgeType>
 void buildEdgeCountToSend(
-    uint32_t numVirtualHosts, galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
+    std::uint64_t numVirtualHosts, galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
     pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
   PANDO_CHECK(sumArray.initialize(numVirtualHosts));
@@ -88,14 +88,14 @@ void buildEdgeCountToSend(
           pando::atomicFetchAdd(p, v.size(), std::memory_order_relaxed);
         }
       });
-
   labeledEdgeCounts = sumArray;
 }
 
 [[nodiscard]] pando::Status buildVirtualToPhysicalMapping(
     std::uint64_t numHosts,
     pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledVirtualCounts,
-    pando::GlobalPtr<pando::Array<std::uint64_t>> virtualToPhysicalMapping) {
+    pando::GlobalPtr<pando::Array<std::uint64_t>> virtualToPhysicalMapping,
+    pando::Array<std::uint64_t> numEdges) {
   pando::Status err;
 
   std::sort(labeledVirtualCounts.begin(), labeledVirtualCounts.end());
@@ -116,18 +116,24 @@ void buildEdgeCountToSend(
   for (std::uint64_t i = 0; i < numHosts; i++) {
     intermediateSort[i] =
         galois::Pair<std::uint64_t, std::uint64_t>{static_cast<std::uint64_t>(0), i};
+    numEdges[0] = 0;
   }
 
   for (auto it = labeledVirtualCounts.rbegin(); it != labeledVirtualCounts.rend(); it++) {
     galois::Pair<std::uint64_t, std::uint64_t> virtualPair = *it;
     // Find minimum
-    std::sort(intermediateSort.begin(), intermediateSort.end());
+    std::sort(intermediateSort.begin(), intermediateSort.end(),
+              [](const galois::Pair<std::uint64_t, std::uint64_t> a,
+                 const galois::Pair<std::uint64_t, std::uint64_t> b) {
+                return a.first < b.first;
+              });
     // Get Minimum
     galois::Pair<std::uint64_t, std::uint64_t> physicalPair = intermediateSort[0];
     // Store the id mappings
     vTPH[virtualPair.second] = physicalPair.second;
     // Update the count
     physicalPair.first += virtualPair.first;
+    numEdges[physicalPair.second] = physicalPair.first;
     // Store back
     intermediateSort[0] = physicalPair;
   }
@@ -200,7 +206,6 @@ template <typename EdgeType>
     }
     hashRef = hash;
   }
-
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
     pando::Vector<pando::Vector<EdgeType>> threadLocalEdges = *localEdges.get(i);
     for (pando::Vector<EdgeType> vec : threadLocalEdges) {
@@ -238,10 +243,11 @@ template <typename EdgeType>
 template <typename VertexType, typename EdgeType>
 void loadGraphFilePerThread(
     pando::NotificationHandle done, pando::Array<char> filename, uint64_t segmentsPerThread,
-    std::uint64_t numThreads, std::uint64_t threadID,
+    std::uint64_t numThreads, std::uint64_t threadID, bool isEdgelist,
     galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
     pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
-    galois::PerThreadVector<VertexType> localVertices) {
+    galois::PerThreadVector<VertexType> localVertices,
+    galois::DAccumulator<std::uint64_t> totVerts) {
   pando::Vector<char> line;
   PANDO_CHECK(line.initialize(0));
 
@@ -309,8 +315,9 @@ void loadGraphFilePerThread(
         continue;
       }
 
-      auto vfunc = [&localVertices](VertexType v) {
+      auto vfunc = [&localVertices, &totVerts](VertexType v) {
         PANDO_CHECK(localVertices.pushBack(v));
+        totVerts.add(1);
       };
       pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef =
           perThreadRename[threadID];
@@ -322,8 +329,11 @@ void loadGraphFilePerThread(
         PANDO_CHECK(insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), e));
         PANDO_CHECK(insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), inverseE));
       };
+      if (!isEdgelist)
+        galois::genParse<VertexType, EdgeType>(10, currentLine, vfunc, efunc);
+      else
+        galois::genParse<EdgeType>(2, currentLine, efunc);
 
-      galois::genParse<VertexType, EdgeType>(10, currentLine, vfunc, efunc);
       currentLine = nextLine;
     }
     delete[] segmentBuffer;

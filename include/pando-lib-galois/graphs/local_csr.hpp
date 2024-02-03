@@ -6,9 +6,10 @@
 
 #include <pando-rt/export.h>
 
+#include <pando-lib-galois/containers/hashtable.hpp>
+#include <pando-lib-galois/graphs/graph_traits.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/array.hpp>
-#include <pando-rt/containers/vector.hpp>
 #include <pando-rt/pando-rt.hpp>
 
 namespace galois {
@@ -35,8 +36,12 @@ struct Vertex {
 namespace galois {
 
 template <typename VertexType, typename EdgeType>
+class DistLocalCSR;
+
+template <typename VertexType, typename EdgeType>
 class LCSR {
 public:
+  friend DistLocalCSR<VertexType, EdgeType>;
   using VertexTokenID = std::uint64_t;
   using VertexTopologyID = pando::GlobalRef<Vertex>;
   using EdgeHandle = pando::GlobalRef<HalfEdge>;
@@ -62,37 +67,67 @@ public:
     return pando::Span<galois::HalfEdge>(v.edgeBegin, v1.edgeBegin - v.edgeBegin);
   }
 
-  /**
-   * @brief initializes the memory and objects for a Vector based CSR
-   */
-  [[nodiscard]] pando::Status initialize(pando::Vector<pando::Vector<std::uint64_t>> edgeListCSR) {
+  [[nodiscard]] pando::Status initializeTopologyMemory(std::uint64_t numVertices,
+                                                       std::uint64_t numEdges) {
     pando::Status err;
-    err = vertexEdgeOffsets.initialize(edgeListCSR.size() + 1);
+    err = vertexEdgeOffsets.initialize(numVertices + 1);
     if (err != pando::Status::Success) {
       return err;
     }
 
-    err = vertexData.initialize(edgeListCSR.size());
+    err = topologyToToken.initialize(numVertices);
     if (err != pando::Status::Success) {
       vertexEdgeOffsets.deinitialize();
       return err;
     }
-
-    std::uint64_t numEdges = 0;
-    for (pando::Vector<std::uint64_t> v : edgeListCSR) {
-      numEdges += v.size();
-    }
-    err = edgeData.initialize(numEdges);
+    err = tokenToTopology.initialize(numVertices);
     if (err != pando::Status::Success) {
       vertexEdgeOffsets.deinitialize();
-      vertexData.deinitialize();
+      topologyToToken.deinitialize();
       return err;
     }
     err = edgeDestinations.initialize(numEdges);
     if (err != pando::Status::Success) {
       vertexEdgeOffsets.deinitialize();
+      topologyToToken.deinitialize();
+      tokenToTopology.deinitialize();
+      return err;
+    }
+    return err;
+  }
+
+  [[nodiscard]] pando::Status initializeDataMemory(std::uint64_t numVertices,
+                                                   std::uint64_t numEdges) {
+    pando::Status err;
+    err = vertexData.initialize(numVertices);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    err = edgeData.initialize(numEdges);
+    if (err != pando::Status::Success) {
       vertexData.deinitialize();
-      edgeData.deinitialize();
+      return err;
+    }
+    return err;
+  }
+
+  /**
+   * @brief initializes the memory and objects for a Vector based CSR
+   */
+  [[nodiscard]] pando::Status initialize(pando::Vector<pando::Vector<std::uint64_t>> edgeListCSR) {
+    pando::Status err;
+    std::uint64_t numEdges = 0;
+    for (pando::Vector<std::uint64_t> v : edgeListCSR) {
+      numEdges += v.size();
+    }
+
+    err = this->initializeTopologyMemory(edgeListCSR.size(), numEdges);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    err = this->initializeDataMemory(edgeListCSR.size(), numEdges);
+    if (err != pando::Status::Success) {
+      this->deinitializeTopology();
       return err;
     }
 
@@ -111,13 +146,29 @@ public:
   }
 
   /**
+   * @brief Frees all memory and objects associated with the topology
+   */
+  void deinitializeTopology() {
+    vertexEdgeOffsets.deinitialize();
+    edgeDestinations.deinitialize();
+    topologyToToken.deinitialize();
+    tokenToTopology.deinitialize();
+  }
+
+  /**
+   * @brief Frees all memory and objects associated with the data
+   */
+  void deinitializeData() {
+    edgeData.deinitialize();
+    vertexData.deinitialize();
+  }
+
+  /**
    * @brief Frees all memory and objects associated with this structure
    */
   void deinitialize() {
-    vertexEdgeOffsets.deinitialize();
-    edgeDestinations.deinitialize();
-    vertexData.deinitialize();
-    edgeData.deinitialize();
+    deinitializeTopology();
+    deinitializeData();
   }
 
   /**
@@ -169,7 +220,7 @@ private:
   }
 
 public:
-  /**
+  /*
    * @brief gets the dense ID of the vertex in the local topology
    */
   std::uint64_t getVertexIndex(VertexTopologyID vertex) {
@@ -180,14 +231,18 @@ public:
    * @brief gets the dense ID of the vertex in the local topology
    */
   std::uint64_t getTokenID(VertexTopologyID vertex) {
-    return findIndex(vertex, vertexEdgeOffsets);
+    return topologyToToken[findIndex(vertex, vertexEdgeOffsets)];
   }
 
   /**
    * @brief gets the Topology ID from the given token;
    */
   VertexTopologyID getTopologyID(VertexTokenID token) {
-    return vertexEdgeOffsets[token];
+    pando::GlobalPtr<Vertex> ret;
+    if (!tokenToTopology.get(token, ret)) {
+      PANDO_ABORT("FAILURE TO FIND TOKENID");
+    }
+    return *ret;
   }
 
   VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
@@ -266,8 +321,7 @@ public:
   }
 
   pando::Place getLocalityVertex(VertexTopologyID vertex) {
-    (void)vertex;
-    return galois::localityOf(vertexEdgeOffsets.begin());
+    return galois::localityOf(&vertex);
   }
 
   bool isLocal(VertexTopologyID vertex) {
@@ -327,6 +381,8 @@ private:
   pando::Array<HalfEdge> edgeDestinations;
   pando::Array<VertexData> vertexData;
   pando::Array<EdgeData> edgeData;
+  pando::Array<std::uint64_t> topologyToToken;
+  galois::HashTable<std::uint64_t, pando::GlobalPtr<Vertex>> tokenToTopology;
 };
 
 static_assert(graph_checker<LCSR<std::uint64_t, std::uint64_t>>::value);

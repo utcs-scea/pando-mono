@@ -4,6 +4,5 @@
 pando_add_driver_test(test_schema test_schema.cpp)
 pando_add_driver_test(test_edge_exchange test_edge_exchange.cpp)
 
-if (NOT PANDO_RT_BACKEND STREQUAL "DRVX")
-  pando_add_driver_test(test_cusp_importer test_cusp_importer.cpp)
-endif()
+pando_add_driver_test(test_cusp_importer test_cusp_importer.cpp)
+pando_add_driver_test(test_wmd_importer test_wmd_importer.cpp)

@@ -34,6 +34,7 @@ void genParse(std::uint64_t numFields, const char* line, VFunc vfunc, EFunc efun
 
   if (isNode) {
     vfunc(V(tokens));
+    tokens.deinitialize();
     return;
   } else { // edge type
     agile::TYPES inverseEdgeType;
@@ -48,11 +49,21 @@ void genParse(std::uint64_t numFields, const char* line, VFunc vfunc, EFunc efun
     } else if (tokens[0] == galois::StringView("HasOrg")) {
       inverseEdgeType = agile::TYPES::ORG_IN;
     } else {
+      tokens.deinitialize();
       return;
     }
     efunc(E(tokens), inverseEdgeType);
+    tokens.deinitialize();
     return;
   }
+}
+
+// For edgelist
+template <typename E, typename EFunc>
+void genParse(std::uint64_t numFields, const char* line, EFunc efunc) {
+  pando::Vector<galois::StringView> tokens = splitLine(line, ' ', numFields);
+  efunc(E(tokens), agile::TYPES::NONE);
+  return;
 }
 
 template <typename V, typename E>

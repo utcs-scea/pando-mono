@@ -64,8 +64,10 @@ function(pando_add_driver_test TARGET SOURCEFILE)
   endif ()
 
   if (PANDO_RT_BACKEND STREQUAL "DRVX")
-    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/drvxrun.sh)
+    set(HTHREADS "-p 4")
+    set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/scripts/run-drv.sh)
   else ()
+    set(HTHREADS "")
     if (${GASNet_CONDUIT} STREQUAL "smp")
       set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
     elseif (${GASNet_CONDUIT} STREQUAL "mpi")
@@ -103,7 +105,7 @@ function(pando_add_driver_test TARGET SOURCEFILE)
   # use CROSSCOMPILING_EMULATOR to point to the driver script
   # it cannot be added to set_target_properties
   set_property(TARGET ${TARGET}
-    PROPERTY CROSSCOMPILING_EMULATOR '${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES}'
+    PROPERTY CROSSCOMPILING_EMULATOR '${DRIVER_SCRIPT} ${HTHREADS} -n ${NUM_PXNS} -c ${NUM_CORES}'
   )
 
   if (${PANDO_TEST_DISCOVERY})

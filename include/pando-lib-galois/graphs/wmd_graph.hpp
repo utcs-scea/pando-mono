@@ -16,7 +16,7 @@ namespace galois {
 class WMDVertex;
 class WMDEdge;
 typedef galois::DistArrayCSR<WMDVertex, WMDEdge> WMDGraph;
-const uint64_t NULL_GLOBAL_ID = std::numeric_limits<int64_t>::max();
+const uint64_t NULL_GLOBAL_ID = std::numeric_limits<uint64_t>::max();
 
 struct WMDVertex {
 public:
@@ -54,6 +54,14 @@ public:
   uint64_t id;
   uint64_t edges;
   agile::TYPES type;
+
+  friend bool operator==(const WMDVertex& lhs, const WMDVertex& rhs) noexcept {
+    return (lhs.id == rhs.id) && (lhs.edges == rhs.edges) && (lhs.type == rhs.type);
+  }
+
+  friend bool operator!=(const WMDVertex& lhs, const WMDVertex& rhs) noexcept {
+    return !(lhs == rhs);
+  }
 };
 
 struct WMDEdge {
@@ -69,6 +77,7 @@ public:
           agile::TYPES dstType_)
       : src(src_), dst(dst_), type(type_), srcType(srcType_), dstType(dstType_) {}
   explicit WMDEdge(pando::Vector<galois::StringView> tokens) {
+    galois::StringView token0(tokens[0]);
     galois::StringView token1(tokens[1]);
     galois::StringView token2(tokens[2]);
     galois::StringView token3(tokens[3]);
@@ -121,12 +130,22 @@ public:
       type = agile::TYPES::HASORG;
       srcType = agile::TYPES::PUBLICATION;
       dstType = agile::TYPES::TOPIC;
+    } else {
+      src = token0.getU64();
+      dst = token1.getU64();
+      type = agile::TYPES::NONE;
+      srcType = agile::TYPES::NONE;
+      dstType = agile::TYPES::NONE;
     }
   }
 
   friend bool operator==(const galois::WMDEdge& a, const galois::WMDEdge& b) {
     return a.src == b.src && a.dst == b.dst && a.type == b.type && a.srcType == b.srcType &&
            a.dstType == b.dstType;
+  }
+
+  friend bool operator!=(const galois::WMDEdge& a, const galois::WMDEdge& b) {
+    return !(a == b);
   }
 
   constexpr WMDEdge(WMDEdge&&) noexcept = default;

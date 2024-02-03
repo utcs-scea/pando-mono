@@ -2,9 +2,12 @@
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
 #include <gtest/gtest.h>
+#include <random>
 
 #include "pando-rt/export.h"
+#include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-lib-galois/containers/per_thread.hpp>
+#include <pando-lib-galois/graphs/wmd_graph.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/utility/dist_accumulator.hpp>
 #include <pando-rt/containers/vector.hpp>
@@ -455,4 +458,160 @@ TEST(PerThreadVector, ClearCompute) {
   work.deinitialize();
   wg.deinitialize();
   perThreadVec.deinitialize();
+}
+
+TEST(Vector, IntVectorOfVectorsUniform) {
+  pando::Vector<pando::Vector<std::uint64_t>> vec;
+  EXPECT_EQ(vec.initialize(0), pando::Status::Success);
+  uint64_t size = 2000;
+  galois::HashTable<uint64_t, uint64_t> table;
+  PANDO_CHECK(table.initialize(8));
+  uint64_t result = 0;
+
+  // Creates a vector of vectors of size [i,1]
+  for (uint64_t i = 0; i < size; i++) {
+    EXPECT_FALSE(fmap(table, get, i, result));
+    PANDO_CHECK(fmap(table, put, i, lift(vec, size)));
+    pando::Vector<std::uint64_t> v;
+    EXPECT_EQ(v.initialize(1), pando::Status::Success);
+    v[0] = i;
+    EXPECT_EQ(vec.pushBack(v), pando::Status::Success);
+  }
+
+  // Pushes back i+i to each vector
+  for (uint64_t i = 0; i < size; i++) {
+    EXPECT_TRUE(fmap(table, get, i, result));
+    pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
+    pando::Vector<uint64_t> vec2 = vec1;
+    EXPECT_EQ(vec2.get(0), i);
+    EXPECT_EQ(fmap(vec1, pushBack, (i + i)), pando::Status::Success);
+  }
+
+  // Validates the vectors
+  for (uint64_t i = 0; i < size; i++) {
+    pando::GlobalRef<pando::Vector<uint64_t>> vec1 = vec.get(i);
+    pando::Vector<uint64_t> vec2 = vec1;
+    EXPECT_EQ(vec2[1], i + i);
+    EXPECT_EQ(vec2[0], i);
+    EXPECT_EQ(vec2.size(), 2);
+    EXPECT_TRUE(fmap(table, get, i, result));
+    EXPECT_EQ(result, i);
+  }
+  EXPECT_EQ(vec.size(), size);
+  vec.deinitialize();
+}
+
+TEST(Vector, IntVectorOfVectorsRandom) {
+  pando::Vector<pando::Vector<std::uint64_t>> vec;
+  EXPECT_EQ(vec.initialize(0), pando::Status::Success);
+  uint64_t size = 2000;
+  galois::HashTable<uint64_t, uint64_t> table;
+  PANDO_CHECK(table.initialize(8));
+  uint64_t result = 0;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<int> distribution(0, size);
+  std::unordered_map<uint64_t, std::vector<uint64_t>> map;
+
+  // Creates a vector of vectors by pushing back `dst` to index `table[src]`
+  for (uint64_t i = 0; i < size * 4; i++) {
+    int src = distribution(gen);
+    int dst = distribution(gen);
+    if (map.find(src) == map.end()) {
+      std::vector<uint64_t> v;
+      v.push_back(dst);
+      map[src] = v;
+    } else {
+      map[src].push_back(dst);
+    }
+    if (fmap(table, get, src, result)) {
+      pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
+      pando::Vector<uint64_t> vec2 = vec1;
+      EXPECT_EQ(fmap(vec1, pushBack, dst), pando::Status::Success);
+    } else {
+      PANDO_CHECK(fmap(table, put, src, lift(vec, size)));
+      pando::Vector<std::uint64_t> v;
+      EXPECT_EQ(v.initialize(1), pando::Status::Success);
+      v[0] = dst;
+      EXPECT_EQ(vec.pushBack(v), pando::Status::Success);
+    }
+  }
+
+  // Validates the vectors
+  for (auto it = map.begin(); it != map.end(); ++it) {
+    EXPECT_TRUE(fmap(table, get, it->first, result));
+    pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
+    pando::Vector<uint64_t> vec2 = vec1;
+    std::sort(vec2.begin(), vec2.end());
+    std::vector<uint64_t> v = it->second;
+    std::sort(v.begin(), v.end());
+    EXPECT_EQ(lift(vec2, size), v.size());
+    for (uint64_t k = 0; k < lift(vec2, size); k++) {
+      EXPECT_EQ(vec2[k], v[k]);
+    }
+  }
+  table.deinitialize();
+  vec.deinitialize();
+}
+
+TEST(Vector, EdgelistVectorOfVectors) {
+  pando::Vector<pando::Vector<galois::WMDEdge>> vec;
+  EXPECT_EQ(vec.initialize(0), pando::Status::Success);
+  uint64_t size = 2000;
+  galois::HashTable<uint64_t, uint64_t> table;
+  PANDO_CHECK(table.initialize(8));
+  uint64_t result = 0;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<int> distribution(0, size);
+  std::unordered_map<uint64_t, std::vector<uint64_t>> map;
+
+  // Creates a vector of vectors of edges: src->dst
+  for (uint64_t i = 0; i < size * 4; i++) {
+    int src = distribution(gen);
+    int dst = distribution(gen);
+    if (map.find(src) == map.end()) {
+      std::vector<uint64_t> v;
+      v.push_back(dst);
+      map[src] = v;
+    } else {
+      map[src].push_back(dst);
+    }
+
+    if (fmap(table, get, src, result)) {
+      pando::GlobalRef<pando::Vector<galois::WMDEdge>> vec1 = fmap(vec, get, result);
+      pando::Vector<galois::WMDEdge> vec2 = vec1;
+      galois::WMDEdge edge(src, dst, agile::TYPES::NONE, agile::TYPES::NONE, agile::TYPES::NONE);
+      EXPECT_EQ(fmap(vec1, pushBack, edge), pando::Status::Success);
+    } else {
+      PANDO_CHECK(fmap(table, put, src, lift(vec, size)));
+      pando::Vector<galois::WMDEdge> v;
+      EXPECT_EQ(v.initialize(1), pando::Status::Success);
+      galois::WMDEdge edge(src, dst, agile::TYPES::NONE, agile::TYPES::NONE, agile::TYPES::NONE);
+      v[0] = edge;
+      EXPECT_EQ(vec.pushBack(v), pando::Status::Success);
+    }
+  }
+
+  // Validates the vectors
+  for (auto it = map.begin(); it != map.end(); ++it) {
+    EXPECT_TRUE(fmap(table, get, it->first, result));
+    pando::GlobalRef<pando::Vector<galois::WMDEdge>> vec1 = fmap(vec, get, result);
+    pando::Vector<galois::WMDEdge> vec2 = vec1;
+    std::vector<uint64_t> v = it->second;
+    EXPECT_EQ(lift(vec2, size), v.size());
+    for (uint64_t k = 0; k < lift(vec2, size); k++) {
+      galois::WMDEdge edge = vec2[k];
+      bool found = false;
+      for (auto it2 = v.begin(); it2 != v.end(); ++it2) {
+        if (edge.src == it->first && edge.dst == *it2) {
+          found = true;
+          break;
+        }
+      }
+      EXPECT_TRUE(found);
+    }
+  }
+  table.deinitialize();
+  vec.deinitialize();
 }

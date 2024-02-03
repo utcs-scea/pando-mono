@@ -65,6 +65,12 @@ public:
     return m_items[i];
   }
 
+  template <typename Y>
+  pando::GlobalRef<T> getFromPtr(pando::GlobalPtr<Y> ptr) {
+    std::uint64_t i = static_cast<std::uint64_t>(pando::localityOf(ptr).node.id);
+    return this->get(i);
+  }
+
   iterator begin() noexcept {
     return iterator(m_items, 0);
   }
