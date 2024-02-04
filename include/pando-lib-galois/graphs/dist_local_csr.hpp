@@ -292,6 +292,21 @@ public:
     }
   };
 
+private:
+  template <typename T>
+  pando::GlobalRef<CSR> getCSR(pando::GlobalRef<T> ref) {
+    return arrayOfCSRs.getFromPtr(&ref);
+  }
+
+  EdgeHandle halfEdgeBegin(VertexTopologyID vertex) {
+    return fmap(getCSR(vertex), halfEdgeBegin, vertex);
+  }
+
+  EdgeHandle halfEdgeEnd(VertexTopologyID vertex) {
+    return *static_cast<Vertex>(*(&vertex + 1)).edgeBegin;
+  }
+
+public:
   constexpr DistLocalCSR() noexcept = default;
   constexpr DistLocalCSR(DistLocalCSR&&) noexcept = default;
   constexpr DistLocalCSR(const DistLocalCSR&) noexcept = default;
@@ -300,16 +315,127 @@ public:
   constexpr DistLocalCSR& operator=(const DistLocalCSR&) noexcept = default;
   constexpr DistLocalCSR& operator=(DistLocalCSR&&) noexcept = default;
 
+  /** Official Graph APIS **/
+  void deinitialize() {
+    for (CSR csr : arrayOfCSRs) {
+      csr.deinitialize();
+    }
+    arrayOfCSRs.deinitialize();
+    virtualToPhysicalMap.deinitialize();
+  }
+
+  /** size stuff **/
+  std::uint64_t size() noexcept {
+    return numVertices;
+  }
+  std::uint64_t size() const noexcept {
+    return numVertices;
+  }
+  std::uint64_t sizeEdges() noexcept {
+    return numEdges;
+  }
+  std::uint64_t sizeEdges() const noexcept {
+    return numEdges;
+  }
+  std::uint64_t getNumEdges(VertexTopologyID vertex) {
+    return &halfEdgeEnd(vertex) - &halfEdgeBegin(vertex);
+  }
+
+  /** Vertex Manipulation **/
+  VertexTopologyID getTopologyID(VertexTokenID tid) {
+    std::uint64_t virtualHostID = tid % this->numVHosts;
+    std::uint64_t physicalHost = virtualToPhysicalMap[virtualHostID];
+    return fmap(arrayOfCSRs.get(physicalHost), getTopologyID, tid);
+  }
+  VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
+    std::uint64_t hostNum = 0;
+    std::uint64_t hostSize;
+    for (; index > (hostSize = localSize(hostNum)); hostNum++, index -= hostSize) {}
+    return fmap(arrayOfCSRs.get(hostNum), getTopologyIDFromIndex, index);
+  }
+  VertexTokenID getTokenID(VertexTopologyID tid) {
+    std::uint64_t hostNum = static_cast<std::uint64_t>(galois::localityOf(&tid).node.id);
+    return fmap(arrayOfCSRs.get(hostNum), getTokenID, tid);
+  }
+  std::uint64_t getVertexIndex(VertexTopologyID vertex) {
+    std::uint64_t vid = fmap(getCSR(vertex), getVertexIndex, vertex);
+    for (std::uint64_t i = 0; i < static_cast<std::uint64_t>(getLocalityVertex(vertex).node.id);
+         i++) {
+      vid += lift(arrayOfCSRs.get(i), size);
+    }
+    return vid;
+  }
+  pando::Place getLocalityVertex(VertexTopologyID vertex) {
+    // All edges must be local to the vertex
+    return galois::localityOf(&vertex);
+  }
+
+  /** Edge Manipulation **/
+  EdgeHandle mintEdgeHandle(VertexTopologyID vertex, std::uint64_t off) {
+    return *(&halfEdgeBegin(vertex) + off);
+  }
+  VertexTopologyID getEdgeDst(EdgeHandle eh) {
+    HalfEdge e = eh;
+    return *e.dst;
+  }
+
+  /** Data Manipulations **/
+  void setData(VertexTopologyID vertex, VertexData data) {
+    fmapVoid(getCSR(vertex), setData, vertex, data);
+  }
+  pando::GlobalRef<VertexData> getData(VertexTopologyID vertex) {
+    return fmap(getCSR(vertex), getData, vertex);
+  }
+  void setEdgeData(EdgeHandle eh, EdgeData data) {
+    fmapVoid(getCSR(eh), setEdgeData, eh, data);
+  }
+  pando::GlobalRef<EdgeData> getEdgeData(EdgeHandle eh) {
+    return fmap(getCSR(eh), getEdgeData, eh);
+  }
+
+  /** Ranges **/
+  VertexRange vertices() {
+    return VertexRange{arrayOfCSRs, *lift(arrayOfCSRs.get(0), vertexEdgeOffsets.begin),
+                       *(lift(arrayOfCSRs.get(arrayOfCSRs.size() - 1), vertexEdgeOffsets.end) - 1),
+                       numVertices};
+  }
   EdgeRange edges(pando::GlobalRef<galois::Vertex> vertex) {
     pando::GlobalPtr<Vertex> vPtr = &vertex;
     Vertex v = *vPtr;
     Vertex v1 = *(vPtr + 1);
     return pando::Span<galois::HalfEdge>(v.edgeBegin, v1.edgeBegin - v.edgeBegin);
   }
+  VertexDataRange vertexDataRange() noexcept {
+    return VertexDataRange{arrayOfCSRs, lift(arrayOfCSRs.get(0), vertexData.begin),
+                           lift(arrayOfCSRs.get(arrayOfCSRs.size() - 1), vertexData.end),
+                           numVertices};
+  }
+  EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
+    return fmap(getCSR(vertex), edgeDataRange, vertex);
+  }
+
+  /** Topology Modifications **/
+  VertexTopologyID addVertexTopologyOnly(VertexTokenID token) {
+    return vertices().end();
+  }
+  VertexTopologyID addVertex(VertexTokenID token, VertexData data) {
+    return vertices().end();
+  }
+  pando::Status addEdgesTopologyOnly(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts) {
+    return addEdges(src, dsts, pando::Vector<EdgeData>());
+  }
+  pando::Status addEdges(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts,
+                         pando::Vector<EdgeData> data) {
+    return pando::Status::Error;
+  }
+  pando::Status deleteEdges(VertexTopologyID src, pando::Vector<EdgeHandle> edges) {
+    return pando::Status::Error;
+  }
 
   /**
    * @brief This initializer is used to deal with the outputs of partitioning
    */
+
   pando::Status initializeAfterGather(
       galois::PerHost<pando::Vector<VertexData>> vertexData, std::uint64_t numVertices,
       galois::PerHost<pando::Vector<pando::Vector<EdgeData>>> edgeData,
@@ -364,7 +490,9 @@ public:
                              notifier.getHandle(i));
       PANDO_CHECK(err);
     }
-
+    for (std::uint64_t i = 0; i < numEdges.size(); i++) {
+      this->numEdges += numEdges[i];
+    }
     notifier.wait();
     notifier.reset();
 
@@ -664,58 +792,6 @@ public:
   }
 
   /**
-   * @brief Frees all memory and objects associated with this structure
-   */
-  void deinitialize() {
-    for (CSR csr : arrayOfCSRs) {
-      csr.deinitialize();
-    }
-    arrayOfCSRs.deinitialize();
-    virtualToPhysicalMap.deinitialize();
-  }
-
-private:
-  template <typename T>
-  pando::GlobalRef<CSR> getCSR(pando::GlobalRef<T> ref) {
-    return arrayOfCSRs.getFromPtr(&ref);
-  }
-
-  EdgeHandle halfEdgeBegin(VertexTopologyID vertex) {
-    return fmap(getCSR(vertex), halfEdgeBegin, vertex);
-  }
-
-  EdgeHandle halfEdgeEnd(VertexTopologyID vertex) {
-    return *static_cast<Vertex>(*(&vertex + 1)).edgeBegin;
-  }
-
-public:
-  /**
-   * @brief get topology ID from Token ID
-   */
-  VertexTopologyID getTopologyID(VertexTokenID tid) {
-    std::uint64_t virtualHostID = tid % this->numVHosts;
-    std::uint64_t physicalHost = virtualToPhysicalMap[virtualHostID];
-    return fmap(arrayOfCSRs.get(physicalHost), getTopologyID, tid);
-  }
-
-  /**
-   * @brief get tokenId from TopologyID
-   */
-  VertexTokenID getTokenID(VertexTopologyID tid) {
-    std::uint64_t hostNum = static_cast<std::uint64_t>(galois::localityOf(&tid).node.id);
-    return fmap(arrayOfCSRs.get(hostNum), getTokenID, tid);
-  }
-
-  std::uint64_t getVertexIndex(VertexTopologyID vertex) {
-    std::uint64_t vid = fmap(getCSR(vertex), getVertexIndex, vertex);
-    for (std::uint64_t i = 0; i < static_cast<std::uint64_t>(getLocalityVertex(vertex).node.id);
-         i++) {
-      vid += lift(arrayOfCSRs.get(i), size);
-    }
-    return vid;
-  }
-
-  /**
    * @brief get vertex local dense ID
    */
   std::uint64_t getVertexLocalIndex(VertexTopologyID vertex) {
@@ -724,49 +800,11 @@ public:
   }
 
   /**
-   * @brief gives the number of vertices
+   * @brief gives the number of edges
    */
-  std::uint64_t size() noexcept {
-    return numVertices;
-  }
-
-  /**
-   * @brief gives the number of vertices
-   */
-  std::uint64_t size() const noexcept {
-    return numVertices;
-  }
 
   std::uint64_t localSize(std::uint32_t host) noexcept {
     return lift(arrayOfCSRs.get(host), size);
-  }
-
-  /**
-   * @brief Sets the value of the vertex provided
-   */
-  void setData(VertexTopologyID vertex, VertexData data) {
-    fmapVoid(getCSR(vertex), setData, vertex, data);
-  }
-
-  /**
-   * @brief gets the value of the vertex provided
-   */
-  pando::GlobalRef<VertexData> getData(VertexTopologyID vertex) {
-    return fmap(getCSR(vertex), getData, vertex);
-  }
-
-  /**
-   * @brief gets an edgeHandle from a vertex and offset
-   */
-  EdgeHandle mintEdgeHandle(VertexTopologyID vertex, std::uint64_t off) {
-    return *(&halfEdgeBegin(vertex) + off);
-  }
-
-  /**
-   * @brief Sets the value of the edge provided
-   */
-  void setEdgeData(EdgeHandle eh, EdgeData data) {
-    fmapVoid(getCSR(eh), setEdgeData, eh, data);
   }
 
   /**
@@ -779,30 +817,8 @@ public:
   /**
    * @brief gets the reference to the vertex provided
    */
-  pando::GlobalRef<EdgeData> getEdgeData(EdgeHandle eh) {
-    return fmap(getCSR(eh), getEdgeData, eh);
-  }
-
-  /**
-   * @brief gets the reference to the vertex provided
-   */
   pando::GlobalRef<EdgeData> getEdgeData(VertexTopologyID vertex, std::uint64_t off) {
     return getEdgeData(mintEdgeHandle(vertex, off));
-  }
-
-  /**
-   * @brief get the number of edges for the vertex provided
-   */
-  std::uint64_t getNumEdges(VertexTopologyID vertex) {
-    return &halfEdgeEnd(vertex) - &halfEdgeBegin(vertex);
-  }
-
-  /**
-   * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
-   */
-  VertexTopologyID getEdgeDst(EdgeHandle eh) {
-    HalfEdge e = eh;
-    return *e.dst;
   }
 
   /**
@@ -812,42 +828,12 @@ public:
     return getEdgeDst(mintEdgeHandle(vertex, off));
   }
 
-  pando::Place getLocalityVertex(VertexTopologyID vertex) {
-    // All edges must be local to the vertex
-    return galois::localityOf(&vertex);
-  }
-
   bool isLocal(VertexTopologyID vertex) {
     return getLocalityVertex(vertex).node == pando::getCurrentPlace().node;
   }
 
   bool isOwned(VertexTopologyID vertex) {
     return isLocal(vertex);
-  }
-
-  /**
-   * @brief Get the Vertices range
-   */
-  VertexRange vertices() {
-    return VertexRange{arrayOfCSRs, *lift(arrayOfCSRs.get(0), vertexEdgeOffsets.begin),
-                       *(lift(arrayOfCSRs.get(arrayOfCSRs.size() - 1), vertexEdgeOffsets.end) - 1),
-                       numVertices};
-  }
-
-  /**:
-   * @brief Get the VertexDataRange for the graph
-   */
-  VertexDataRange vertexDataRange() noexcept {
-    return VertexDataRange{arrayOfCSRs, lift(arrayOfCSRs.get(0), vertexData.begin),
-                           lift(arrayOfCSRs.get(arrayOfCSRs.size() - 1), vertexData.end),
-                           numVertices};
-  }
-
-  /**
-   * @brief Get the EdgeDataRange for the graph
-   */
-  EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
-    return fmap(getCSR(vertex), edgeDataRange, vertex);
   }
 
   /**
@@ -861,9 +847,14 @@ public:
 private:
   galois::PerHost<CSR> arrayOfCSRs;
   std::uint64_t numVertices;
+  std::uint64_t numEdges;
   std::uint64_t numVHosts;
   pando::Array<std::uint64_t> virtualToPhysicalMap;
 };
+
+static_assert(graph_checker<DistLocalCSR<std::uint64_t, std::uint64_t>>::value);
+static_assert(graph_checker<DistLocalCSR<WMDVertex, WMDEdge>>::value);
+
 } // namespace galois
 
 #endif // PANDO_LIB_GALOIS_GRAPHS_DIST_LOCAL_CSR_HPP_

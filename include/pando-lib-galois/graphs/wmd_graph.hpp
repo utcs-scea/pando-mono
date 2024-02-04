@@ -7,6 +7,7 @@
 #include <limits>
 
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
+#include <pando-lib-galois/graphs/local_csr.hpp>
 #include <pando-lib-galois/utility/agile_schema.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-lib-galois/utility/string_view.hpp>
@@ -161,6 +162,9 @@ public:
   agile::TYPES srcType;
   agile::TYPES dstType;
 };
+
+static_assert(graph_checker<DistArrayCSR<WMDVertex, WMDEdge>>::value);
+static_assert(graph_checker<LCSR<WMDVertex, WMDEdge>>::value);
 
 } // namespace galois
 

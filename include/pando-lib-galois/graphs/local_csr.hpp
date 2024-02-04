@@ -302,7 +302,7 @@ public:
    * @brief get the number of edges for the vertex provided
    */
   std::uint64_t getNumEdges(VertexTopologyID vertex) {
-    return halfEdgeEnd(vertex) - halfEdgeBegin(vertex);
+    return &halfEdgeEnd(vertex) - &halfEdgeBegin(vertex);
   }
 
   /**
@@ -386,5 +386,6 @@ private:
 };
 
 static_assert(graph_checker<LCSR<std::uint64_t, std::uint64_t>>::value);
+
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_GRAPHS_LOCAL_CSR_HPP_
