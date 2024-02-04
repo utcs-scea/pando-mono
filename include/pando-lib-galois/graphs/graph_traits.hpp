@@ -11,6 +11,16 @@
 
 namespace galois {
 
+template <typename EdgeType>
+struct GenericEdge {
+  GenericEdge() = default;
+  GenericEdge(uint64_t src_, uint64_t dst_, EdgeType data_) : src(src_), dst(dst_), data(data_) {}
+
+  uint64_t src;
+  uint64_t dst;
+  EdgeType data;
+};
+
 /**
  * @brief Defines the common interface for something to be considered a graph
  */

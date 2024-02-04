@@ -68,25 +68,26 @@ public:
   }
 
   [[nodiscard]] pando::Status initializeTopologyMemory(std::uint64_t numVertices,
-                                                       std::uint64_t numEdges) {
+                                                       std::uint64_t numEdges, pando::Place place,
+                                                       pando::MemoryType memType) {
     pando::Status err;
-    err = vertexEdgeOffsets.initialize(numVertices + 1);
+    err = vertexEdgeOffsets.initialize(numVertices + 1, place, memType);
     if (err != pando::Status::Success) {
       return err;
     }
 
-    err = topologyToToken.initialize(numVertices);
+    err = topologyToToken.initialize(numVertices, place, memType);
     if (err != pando::Status::Success) {
       vertexEdgeOffsets.deinitialize();
       return err;
     }
-    err = tokenToTopology.initialize(numVertices);
+    err = tokenToTopology.initialize(numVertices, place, memType);
     if (err != pando::Status::Success) {
       vertexEdgeOffsets.deinitialize();
       topologyToToken.deinitialize();
       return err;
     }
-    err = edgeDestinations.initialize(numEdges);
+    err = edgeDestinations.initialize(numEdges, place, memType);
     if (err != pando::Status::Success) {
       vertexEdgeOffsets.deinitialize();
       topologyToToken.deinitialize();
@@ -97,18 +98,31 @@ public:
   }
 
   [[nodiscard]] pando::Status initializeDataMemory(std::uint64_t numVertices,
-                                                   std::uint64_t numEdges) {
+                                                   std::uint64_t numEdges, pando::Place place,
+                                                   pando::MemoryType memType) {
     pando::Status err;
-    err = vertexData.initialize(numVertices);
+    err = vertexData.initialize(numVertices, place, memType);
     if (err != pando::Status::Success) {
       return err;
     }
-    err = edgeData.initialize(numEdges);
+    err = edgeData.initialize(numEdges, place, memType);
     if (err != pando::Status::Success) {
       vertexData.deinitialize();
       return err;
     }
     return err;
+  }
+
+  [[nodiscard]] pando::Status initializeTopologyMemory(std::uint64_t numVertices,
+                                                       std::uint64_t numEdges) {
+    return initializeTopologyMemory(numVertices, numEdges, pando::getCurrentPlace(),
+                                    pando::MemoryType::Main);
+  }
+
+  [[nodiscard]] pando::Status initializeDataMemory(std::uint64_t numVertices,
+                                                   std::uint64_t numEdges) {
+    return initializeDataMemory(numVertices, numEdges, pando::getCurrentPlace(),
+                                pando::MemoryType::Main);
   }
 
   /**
@@ -325,7 +339,7 @@ public:
   }
 
   bool isLocal(VertexTopologyID vertex) {
-    return getLocalityVertex(vertex).node == pando::getCurrentPlace().node;
+    return getLocalityVertex(vertex).node.id == pando::getCurrentPlace().node.id;
   }
 
   bool isOwned(VertexTopologyID vertex) {

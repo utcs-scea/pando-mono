@@ -192,6 +192,76 @@ public:
     }
   }
 
+  /**
+   * @brief Returns the global index that elements for host start
+   *
+   * @param host passing in `hosts + 1` is legal
+   * @param index passed by reference will hold the global index
+   */
+  [[nodiscard]] pando::Status hostIndexOffset(uint64_t host, uint64_t& index) {
+    if (!indices_computed) {
+      PANDO_CHECK_RETURN(computeIndices());
+    }
+    index = (host == 0) ? 0 : m_indices[host * cores * threads - 1];
+    return pando::Status::Success;
+  }
+
+  /**
+   * @brief Returns the global index that elements for the local host start
+   *
+   * @param index passed by reference will hold the global index
+   */
+  [[nodiscard]] pando::Status currentHostIndexOffset(uint64_t& elts) {
+    return hostIndexOffset(pando::getCurrentNode().id, elts);
+  }
+
+  /**
+   * @brief Returns the total number of elements on a specific host
+   *
+   * @param host
+   * @param elts passed by reference will hold the number of elements
+   */
+  [[nodiscard]] pando::Status elementsOnHost(uint64_t host, uint64_t& elts) {
+    std::uint64_t start;
+    PANDO_CHECK_RETURN(hostIndexOffset(host, start));
+    std::uint64_t end;
+    PANDO_CHECK_RETURN(hostIndexOffset(host + 1, end));
+    elts = end - start;
+    return pando::Status::Success;
+  }
+
+  /**
+   * @brief Returns the total number of elements on the local host
+   *
+   * @param elts passed by reference will hold the number of elements
+   */
+  [[nodiscard]] pando::Status localElements(uint64_t& elts) {
+    return elementsOnHost(pando::getCurrentNode().id, elts);
+  }
+
+  /**
+   * @brief Returns the global start index of the local thread vector
+   *
+   * @param thread
+   * @param index passed by reference will hold the start index for thread
+   */
+  [[nodiscard]] pando::Status indexOnThread(uint64_t thread, uint64_t& index) {
+    if (!indices_computed) {
+      PANDO_CHECK_RETURN(computeIndices());
+    }
+    index = (thread == 0) ? 0 : m_indices[thread - 1];
+    return pando::Status::Success;
+  }
+
+  /**
+   * @brief Returns the global start index of the current local thread vector
+   *
+   * @param index passed by reference will hold the start index for the current thread
+   */
+  [[nodiscard]] pando::Status getLocalIndex(uint64_t& index) {
+    return indexOnThread(getLocalVectorID(), index);
+  }
+
   // TODO(AdityaAtulTewari) Whenever it is time for performance counters they need to be encoded
   // properly
   /**
@@ -204,13 +274,10 @@ public:
    * @param to this is the DistArray we are copying to
    */
   [[nodiscard]] pando::Status assign(galois::DistArray<T>& to) {
-    pando::Status err;
     if (!indices_computed) {
-      err = computeIndices();
-      PANDO_CHECK_RETURN(err);
+      PANDO_CHECK_RETURN(computeIndices());
     }
-    err = to.initialize(sizeAll());
-    PANDO_CHECK_RETURN(err);
+    PANDO_CHECK_RETURN(to.initialize(sizeAll()));
     galois::onEach(
         AssignState<galois::DistArray>(*this, to),
         +[](AssignState<galois::DistArray>& state, uint64_t i, uint64_t) {

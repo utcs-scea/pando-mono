@@ -91,6 +91,56 @@ void buildEdgeCountToSend(
   labeledEdgeCounts = sumArray;
 }
 
+template <typename EdgeType>
+struct CountState {
+  CountState() = default;
+  CountState(pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray_,
+             galois::WaitGroup::HandleType wgh_)
+      : sumArray(sumArray_), wgh(wgh_) {}
+
+  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
+  galois::WaitGroup::HandleType wgh;
+};
+
+/**
+ * @brief fills out the metadata for the VirtualToPhysical Host mapping.
+ */
+template <typename EdgeType>
+void buildEdgeCountToSend(
+    std::uint64_t numVirtualHosts, galois::PerThreadVector<EdgeType> localEdges,
+    pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
+  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
+  PANDO_CHECK(sumArray.initialize(numVirtualHosts));
+
+  for (std::uint64_t i = 0; i < numVirtualHosts; i++) {
+    galois::Pair<std::uint64_t, std::uint64_t> p{0, i};
+    sumArray[i] = p;
+  }
+  galois::WaitGroup wg{};
+  PANDO_CHECK(wg.initialize(0));
+
+  using UPair = galois::Pair<std::uint64_t, std::uint64_t>;
+  const uint64_t pairOffset = offsetof(UPair, first);
+
+  galois::doAll(
+      wg.getHandle(), CountState<EdgeType>(sumArray, wg.getHandle()), localEdges,
+      +[](CountState<EdgeType>& state, pando::Vector<EdgeType> localEdges) {
+        galois::doAll(
+            state.wgh, state.sumArray, localEdges,
+            +[](pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts,
+                EdgeType localEdge) {
+              pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
+                  static_cast<pando::GlobalPtr<void>>(&counts[localEdge.src % counts.size()]));
+              toAdd += pairOffset;
+              pando::GlobalPtr<std::uint64_t> p = static_cast<pando::GlobalPtr<std::uint64_t>>(
+                  static_cast<pando::GlobalPtr<void>>(toAdd));
+              pando::atomicFetchAdd(p, 1, std::memory_order_relaxed);
+            });
+      });
+  PANDO_CHECK(wg.wait());
+  labeledEdgeCounts = sumArray;
+}
+
 [[nodiscard]] pando::Status buildVirtualToPhysicalMapping(
     std::uint64_t numHosts,
     pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledVirtualCounts,
@@ -170,6 +220,39 @@ template <typename EdgeType>
         if (err != pando::Status::Success) {
           return err;
         }
+      }
+    }
+  }
+  return pando::Status::Success;
+}
+
+/**
+ * @brief Serially build the edgeLists
+ */
+template <typename EdgeType>
+[[nodiscard]] pando::Status partitionEdgesSerially(
+    galois::PerThreadVector<EdgeType> localEdges,
+    pando::Array<std::uint64_t> virtualToPhysicalMapping,
+    galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
+    galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
+  pando::Status err;
+  for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
+    galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
+    err = hash.initialize(0);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    hashRef = hash;
+  }
+  for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+    pando::Vector<EdgeType> threadLocalEdges = *localEdges.get(i);
+    for (EdgeType edge : threadLocalEdges) {
+      auto tgtHost = getPhysical(edge.src, virtualToPhysicalMapping);
+      pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> edges =
+          partitionedEdges.get(tgtHost);
+      err = insertLocalEdgesPerThread(renamePerHost.get(tgtHost), edges, edge);
+      if (err != pando::Status::Success) {
+        return err;
       }
     }
   }
@@ -295,6 +378,82 @@ void loadGraphFilePerThread(
   graphFile.close();
 
   done.notify();
+}
+
+template <typename EdgeType>
+struct ImportState {
+  ImportState() = default;
+  ImportState(galois::EdgeParser<EdgeType> parser_, galois::PerThreadVector<EdgeType> localEdges_)
+      : parser(parser_), localEdges(localEdges_) {}
+
+  galois::EdgeParser<EdgeType> parser;
+  galois::PerThreadVector<EdgeType> localEdges;
+};
+
+template <typename EdgeType>
+void loadGraphFile(ImportState<EdgeType>& state, uint64_t segmentID, uint64_t numSegments) {
+  galois::ifstream graphFile;
+  PANDO_CHECK(graphFile.open(state.parser.filename));
+  uint64_t fileSize = graphFile.size();
+  uint64_t bytesPerSegment = fileSize / numSegments;
+  uint64_t start = segmentID * bytesPerSegment;
+  uint64_t end = start + bytesPerSegment;
+
+  pando::Vector<char> line;
+  PANDO_CHECK(line.initialize(0));
+
+  // check for partial line at start
+  if (segmentID != 0) {
+    graphFile.seekg(start - 1);
+    graphFile.getline(line, '\n');
+
+    // if not at start of a line, discard partial line
+    if (!line.empty())
+      start += line.size();
+  }
+  // check for partial line at end
+  line.deinitialize();
+  PANDO_CHECK(line.initialize(0));
+  if (segmentID != numSegments - 1) {
+    graphFile.seekg(end - 1);
+    graphFile.getline(line, '\n');
+
+    // if not at end of a line, include next line
+    if (!line.empty())
+      end += line.size();
+  } else { // last locale processes to end of file
+    end = fileSize;
+  }
+  line.deinitialize();
+  graphFile.seekg(start);
+
+  // load segment into memory
+  uint64_t segmentLength = end - start;
+  char* segmentBuffer = new char[segmentLength];
+  graphFile.read(segmentBuffer, segmentLength);
+
+  char* currentLine = segmentBuffer;
+  char* endLine = currentLine + segmentLength;
+
+  while (currentLine < endLine) {
+    char* nextLine = std::strchr(currentLine, '\n') + 1;
+
+    // skip comments
+    if (currentLine[0] == '#') {
+      currentLine = nextLine;
+      continue;
+    }
+    ParsedEdges<EdgeType> parsed = state.parser.parser(currentLine);
+    if (parsed.isEdge) {
+      PANDO_CHECK(state.localEdges.pushBack(parsed.edge1));
+      if (parsed.has2Edges) {
+        PANDO_CHECK(state.localEdges.pushBack(parsed.edge2));
+      }
+    }
+    currentLine = nextLine;
+  }
+  delete[] segmentBuffer;
+  graphFile.close();
 }
 
 } // namespace galois::internal

@@ -128,6 +128,30 @@ private:
   pando::GlobalPtr<pando::Vector<pando::Array<char>>> files_;
 };
 
+template <typename EdgeType>
+struct ParsedEdges {
+  ParsedEdges() : isEdge(false), has2Edges(false) {}
+  explicit ParsedEdges(EdgeType edge_) : isEdge(true), has2Edges(false), edge1(edge_) {}
+  explicit ParsedEdges(EdgeType edge1_, EdgeType edge2_)
+      : isEdge(true), has2Edges(true), edge1(edge1_), edge2(edge2_) {}
+
+  bool isEdge;
+  bool has2Edges;
+  EdgeType edge1;
+  EdgeType edge2;
+};
+
+template <typename EdgeType>
+class EdgeParser {
+public:
+  EdgeParser() = default;
+  EdgeParser(pando::Array<char> filename_, ParsedEdges<EdgeType> (*edgeParser_)(const char*))
+      : filename(filename_), parser(edgeParser_) {}
+
+  pando::Array<char> filename;
+  ParsedEdges<EdgeType> (*parser)(const char*);
+};
+
 } // namespace galois
 
 #endif // PANDO_LIB_GALOIS_IMPORT_SCHEMA_HPP_
