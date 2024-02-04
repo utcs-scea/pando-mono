@@ -855,7 +855,7 @@ public:
    */
   pando::GlobalRef<CSR> getLocalCSR() {
     std::uint64_t nodeIdx = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-    return arrayOfCSRs[nodeIdx];
+    return arrayOfCSRs.get(nodeIdx);
   }
 
 private:
