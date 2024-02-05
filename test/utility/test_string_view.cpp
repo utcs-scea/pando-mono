@@ -99,3 +99,31 @@ TEST(StringView, Parse) {
   EXPECT_EQ(eighty_million.getU64(), 85738230);
   EXPECT_EQ(two_billion.getU64(), 2035738230);
 }
+
+TEST(StringView, ParseDouble) {
+  galois::StringView zero("0.1");
+  galois::StringView one("1.2");
+  galois::StringView twelve("-112.78");
+  galois::StringView one_hundred_two("-0.102");
+  galois::StringView five_million("573.8230");
+  galois::StringView eighty_million("85738230");
+  galois::StringView two_billion("203573823.0");
+
+  EXPECT_NEAR(zero.getDouble(), 0.1, 0.00001);
+  EXPECT_NEAR(one.getDouble(), 1.2, 0.00001);
+  EXPECT_NEAR(twelve.getDouble(), -112.78, 0.00001);
+  EXPECT_NEAR(one_hundred_two.getDouble(), -0.102, 0.00001);
+  EXPECT_NEAR(five_million.getDouble(), 573.8230, 0.00001);
+  EXPECT_NEAR(eighty_million.getDouble(), 85738230, 0.00001);
+  EXPECT_NEAR(two_billion.getDouble(), 203573823.0, 0.00001);
+}
+
+TEST(StringView, ParseUSDate) {
+  galois::StringView christmas("12/25/2003");
+  galois::StringView aprilfools("04/01/1998");
+  galois::StringView nye_mill("12/31/1999");
+
+  EXPECT_EQ(christmas.getUSDate(), 1072310400);
+  EXPECT_EQ(aprilfools.getUSDate(), 891388800);
+  EXPECT_EQ(nye_mill.getUSDate(), 946598400);
+}

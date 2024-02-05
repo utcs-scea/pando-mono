@@ -78,6 +78,78 @@ public:
     return res;
   }
 
+  /**
+   * @brief Parse US date from StringView
+   */
+  time_t getUSDate() {
+    auto charToInt = [=](size_t& pos) {
+      int result = 0;
+      char delimiter = '/';
+      for (size_t i = pos; i < size_ && start_[i] != delimiter; ++i) {
+        result = result * 10 + (start_[pos++] - '0');
+      }
+      return result;
+    };
+    std::tm timeStruct = {};
+    size_t pos = 0;
+
+    timeStruct.tm_mon = charToInt(pos);
+    pos++;
+
+    timeStruct.tm_mday = charToInt(pos);
+    pos++;
+
+    timeStruct.tm_year = charToInt(pos);
+
+    timeStruct.tm_year -= 1900;
+    timeStruct.tm_mon--;
+
+    timeStruct.tm_hour = 0;
+    timeStruct.tm_min = 0;
+    timeStruct.tm_sec = 0;
+
+    return std::mktime(&timeStruct);
+  }
+
+  /**
+   * @brief Parse Double from StringView
+   */
+  double getDouble() {
+    size_t i = 0;
+    double result = 0.0;
+    bool negative = false;
+
+    if (start_[i] == '-') {
+      negative = true;
+      i++;
+    }
+
+    while (i < size_ && start_[i] != '.') {
+      result = result * 10.0 + (start_[i] - '0');
+      i++;
+    }
+
+    if (start_[i] == '.') {
+      i++;
+      double fraction = 0.0;
+      double divisor = 10.0;
+
+      while (i < size_) {
+        fraction += (start_[i] - '0') / divisor;
+        divisor *= 10.0;
+        i++;
+      }
+
+      result += fraction;
+    }
+
+    if (negative) {
+      result = -result;
+    }
+
+    return result;
+  }
+
   size_t size() {
     return size_;
   }
