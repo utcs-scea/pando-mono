@@ -35,6 +35,201 @@ struct Vertex {
 
 namespace galois {
 
+template <typename T>
+class PtrRef {
+  pando::GlobalPtr<T> m_ptr;
+
+public:
+  using iterator_category = std::random_access_iterator_tag;
+  using difference_type = std::int64_t;
+  using value_type = pando::GlobalRef<T>;
+  using pointer = pando::GlobalPtr<T>;
+  using reference = pando::GlobalPtr<T>;
+
+  explicit PtrRef(pando::GlobalPtr<T> ptr) : m_ptr(ptr) {}
+  constexpr PtrRef() noexcept = default;
+  constexpr PtrRef(PtrRef&&) noexcept = default;
+  constexpr PtrRef(const PtrRef&) noexcept = default;
+  ~PtrRef() = default;
+
+  constexpr PtrRef& operator=(const PtrRef&) noexcept = default;
+  constexpr PtrRef& operator=(PtrRef&&) noexcept = default;
+
+  reference operator*() const noexcept {
+    return m_ptr;
+  }
+
+  reference operator*() noexcept {
+    return m_ptr;
+  }
+
+  pointer operator->() {
+    return m_ptr;
+  }
+
+  PtrRef& operator++() {
+    m_ptr++;
+    return *this;
+  }
+
+  PtrRef operator++(int) {
+    PtrRef tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  PtrRef& operator--() {
+    m_ptr--;
+    return *this;
+  }
+
+  PtrRef operator--(int) {
+    PtrRef tmp = *this;
+    --(*this);
+    return tmp;
+  }
+
+  constexpr PtrRef operator+(std::uint64_t n) const noexcept {
+    return PtrRef(m_ptr + n);
+  }
+
+  constexpr PtrRef& operator+=(std::uint64_t n) noexcept {
+    m_ptr += n;
+    return *this;
+  }
+
+  constexpr PtrRef operator-(std::uint64_t n) const noexcept {
+    return PtrRef(m_ptr - n);
+  }
+
+  constexpr difference_type operator-(PtrRef b) const noexcept {
+    return m_ptr - b.m_ptr;
+  }
+
+  reference operator[](std::uint64_t n) noexcept {
+    return m_ptr + n;
+  }
+
+  reference operator[](std::uint64_t n) const noexcept {
+    return m_ptr + n;
+  }
+
+  friend bool operator==(const PtrRef& a, const PtrRef& b) {
+    return a.m_ptr == b.m_ptr;
+  }
+
+  friend bool operator!=(const PtrRef& a, const PtrRef& b) {
+    return !(a == b);
+  }
+
+  friend bool operator<(const PtrRef& a, const PtrRef& b) {
+    return a.m_ptr < b.m_ptr;
+  }
+
+  friend bool operator<=(const PtrRef& a, const PtrRef& b) {
+    return a.m_ptr <= b.m_ptr;
+  }
+
+  friend bool operator>(const PtrRef& a, const PtrRef& b) {
+    return a.m_ptr > b.m_ptr;
+  }
+
+  friend bool operator>=(const PtrRef& a, const PtrRef& b) {
+    return a.m_ptr >= b.m_ptr;
+  }
+
+  friend pando::Place localityOf(PtrRef& a) {
+    return pando::localityOf(a.m_ptr);
+  }
+};
+
+template <typename T>
+class RefSpan {
+  pando::GlobalPtr<T> m_data{};
+  std::uint64_t m_size{};
+
+public:
+  using iterator = PtrRef<T>;
+  using const_iterator = PtrRef<const T>;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+  constexpr RefSpan() noexcept = default;
+
+  constexpr RefSpan(pando::GlobalPtr<T> data, std::uint64_t size) noexcept
+      : m_data(data), m_size(size) {}
+
+  constexpr std::uint64_t size() const noexcept {
+    return m_size;
+  }
+
+  iterator begin() noexcept {
+    return iterator(m_data);
+  }
+
+  iterator begin() const noexcept {
+    return iterator(m_data);
+  }
+
+  const_iterator cbegin() const noexcept {
+    return const_iterator(m_data);
+  }
+
+  iterator end() noexcept {
+    return iterator(m_data + size());
+  }
+
+  iterator end() const noexcept {
+    return iterator(m_data + size());
+  }
+
+  const_iterator cend() const noexcept {
+    return const_iterator(m_data + size());
+  }
+
+  /**
+   * @brief reverse iterator to the first element
+   */
+  reverse_iterator rbegin() noexcept {
+    return reverse_iterator(end()--);
+  }
+
+  /**
+   * @copydoc rbegin()
+   */
+  reverse_iterator rbegin() const noexcept {
+    return reverse_iterator(end()--);
+  }
+
+  /**
+   * @copydoc rbegin()
+   */
+  const_reverse_iterator crbegin() const noexcept {
+    return const_reverse_iterator(cend()--);
+  }
+
+  /**
+   * reverse iterator to the last element
+   */
+  reverse_iterator rend() noexcept {
+    return reverse_iterator(begin()--);
+  }
+
+  /**
+   * @copydoc rend()
+   */
+  reverse_iterator rend() const noexcept {
+    return reverse_iterator(begin()--);
+  }
+
+  /**
+   * @copydoc rend()
+   */
+  const_reverse_iterator crend() const noexcept {
+    return const_reverse_iterator(cbegin()--);
+  }
+};
+
 template <typename VertexType, typename EdgeType>
 class DistLocalCSR;
 
@@ -43,12 +238,12 @@ class LCSR {
 public:
   friend DistLocalCSR<VertexType, EdgeType>;
   using VertexTokenID = std::uint64_t;
-  using VertexTopologyID = pando::GlobalRef<Vertex>;
-  using EdgeHandle = pando::GlobalRef<HalfEdge>;
+  using VertexTopologyID = pando::GlobalPtr<Vertex>;
+  using EdgeHandle = pando::GlobalPtr<HalfEdge>;
   using VertexData = VertexType;
   using EdgeData = EdgeType;
-  using VertexRange = pando::Span<Vertex>;
-  using EdgeRange = pando::Span<HalfEdge>;
+  using VertexRange = RefSpan<Vertex>;
+  using EdgeRange = RefSpan<HalfEdge>;
   using EdgeDataRange = pando::Span<EdgeData>;
   using VertexDataRange = pando::Span<VertexData>;
 
@@ -59,13 +254,6 @@ public:
 
   constexpr LCSR& operator=(const LCSR&) noexcept = default;
   constexpr LCSR& operator=(LCSR&&) noexcept = default;
-
-  static EdgeRange edges(pando::GlobalRef<galois::Vertex> vertex) {
-    pando::GlobalPtr<Vertex> vPtr = &vertex;
-    Vertex v = *vPtr;
-    Vertex v1 = *(vPtr + 1);
-    return pando::Span<galois::HalfEdge>(v.edgeBegin, v1.edgeBegin - v.edgeBegin);
-  }
 
   [[nodiscard]] pando::Status initializeTopologyMemory(std::uint64_t numVertices,
                                                        std::uint64_t numEdges, pando::Place place,
@@ -177,46 +365,9 @@ public:
     vertexData.deinitialize();
   }
 
-  /**
-   * @brief Frees all memory and objects associated with this structure
-   */
-  void deinitialize() {
-    deinitializeTopology();
-    deinitializeData();
-  }
-
-  /**
-   * @brief gives the number of vertices
-   */
-  std::uint64_t size() noexcept {
-    return vertexEdgeOffsets.size() - 1;
-  }
-
-  /**
-   * @brief gives the number of vertices
-   */
-  std::uint64_t size() const noexcept {
-    return vertexEdgeOffsets.size() - 1;
-  }
-
-  /**
-   * @brief gives the total number of edges
-   */
-  std::uint64_t sizeEdges() {
-    return edgeDestinations.size();
-  }
-
-  /**
-   * @brief gives the total number of edges
-   */
-  std::uint64_t sizeEdges() const noexcept {
-    return edgeDestinations.size();
-  }
-
 private:
   template <typename T>
-  std::uint64_t findIndex(pando::GlobalRef<T> location, pando::Array<T> base) {
-    pando::GlobalPtr<T> locationPtr = &location;
+  std::uint64_t findIndex(pando::GlobalPtr<T> locationPtr, pando::Array<T> base) {
     if (base.begin() <= locationPtr && base.end() >= locationPtr) {
       return static_cast<uint64_t>(locationPtr - base.begin());
     } else {
@@ -225,117 +376,125 @@ private:
   }
 
   EdgeHandle halfEdgeBegin(VertexTopologyID vertex) {
-    return (&vertex == vertexEdgeOffsets.begin()) ? *edgeDestinations.begin()
-                                                  : *static_cast<Vertex>(*(&vertex)).edgeBegin;
+    return (vertex == vertexEdgeOffsets.begin()) ? edgeDestinations.begin()
+                                                 : static_cast<Vertex>(*(vertex)).edgeBegin;
   }
 
   EdgeHandle halfEdgeEnd(VertexTopologyID vertex) {
-    return *static_cast<Vertex>(*(&vertex + 1)).edgeBegin;
+    return static_cast<Vertex>(*(vertex + 1)).edgeBegin;
   }
 
 public:
-  /*
-   * @brief gets the dense ID of the vertex in the local topology
-   */
-  std::uint64_t getVertexIndex(VertexTopologyID vertex) {
-    return findIndex(vertex, vertexEdgeOffsets);
+  /** Graph APIs **/
+  void deinitialize() {
+    deinitializeTopology();
+    deinitializeData();
   }
 
-  /**
-   * @brief gets the dense ID of the vertex in the local topology
-   */
-  std::uint64_t getTokenID(VertexTopologyID vertex) {
-    return topologyToToken[findIndex(vertex, vertexEdgeOffsets)];
+  /** size stuff **/
+  std::uint64_t size() noexcept {
+    return vertexEdgeOffsets.size() - 1;
+  }
+  std::uint64_t size() const noexcept {
+    return vertexEdgeOffsets.size() - 1;
+  }
+  std::uint64_t sizeEdges() {
+    return edgeDestinations.size();
+  }
+  std::uint64_t sizeEdges() const noexcept {
+    return edgeDestinations.size();
+  }
+  std::uint64_t getNumEdges(VertexTopologyID vertex) {
+    return &halfEdgeEnd(vertex) - &halfEdgeBegin(vertex);
   }
 
-  /**
-   * @brief gets the Topology ID from the given token;
-   */
+  /** Vertex Manipulation **/
   VertexTopologyID getTopologyID(VertexTokenID token) {
     pando::GlobalPtr<Vertex> ret;
     if (!tokenToTopology.get(token, ret)) {
       PANDO_ABORT("FAILURE TO FIND TOKENID");
     }
-    return *ret;
+    return ret;
   }
-
   VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
-    return vertexEdgeOffsets[index];
+    return &vertexEdgeOffsets[index];
+  }
+  std::uint64_t getTokenID(VertexTopologyID vertex) {
+    return topologyToToken[findIndex(vertex, vertexEdgeOffsets)];
+  }
+  std::uint64_t getVertexIndex(VertexTopologyID vertex) {
+    return findIndex(vertex, vertexEdgeOffsets);
+  }
+  pando::Place getLocalityVertex(VertexTopologyID vertex) {
+    return galois::localityOf(vertex);
   }
 
-  /**
-   * @brief Sets the value of the vertex provided
-   */
+  /** Edge Manipulation **/
+  EdgeHandle mintEdgeHandle(VertexTopologyID vertex, std::uint64_t off) {
+    return halfEdgeBegin(vertex) + off;
+  }
+  VertexTopologyID getEdgeDst(EdgeHandle eh) {
+    HalfEdge e = *eh;
+    return e.dst;
+  }
+
+  /** Data Manipulation **/
   void setData(VertexTopologyID vertex, VertexData data) {
     vertexData[findIndex(vertex, vertexEdgeOffsets)] = data;
   }
-
-  /**
-   * @brief gets the value of the vertex provided
-   */
   pando::GlobalRef<VertexData> getData(VertexTopologyID vertex) {
     return vertexData[findIndex(vertex, vertexEdgeOffsets)];
   }
-
-  /**
-   * @brief gets an edgeHandle from a vertex and offset
-   */
-  EdgeHandle mintEdgeHandle(VertexTopologyID vertex, std::uint64_t off) {
-    return *(&halfEdgeBegin(vertex) + off);
-  }
-
-  /**
-   * @brief Sets the value of the edge provided
-   */
   void setEdgeData(EdgeHandle eh, EdgeData data) {
     edgeData[findIndex(eh, edgeDestinations)] = data;
   }
-
-  /**
-   * @brief Sets the value of the edge provided
-   */
-  void setEdgeData(VertexTopologyID vertex, std::uint64_t off, EdgeData data) {
-    setEdgeData(mintEdgeHandle(vertex, off), data);
-  }
-
-  /**
-   * @brief gets the reference to the vertex provided
-   */
   pando::GlobalRef<EdgeData> getEdgeData(EdgeHandle eh) {
     return edgeData[findIndex(eh, edgeDestinations)];
   }
 
-  /**
-   * @brief gets the reference to the vertex provided
-   */
-  pando::GlobalRef<EdgeData> getEdgeData(VertexTopologyID vertex, std::uint64_t off) {
-    return getEdgeData(mintEdgeHandle(vertex, off));
+  /** Ranges **/
+  VertexRange vertices() {
+    return VertexRange(vertexEdgeOffsets.begin(), vertexEdgeOffsets.size() - 1);
+  }
+  static EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr) {
+    Vertex v = *vPtr;
+    Vertex v1 = *(vPtr + 1);
+    return EdgeRange(v.edgeBegin, v1.edgeBegin - v.edgeBegin);
+  }
+  VertexDataRange vertexDataRange() noexcept {
+    return VertexDataRange(vertexData.begin(), vertexData.size() - 1);
+  }
+  EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
+    auto beg = findIndex(halfEdgeBegin(vertex), edgeDestinations);
+    auto end = findIndex(halfEdgeEnd(vertex), edgeDestinations);
+    return EdgeDataRange(edgeData.begin() + beg, end - beg);
   }
 
-  /**
-   * @brief get the number of edges for the vertex provided
-   */
-  std::uint64_t getNumEdges(VertexTopologyID vertex) {
-    return &halfEdgeEnd(vertex) - &halfEdgeBegin(vertex);
+  /** Topology Modifications **/
+  VertexTopologyID addVertexTopologyOnly(VertexTokenID token) {
+    return vertexEdgeOffsets.end();
+  }
+  VertexTopologyID addVertex(VertexTokenID token, VertexData data) {
+    return vertexEdgeOffsets.end();
+  }
+  pando::Status addEdgesTopologyOnly(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts) {
+    return pando::Status::Error;
+  }
+  pando::Status addEdges(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts,
+                         pando::Vector<EdgeData> data) {
+    return pando::Status::Error;
+  }
+  pando::Status deleteEdges(VertexTopologyID src, pando::Vector<EdgeHandle> edges) {
+    return pando::Status::Error;
   }
 
-  /**
-   * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
-   */
-  VertexTopologyID getEdgeDst(EdgeHandle eh) {
-    HalfEdge e = eh;
-    return *e.dst;
-  }
+  /** End Graph API **/
 
   /**
    * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
    */
   VertexTopologyID getEdgeDst(VertexTopologyID vertex, std::uint64_t off) {
     return getEdgeDst(mintEdgeHandle(vertex, off));
-  }
-
-  pando::Place getLocalityVertex(VertexTopologyID vertex) {
-    return galois::localityOf(&vertex);
   }
 
   bool isLocal(VertexTopologyID vertex) {
@@ -346,48 +505,11 @@ public:
     return isLocal(vertex);
   }
 
-  /**
-   * @brief Get the Vertices range
-   */
-  VertexRange vertices() {
-    return VertexRange(vertexEdgeOffsets.begin(), vertexEdgeOffsets.size() - 1);
+  void setEdgeData(VertexTopologyID vertex, std::uint64_t off, EdgeData data) {
+    setEdgeData(mintEdgeHandle(vertex, off), data);
   }
-
-  /**
-   * @brief Get the VertexDataRange for the graph
-   */
-  VertexDataRange vertexDataRange() noexcept {
-    return VertexDataRange(vertexData.begin(), vertexData.size() - 1);
-  }
-
-  /**
-   * @brief Get the EdgeDataRange for the graph
-   */
-  EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
-    auto beg = findIndex(halfEdgeBegin(vertex), edgeDestinations);
-    auto end = findIndex(halfEdgeEnd(vertex), edgeDestinations);
-    return EdgeDataRange(edgeData.begin() + beg, end - beg);
-  }
-
-  VertexTopologyID addVertexTopologyOnly(VertexTokenID token) {
-    return *vertexEdgeOffsets.end();
-  }
-
-  VertexTopologyID addVertex(VertexTokenID token, VertexData data) {
-    return *vertexEdgeOffsets.end();
-  }
-
-  pando::Status addEdgesTopologyOnly(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts) {
-    return pando::Status::Error;
-  }
-
-  pando::Status addEdges(VertexTopologyID src, pando::Vector<VertexTopologyID> dsts,
-                         pando::Vector<EdgeData> data) {
-    return pando::Status::Error;
-  }
-
-  pando::Status deleteEdges(VertexTopologyID src, pando::Vector<EdgeHandle> edges) {
-    return pando::Status::Error;
+  pando::GlobalRef<EdgeData> getEdgeData(VertexTopologyID vertex, std::uint64_t off) {
+    return getEdgeData(mintEdgeHandle(vertex, off));
   }
 
 private:

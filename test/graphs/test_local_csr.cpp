@@ -68,7 +68,7 @@ TEST(LCSR, Locality) {
   EXPECT_EQ(graph.initialize(vec), pando::Status::Success);
   EXPECT_EQ(deleteVectorVector<std::uint64_t>(vec), pando::Status::Success);
   EXPECT_EQ(graph.size(), SIZE);
-  for (pando::GlobalRef<galois::Vertex> vert : graph.vertices()) {
+  for (pando::GlobalPtr<galois::Vertex> vert : graph.vertices()) {
     EXPECT_TRUE(graph.isLocal(vert));
     EXPECT_TRUE(graph.isOwned(vert));
     EXPECT_TRUE(pando::isSubsetOf(pando::getCurrentPlace(), graph.getLocalityVertex(vert)));
@@ -84,7 +84,7 @@ TEST(LCSR, VertexData) {
   EXPECT_EQ(deleteVectorVector<std::uint64_t>(vec), pando::Status::Success);
   EXPECT_EQ(graph.size(), SIZE);
   std::uint64_t i = 0;
-  for (pando::GlobalRef<galois::Vertex> vert : graph.vertices()) {
+  for (pando::GlobalPtr<galois::Vertex> vert : graph.vertices()) {
     graph.setData(vert, i);
     i++;
   }
