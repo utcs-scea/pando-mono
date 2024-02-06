@@ -784,21 +784,33 @@ public:
 #endif
 
     if (isEdgelist) {
-      PANDO_CHECK_RETURN(galois::doAll(
-          partEdges, pHV,
-          +[](decltype(partEdges) partEdges, pando::GlobalRef<pando::Vector<VertexType>> pHV) {
-            PANDO_CHECK(fmap(pHV, initialize, 0));
-            for (pando::Vector<pando::Vector<EdgeType>> e1 : partEdges) {
-              for (pando::Vector<EdgeType> e : e1) {
-                EdgeType e0 = e[0];
-                VertexType v0 = VertexType(e0.src, agile::TYPES::NONE);
-                PANDO_CHECK(fmap(pHV, pushBack, v0));
-              }
+      for (uint64_t h = 0; h < numHosts; h++) {
+        PANDO_CHECK(fmap(pHV.get(h), initialize, 0));
+      }
+      struct PHPV {
+        PerHost<pando::Vector<pando::Vector<EdgeType>>> partEdges;
+        PerHost<pando::Vector<VertexType>> pHV;
+      };
+      PHPV phpv{partEdges, pHV};
+      galois::doAllEvenlyPartition(
+          phpv, numHosts, +[](PHPV phpv, uint64_t host_id, uint64_t) {
+            pando::Vector<pando::Vector<EdgeType>> edgeVec = phpv.partEdges.get(host_id);
+            pando::GlobalRef<pando::Vector<VertexType>> vertexVec = phpv.pHV.get(host_id);
+            for (pando::Vector<EdgeType> vec : edgeVec) {
+              EdgeType e = vec[0];
+              VertexType v = VertexType(e.src, agile::TYPES::NONE);
+              PANDO_CHECK(fmap(vertexVec, pushBack, v));
             }
-          }));
+          });
+    }
+    uint64_t numVerticesInEdgelist = 0;
+    for (uint64_t h = 0; h < numHosts; h++) {
+      numVerticesInEdgelist += lift(pHV.get(h), size);
     }
 
-    err = initializeAfterGather(pHV, totVerts.reduce(), partEdges, renamePerHost, numEdges, *v2PM);
+    uint64_t numVertices = isEdgelist ? numVerticesInEdgelist : totVerts.reduce();
+
+    err = initializeAfterGather(pHV, numVertices, partEdges, renamePerHost, numEdges, *v2PM);
 #if FREE
     auto freeTheRest =
         +[](decltype(pHV) pHV, decltype(totVerts) totVerts, decltype(partEdges) partEdges,
@@ -1045,7 +1057,6 @@ public:
           uint64_t numLocalEdges;
           PANDO_CHECK(state.vertices.localElements(numLocalVertices));
           PANDO_CHECK(state.edges.localElements(numLocalEdges));
-          std::cout << "local vertices " << numLocalVertices << std::endl;
           PANDO_CHECK(currentCSR.initializeTopologyMemory(numLocalVertices, numLocalEdges));
           PANDO_CHECK(currentCSR.initializeDataMemory(numLocalVertices, numLocalEdges));
 
