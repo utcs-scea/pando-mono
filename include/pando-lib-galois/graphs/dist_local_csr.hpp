@@ -1003,9 +1003,9 @@ public:
            currLocalEdge++) {
         EdgeType data = currEdge.data;
         HalfEdge edge;
-        edge.dst = &getTopologyID(currEdge.dst);
+        edge.dst = getTopologyID(currEdge.dst);
         currentCSR.edgeDestinations[currLocalEdge] = edge;
-        currentCSR.setEdgeData(currentCSR.edgeDestinations[currLocalEdge], data);
+        currentCSR.setEdgeData(&currentCSR.edgeDestinations[currLocalEdge], data);
 
         if (currLocalEdge + edgesStart < numEdges - 1) {
           currEdge = edges[edgesStart + currLocalEdge + 1];
@@ -1101,9 +1101,10 @@ public:
           pando::Vector<VertexTokenID> edgeDsts = state.edgeDsts[thread];
           for (EdgeData data : edgeData) {
             HalfEdge edge;
-            edge.dst = &state.dlcsr.getTopologyID(edgeDsts[currLocalEdge]);
+            edge.dst = state.dlcsr.getTopologyID(edgeDsts[currLocalEdge]);
             currentCSR.edgeDestinations[threadOffset + currLocalEdge] = edge;
-            currentCSR.setEdgeData(currentCSR.edgeDestinations[threadOffset + currLocalEdge], data);
+            currentCSR.setEdgeData(&currentCSR.edgeDestinations[threadOffset + currLocalEdge],
+                                   data);
             currLocalEdge++;
           }
           state.dlcsr.arrayOfCSRs.getLocal() = currentCSR;
