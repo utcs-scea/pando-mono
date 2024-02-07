@@ -6,14 +6,16 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-if len(sys.argv) != 5:
-    print("usage: python3 plot.py (application or workflow name) (number of hosts) (directory to the stat files) (per-phase / end-to-end)")
+if len(sys.argv) != 7:
+    print("usage: python3 plot.py (application or workflow name) (number of hosts) (directory to the stat files) (per-phase / end-to-end) (include-local / remote-only) (stat-dump / hist-only)")
     sys.exit(1)
 
 app = sys.argv[1]
 host = int(sys.argv[2])
 directory = sys.argv[3]
 granularity = sys.argv[4]
+print_local = sys.argv[5]
+dump = sys.argv[6]
 
 #####   Processing   #####
 load_cnt = []
@@ -172,10 +174,12 @@ for host_id in range(host):
 def plot_phase(access_type, send_recv, host_id, phase, x, cnt_array, byte_array):
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize = (10, 5))
     temp = cnt_array[host_id][phase]
-    temp[host_id] = 0
+    if print_local == "remote-only":
+        temp[host_id] = 0
     ax[0].bar(x, temp)
     temp = byte_array[host_id][phase]
-    temp[host_id] = 0
+    if print_local == "remote-only":
+        temp[host_id] = 0
     ax[1].bar(x, temp)
     ax[0].set_xticks(x)
     ax[1].set_xticks(x)
@@ -184,19 +188,21 @@ def plot_phase(access_type, send_recv, host_id, phase, x, cnt_array, byte_array)
     ax[0].set_ylabel("Number of " + access_type + "s")
     ax[1].set_ylabel("Bytes")
     if send_recv == "send":
-        fig.suptitle("Remote " + access_type + "s Sent By Host " + str(host_id) + " (" + app.upper() + " Phase " + str(phase) + ")")
+        fig.suptitle(access_type + "s Sent By Host " + str(host_id) + " (" + app.upper() + " Phase " + str(phase) + ")")
     elif send_recv == "recv":
-        fig.suptitle("Remote " + access_type + "s Received By Host " + str(host_id) + " (" + app.upper() + " Phase " + str(phase) + ")")
-    fig.savefig(access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_phase" + str(phase) + ".png", dpi=fig.dpi)
+        fig.suptitle(access_type + "s Received By Host " + str(host_id) + " (" + app.upper() + " Phase " + str(phase) + ")")
+    fig.savefig("./histograms/" + access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_phase" + str(phase) + ".png", dpi=fig.dpi)
     plt.close(fig)
 
 def plot_total(access_type, send_recv, host_id, x, cnt_array, byte_array):
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize = (10, 5))
     temp = cnt_array[host_id]
-    temp[host_id] = 0
+    if print_local == "remote-only":
+        temp[host_id] = 0
     ax[0].bar(x, temp)
     temp = byte_array[host_id]
-    temp[host_id] = 0
+    if print_local == "remote-only":
+        temp[host_id] = 0
     ax[1].bar(x, temp)
     ax[0].set_xticks(x)
     ax[1].set_xticks(x)
@@ -205,15 +211,42 @@ def plot_total(access_type, send_recv, host_id, x, cnt_array, byte_array):
     ax[0].set_ylabel("Number of " + access_type + "s")
     ax[1].set_ylabel("Bytes")
     if send_recv == "send":
-        fig.suptitle("Remote " + access_type + "s Sent By Host " + str(host_id) + " (" + app.upper() + " Total)")
+        fig.suptitle(access_type + "s Sent By Host " + str(host_id) + " (" + app.upper() + " Total)")
     elif send_recv == "recv":
-        fig.suptitle("Remote " + access_type + "s Received By Host " + str(host_id) + " (" + app.upper() + " Total)")
-    fig.savefig(access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_total.png", dpi=fig.dpi)
+        fig.suptitle(access_type + "s Received By Host " + str(host_id) + " (" + app.upper() + " Total)")
+    fig.savefig("./histograms/" + access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_total.png", dpi=fig.dpi)
     plt.close(fig)
 
+def dump_phase(access_type, send_recv, host_id, phase, x, cnt_array, byte_array):
+    file = open("./dump/" + access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_phase" + str(phase) + ".txt", "w")
+    if send_recv == "send":
+        file.write(access_type + "s Sent By Host " + str(host_id) + " (" + app.upper() + " Phase " + str(phase) + ")\n")
+        prep = "to"
+    elif send_recv == "recv":
+        file.write(access_type + "s Received By Host " + str(host_id) + " (" + app.upper() + " Phase " + str(phase) + ")\n")
+        prep = "from"
+    file.write("\n")
+    for i in range(host):
+        file.write(prep + " host " + str(i) + " : " + str(cnt_array[host_id][phase][i]) + " requests, " + str(byte_array[host_id][phase][i]) + " bytes\n")
+    file.close()
+
+def dump_total(access_type, send_recv, host_id, x, cnt_array, byte_array):
+    file = open("./dump/" + access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_total.txt", "w")
+    if send_recv == "send":
+        file.write(access_type + "s Sent By Host " + str(host_id) + " (" + app.upper() + " Total)\n")
+        prep = "to"
+    elif send_recv == "recv":
+        file.write(access_type + "s Received By Host " + str(host_id) + " (" + app.upper() + " Total)\n")
+        prep = "from"
+    file.write("\n")
+    for i in range(host):
+        file.write(prep + " host " + str(i) + " : " + str(cnt_array[host_id][i]) + " requests, " + str(byte_array[host_id][i]) + " bytes\n")
+    file.close()
+
 os.makedirs("histograms", exist_ok=True)
-cwd = os.getcwd()
-os.chdir(cwd + "/histograms/")
+if dump == "stat-dump":
+    os.makedirs("dump", exist_ok=True)
+
 if granularity == "per-phase":
     load_cnt_trans = np.transpose(load_cnt)
     store_cnt_trans = np.transpose(store_cnt)
@@ -248,6 +281,19 @@ if granularity == "per-phase":
             plot_phase("RMW", "send", host_id, phase, x, rmw_cnt_trans, rmw_byte_trans)
             plot_phase("Function", "send", host_id, phase, x, func_cnt_trans, func_byte_trans)
             plot_phase("Reference", "send", host_id, phase, x, ref_cnt_trans, ref_byte_trans)
+
+            if dump == "stat-dump":
+                dump_phase("Load", "recv", host_id, phase, x, load_cnt, load_byte)
+                dump_phase("Store", "recv", host_id, phase, x, store_cnt, store_byte)
+                dump_phase("RMW", "recv", host_id, phase, x, rmw_cnt, rmw_byte)
+                dump_phase("Function", "recv", host_id, phase, x, func_cnt, func_byte)
+                dump_phase("Reference", "recv", host_id, phase, x, ref_cnt, ref_byte)
+
+                dump_phase("Load", "send", host_id, phase, x, load_cnt_trans, load_byte_trans)
+                dump_phase("Store", "send", host_id, phase, x, store_cnt_trans, store_byte_trans)
+                dump_phase("RMW", "send", host_id, phase, x, rmw_cnt_trans, rmw_byte_trans)
+                dump_phase("Function", "send", host_id, phase, x, func_cnt_trans, func_byte_trans)
+                dump_phase("Reference", "send", host_id, phase, x, ref_cnt_trans, ref_byte_trans)
 
 elif granularity == "end-to-end":
     load_cnt_total = np.array([[0 for src in range(host)] for dst in range(host)])
@@ -302,5 +348,18 @@ elif granularity == "end-to-end":
         plot_total("RMW", "send", host_id, x, rmw_cnt_total_trans, rmw_byte_total_trans)
         plot_total("Function", "send", host_id, x, func_cnt_total_trans, func_byte_total_trans)
         plot_total("Reference", "send", host_id, x, ref_cnt_total_trans, ref_byte_total_trans)
+
+        if dump == "stat-dump":
+            dump_total("Load", "recv", host_id, x, load_cnt_total, load_byte_total)
+            dump_total("Store", "recv", host_id, x, store_cnt_total, store_byte_total)
+            dump_total("RMW", "recv", host_id, x, rmw_cnt_total, rmw_byte_total)
+            dump_total("Function", "recv", host_id, x, func_cnt_total, func_byte_total)
+            dump_total("Reference", "recv", host_id, x, ref_cnt_total, ref_byte_total)
+
+            dump_total("Load", "send", host_id, x, load_cnt_total_trans, load_byte_total_trans)
+            dump_total("Store", "send", host_id, x, store_cnt_total_trans, store_byte_total_trans)
+            dump_total("RMW", "send", host_id, x, rmw_cnt_total_trans, rmw_byte_total_trans)
+            dump_total("Function", "send", host_id, x, func_cnt_total_trans, func_byte_total_trans)
+            dump_total("Reference", "send", host_id, x, ref_cnt_total_trans, ref_byte_total_trans)
 else:
     sys.exit(3)
