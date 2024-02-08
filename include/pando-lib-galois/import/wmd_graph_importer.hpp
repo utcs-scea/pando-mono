@@ -380,6 +380,179 @@ void loadGraphFilePerThread(
   done.notify();
 }
 
+/*
+ * Load vertex info from a parser
+ */
+template <typename VertexType>
+void loadVertexFilePerThread(pando::NotificationHandle done,
+                             galois::VertexParser<VertexType> parser, uint64_t segmentsPerThread,
+                             std::uint64_t numThreads, std::uint64_t threadID,
+                             galois::PerThreadVector<VertexType> localVertices) {
+  pando::Vector<char> line;
+  PANDO_CHECK(line.initialize(0));
+
+  galois::ifstream graphFile;
+  PANDO_CHECK(graphFile.open(parser.filename));
+
+  uint64_t numSegments = numThreads * segmentsPerThread;
+  uint64_t fileSize = graphFile.size();
+  uint64_t bytesPerSegment = fileSize / numSegments; // file size / number of segments
+
+  // init per thread data struct
+
+  // for each host N, it will read segment like:
+  // N, N + numHosts, N + numHosts * 2, ..., N + numHosts * (segmentsPerHost - 1)
+  for (uint64_t cur = 0; cur < segmentsPerThread; cur++) {
+    uint64_t segmentID = (uint64_t)threadID + cur * numThreads;
+    uint64_t start = segmentID * bytesPerSegment;
+    uint64_t end = start + bytesPerSegment;
+
+    // check for partial line at start
+    if (segmentID != 0) {
+      graphFile.seekg(start - 1);
+      graphFile.getline(line, '\n');
+
+      // if not at start of a line, discard partial line
+      if (!line.empty())
+        start += line.size();
+    }
+
+    // check for partial line at end
+    line.deinitialize();
+    PANDO_CHECK(line.initialize(0));
+    if (segmentID != numSegments - 1) {
+      graphFile.seekg(end - 1);
+      graphFile.getline(line, '\n');
+
+      // if not at end of a line, include next line
+      if (!line.empty())
+        end += line.size();
+    } else { // last locale processes to end of file
+      end = fileSize;
+    }
+
+    line.deinitialize();
+    graphFile.seekg(start);
+
+    // load segment into memory
+    uint64_t segmentLength = end - start;
+    char* segmentBuffer = new char[segmentLength];
+    graphFile.read(segmentBuffer, segmentLength);
+
+    // A parallel loop that parse the segment
+    // task 1: get token to global id mapping
+    // task 2: get token to edges mapping
+    char* currentLine = segmentBuffer;
+    char* endLine = currentLine + segmentLength;
+
+    while (currentLine < endLine) {
+      assert(std::strchr(currentLine, '\n'));
+      char* nextLine = std::strchr(currentLine, '\n') + 1;
+
+      // skip comments
+      if (currentLine[0] == parser.comment) {
+        currentLine = nextLine;
+        continue;
+      }
+      PANDO_CHECK(localVertices.pushBack(parser.parser(currentLine)));
+      currentLine = nextLine;
+    }
+    delete[] segmentBuffer;
+  }
+  graphFile.close();
+  done.notify();
+}
+
+template <typename EdgeType>
+void loadEdgeFilePerThread(
+    pando::NotificationHandle done, galois::EdgeParser<EdgeType> parser, uint64_t segmentsPerThread,
+    std::uint64_t numThreads, std::uint64_t threadID,
+    galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
+    pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
+  pando::Vector<char> line;
+  PANDO_CHECK(line.initialize(0));
+
+  galois::ifstream graphFile;
+  PANDO_CHECK(graphFile.open(parser.filename));
+
+  uint64_t numSegments = numThreads * segmentsPerThread;
+  uint64_t fileSize = graphFile.size();
+  uint64_t bytesPerSegment = fileSize / numSegments; // file size / number of segments
+  pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef =
+      perThreadRename[threadID];
+
+  // init per thread data struct
+
+  // for each host N, it will read segment like:
+  // N, N + numHosts, N + numHosts * 2, ..., N + numHosts * (segmentsPerHost - 1)
+  for (uint64_t cur = 0; cur < segmentsPerThread; cur++) {
+    uint64_t segmentID = (uint64_t)threadID + cur * numThreads;
+    uint64_t start = segmentID * bytesPerSegment;
+    uint64_t end = start + bytesPerSegment;
+
+    // check for partial line at start
+    if (segmentID != 0) {
+      graphFile.seekg(start - 1);
+      graphFile.getline(line, '\n');
+
+      // if not at start of a line, discard partial line
+      if (!line.empty())
+        start += line.size();
+    }
+
+    // check for partial line at end
+    line.deinitialize();
+    PANDO_CHECK(line.initialize(0));
+    if (segmentID != numSegments - 1) {
+      graphFile.seekg(end - 1);
+      graphFile.getline(line, '\n');
+
+      // if not at end of a line, include next line
+      if (!line.empty())
+        end += line.size();
+    } else { // last locale processes to end of file
+      end = fileSize;
+    }
+
+    line.deinitialize();
+    graphFile.seekg(start);
+
+    // load segment into memory
+    uint64_t segmentLength = end - start;
+    char* segmentBuffer = new char[segmentLength];
+    graphFile.read(segmentBuffer, segmentLength);
+
+    // A parallel loop that parse the segment
+    // task 1: get token to global id mapping
+    // task 2: get token to edges mapping
+    char* currentLine = segmentBuffer;
+    char* endLine = currentLine + segmentLength;
+
+    while (currentLine < endLine) {
+      assert(std::strchr(currentLine, '\n'));
+      char* nextLine = std::strchr(currentLine, '\n') + 1;
+
+      // skip comments
+      if (currentLine[0] == parser.comment) {
+        currentLine = nextLine;
+        continue;
+      }
+      ParsedEdges<EdgeType> parsed = parser.parser(currentLine);
+      if (parsed.isEdge) {
+        PANDO_CHECK(insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), parsed.edge1));
+        if (parsed.has2Edges) {
+          PANDO_CHECK(
+              insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), parsed.edge2));
+        }
+      }
+      currentLine = nextLine;
+    }
+    delete[] segmentBuffer;
+  }
+  graphFile.close();
+  done.notify();
+}
+
 template <typename EdgeType>
 struct ImportState {
   ImportState() = default;
@@ -439,7 +612,7 @@ void loadGraphFile(ImportState<EdgeType>& state, uint64_t segmentID, uint64_t nu
     char* nextLine = std::strchr(currentLine, '\n') + 1;
 
     // skip comments
-    if (currentLine[0] == '#') {
+    if (currentLine[0] == state.parser.comment) {
       currentLine = nextLine;
       continue;
     }

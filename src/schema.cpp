@@ -11,13 +11,15 @@ pando::Vector<galois::StringView> galois::splitLine(const char* line, char delim
   pando::Vector<galois::StringView> tokens;
   PANDO_CHECK(tokens.initialize(numTokens));
 
-  for (; line[end] != '\0' && line[end] != '\n'; end++) {
+  for (; line[end] != '\0' && line[end] != '\n' && ndx < numTokens; end++) {
     if (line[end] == delim) {
       tokens[ndx] = galois::StringView(line + start, end - start);
       start = end + 1;
       ndx++;
     }
   }
-  tokens[numTokens - 1] = galois::StringView(line + start, end - start); // flush last token
+  if (ndx < numTokens) {
+    tokens[numTokens - 1] = galois::StringView(line + start, end - start); // flush last token
+  }
   return tokens;
 }

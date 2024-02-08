@@ -129,20 +129,16 @@ public:
     }
 
     const std::uint64_t buckets = std::distance(beg, end);
-
     const std::uint64_t bucketSize = (size / buckets) + (size % buckets ? 1 : 0);
-
-    pando::Status err = m_data.initialize(buckets);
-    PANDO_CHECK_RETURN(err);
+    PANDO_CHECK_RETURN(m_data.initialize(buckets));
 
     for (std::uint64_t i = 0; beg != end; i++, beg++) {
-      pando::Array<T> arr;
+      pando::Array<T> arr{};
       typename std::iterator_traits<It>::value_type val = *beg;
-      err = arr.initialize(bucketSize, val.place, val.memType);
-      PANDO_CHECK_RETURN(err);
+      PANDO_CHECK_RETURN(arr.initialize(bucketSize, val.place, val.memType));
       m_data[i] = arr;
     }
-    return err;
+    return pando::Status::Success;
   }
 
   /**

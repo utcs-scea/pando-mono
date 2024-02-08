@@ -145,11 +145,26 @@ template <typename EdgeType>
 class EdgeParser {
 public:
   EdgeParser() = default;
-  EdgeParser(pando::Array<char> filename_, ParsedEdges<EdgeType> (*edgeParser_)(const char*))
-      : filename(filename_), parser(edgeParser_) {}
+  EdgeParser(pando::Array<char> filename_, ParsedEdges<EdgeType> (*edgeParser_)(const char*),
+             char comment_ = '#')
+      : filename(filename_), parser(edgeParser_), comment(comment_) {}
 
   pando::Array<char> filename;
   ParsedEdges<EdgeType> (*parser)(const char*);
+  char comment = '#';
+};
+
+template <typename VertexType>
+class VertexParser {
+public:
+  VertexParser() = default;
+  VertexParser(pando::Array<char> filename_, VertexType (*vertexParser_)(const char*),
+               char comment_ = '#')
+      : filename(filename_), parser(vertexParser_), comment(comment_) {}
+
+  pando::Array<char> filename;
+  VertexType (*parser)(const char*);
+  char comment = '#';
 };
 
 } // namespace galois
