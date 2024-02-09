@@ -405,7 +405,7 @@ public:
     return edgeDestinations.size();
   }
   std::uint64_t getNumEdges(VertexTopologyID vertex) {
-    return &halfEdgeEnd(vertex) - &halfEdgeBegin(vertex);
+    return halfEdgeEnd(vertex) - halfEdgeBegin(vertex);
   }
 
   /** Vertex Manipulation **/
