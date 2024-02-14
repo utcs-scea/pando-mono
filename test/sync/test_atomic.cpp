@@ -42,32 +42,70 @@ struct DebugState {
 
 } // namespace
 
-TEST(Atomic, Init) {
+TEST(Atomic, DoubleInit) {
   pando::GlobalPtr<double> x;
   x = initPrimitiveGlobalPtr<double>();
   double a = 7.550;
   *x = a;
   EXPECT_FLOAT_EQ(*x, a);
+  EXPECT_FLOAT_EQ(pando::atomicFetchAdd(x, 1.51), a);
   a += 1.51;
-  EXPECT_EQ(pando::atomicFetchAdd(x, 1.51), a);
+  EXPECT_FLOAT_EQ(*x, a);
+  EXPECT_FLOAT_EQ(pando::atomicFetchSub(x, 12.0777), a);
   a -= 12.0777;
-  EXPECT_EQ(pando::atomicFetchSub(x, 12.0777), a);
+  EXPECT_FLOAT_EQ(*x, a);
 }
 
-TEST(Atomic, Parallel) {
+TEST(Atomic, DoubleParallel) {
   uint64_t size = 10000;
   double scale = 1.0;
-  pando::Vector<double> doubles;
-  EXPECT_EQ(doubles.initialize(size), pando::Status::Success);
+  pando::Vector<double> doubleVec;
+  EXPECT_EQ(doubleVec.initialize(size), pando::Status::Success);
   for (uint64_t i = 0; i < size; i++) {
-    doubles[i] = scale;
+    doubleVec[i] = scale;
   }
 
   DebugState state;
   EXPECT_EQ(state.initialize(), pando::Status::Success);
 
   galois::doAll(
-      state, doubles, +[](DebugState state, double update) {
+      state, doubleVec, +[](DebugState state, double update) {
+        pando::atomicFetchAdd(state.pos, update);
+        pando::atomicFetchSub(state.neg, update);
+      });
+
+  EXPECT_FLOAT_EQ(*state.pos, size * scale);
+  EXPECT_FLOAT_EQ(*state.neg, size * (-1 * scale));
+}
+
+TEST(Atomic, FloatInit) {
+  pando::GlobalPtr<float> x;
+  x = initPrimitiveGlobalPtr<float>();
+  float a = 7.550;
+  *x = a;
+  EXPECT_FLOAT_EQ(*x, a);
+  EXPECT_FLOAT_EQ(pando::atomicFetchAdd(x, 1.51), a);
+  a += 1.51;
+  EXPECT_FLOAT_EQ(*x, a);
+  EXPECT_FLOAT_EQ(pando::atomicFetchSub(x, 12.0777), a);
+  a -= 12.0777;
+  EXPECT_FLOAT_EQ(*x, a);
+}
+
+TEST(Atomic, FloatParallel) {
+  uint64_t size = 10000;
+  float scale = 1.0;
+  pando::Vector<float> floatVec;
+  EXPECT_EQ(floatVec.initialize(size), pando::Status::Success);
+  for (uint64_t i = 0; i < size; i++) {
+    floatVec[i] = scale;
+  }
+
+  DebugState state;
+  EXPECT_EQ(state.initialize(), pando::Status::Success);
+
+  galois::doAll(
+      state, floatVec, +[](DebugState state, float update) {
         pando::atomicFetchAdd(state.pos, update);
         pando::atomicFetchSub(state.neg, update);
       });
