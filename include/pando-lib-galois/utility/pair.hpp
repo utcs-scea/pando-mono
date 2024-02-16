@@ -4,6 +4,7 @@
 #ifndef PANDO_LIB_GALOIS_UTILITY_PAIR_HPP_
 #define PANDO_LIB_GALOIS_UTILITY_PAIR_HPP_
 
+#include <cstdint>
 #include <type_traits>
 
 namespace galois {
@@ -33,6 +34,20 @@ struct Pair {
 
   Pair<T0, T1>& operator=(const Pair<T0, T1>&) = default;
   Pair<T0, T1>& operator=(Pair<T0, T1>&&) = default;
+
+  template <std::uint64_t index>
+  auto get() {
+    static_assert(index < 2);
+    if constexpr (index == 0)
+      return first;
+    if constexpr (index == 1)
+      return second;
+  }
+
+  template <std::uint64_t index>
+  friend auto get(Pair<T0, T1>& tpl) {
+    return tpl.template get<index>();
+  }
 
   OP_EXISTS(equals, ==);
 
