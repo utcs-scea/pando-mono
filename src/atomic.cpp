@@ -99,6 +99,10 @@ float pando::atomicFetchAdd(pando::GlobalPtr<float> ptr, float value) {
   return atomicFetchAdd(ptr, value, std::memory_order_seq_cst, std::memory_order_relaxed);
 }
 
+float pando::atomicFetchAdd(pando::GlobalPtr<float> ptr, float value, std::memory_order) {
+  return atomicFetchAdd(ptr, value, std::memory_order_seq_cst, std::memory_order_relaxed);
+}
+
 float pando::atomicFetchSub(pando::GlobalPtr<float> ptr, float value) {
   return atomicFetchSub(ptr, value, std::memory_order_seq_cst, std::memory_order_relaxed);
 }
