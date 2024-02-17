@@ -25,6 +25,7 @@
 #include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-lib-galois/utility/pair.hpp>
 #include <pando-lib-galois/utility/string_view.hpp>
+#include <pando-lib-galois/utility/tuple.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
 
@@ -43,15 +44,9 @@ template <typename EdgeType>
     pando::GlobalRef<pando::Vector<EdgeType>> vec = fmap(localEdges, get, result);
     return fmap(vec, pushBack, edge);
   } else {
-    auto err = fmap(hashRef, put, edge.src, lift(localEdges, size));
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(fmap(hashRef, put, edge.src, lift(localEdges, size)));
     pando::Vector<EdgeType> v;
-    err = v.initialize(1);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(v.initialize(1));
     v[0] = std::move(edge);
     return fmap(localEdges, pushBack, std::move(v));
   }
@@ -61,18 +56,18 @@ template <typename EdgeType>
  * @brief fills out the metadata for the VirtualToPhysical Host mapping.
  */
 template <typename EdgeType>
-void buildEdgeCountToSend(
+[[nodiscard]] pando::Status buildEdgeCountToSend(
     std::uint64_t numVirtualHosts, galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
     pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
-  PANDO_CHECK(sumArray.initialize(numVirtualHosts));
+  PANDO_CHECK_RETURN(sumArray.initialize(numVirtualHosts));
 
   for (std::uint64_t i = 0; i < numVirtualHosts; i++) {
     galois::Pair<std::uint64_t, std::uint64_t> p{0, i};
     sumArray[i] = p;
   }
 
-  galois::doAll(
+  PANDO_CHECK_RETURN(galois::doAll(
       sumArray, localEdges,
       +[](pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts,
           pando::Vector<pando::Vector<EdgeType>> localEdges) {
@@ -87,20 +82,10 @@ void buildEdgeCountToSend(
               static_cast<pando::GlobalPtr<void>>(toAdd));
           pando::atomicFetchAdd(p, v.size(), std::memory_order_relaxed);
         }
-      });
+      }));
   labeledEdgeCounts = sumArray;
+  return pando::Status::Success;
 }
-
-template <typename EdgeType>
-struct CountState {
-  CountState() = default;
-  CountState(pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray_,
-             galois::WaitGroup::HandleType wgh_)
-      : sumArray(sumArray_), wgh(wgh_) {}
-
-  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
-  galois::WaitGroup::HandleType wgh;
-};
 
 /**
  * @brief fills out the metadata for the VirtualToPhysical Host mapping.
@@ -118,25 +103,25 @@ void buildEdgeCountToSend(
   }
   galois::WaitGroup wg{};
   PANDO_CHECK(wg.initialize(0));
+  auto wgh = wg.getHandle();
 
   using UPair = galois::Pair<std::uint64_t, std::uint64_t>;
   const uint64_t pairOffset = offsetof(UPair, first);
 
-  galois::doAll(
-      wg.getHandle(), CountState<EdgeType>(sumArray, wg.getHandle()), localEdges,
-      +[](CountState<EdgeType>& state, pando::Vector<EdgeType> localEdges) {
-        galois::doAll(
-            state.wgh, state.sumArray, localEdges,
-            +[](pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts,
-                EdgeType localEdge) {
+  auto state = galois::make_tpl(wgh, sumArray);
+  PANDO_CHECK(galois::doAll(
+      wgh, state, localEdges, +[](decltype(state) state, pando::Vector<EdgeType> localEdges) {
+        auto [wgh, sumArray] = state;
+        PANDO_CHECK(galois::doAll(
+            wgh, sumArray, localEdges, +[](decltype(sumArray) counts, EdgeType localEdge) {
               pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
                   static_cast<pando::GlobalPtr<void>>(&counts[localEdge.src % counts.size()]));
               toAdd += pairOffset;
               pando::GlobalPtr<std::uint64_t> p = static_cast<pando::GlobalPtr<std::uint64_t>>(
                   static_cast<pando::GlobalPtr<void>>(toAdd));
               pando::atomicFetchAdd(p, 1, std::memory_order_relaxed);
-            });
-      });
+            }));
+      }));
   PANDO_CHECK(wg.wait());
   labeledEdgeCounts = sumArray;
 }
@@ -161,30 +146,18 @@ template <typename VertexType>
 [[nodiscard]] pando::Status perHostPartitionVertex(
     pando::Array<std::uint64_t> virtualToPhysicalMapping, pando::Vector<VertexType> vertices,
     pando::GlobalPtr<galois::PerHost<pando::Vector<VertexType>>> partitionedVertices) {
-  pando::Status err;
   galois::PerHost<pando::Vector<VertexType>> partitioned;
-  err = partitioned.initialize();
-  if (err != pando::Status::Success) {
-    return err;
-  }
+  PANDO_CHECK_RETURN(partitioned.initialize());
 
   std::uint64_t initSize = vertices.size() / lift(*partitionedVertices, size);
   for (pando::GlobalRef<pando::Vector<VertexType>> vec : partitioned) {
-    err = fmap(vec, initialize, 0);
-    if (err != pando::Status::Success) {
-      return err;
-    }
-    err = fmap(vec, reserve, initSize);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(fmap(vec, initialize, 0));
+    PANDO_CHECK_RETURN(fmap(vec, reserve, initSize));
   }
 
   for (VertexType vert : vertices) {
-    err = fmap(partitioned.get(getPhysical(vert.id, virtualToPhysicalMapping)), pushBack, vert);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(
+        fmap(partitioned.get(getPhysical(vert.id, virtualToPhysicalMapping)), pushBack, vert));
   }
 
   *partitionedVertices = partitioned;
@@ -200,13 +173,9 @@ template <typename EdgeType>
     pando::Array<std::uint64_t> virtualToPhysicalMapping,
     galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
     galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
-  pando::Status err;
   for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
     galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
-    err = hash.initialize(0);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(hash.initialize(0));
     hashRef = hash;
   }
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
@@ -216,10 +185,7 @@ template <typename EdgeType>
         auto tgtHost = getPhysical(edge.src, virtualToPhysicalMapping);
         pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> edges =
             partitionedEdges.get(tgtHost);
-        err = insertLocalEdgesPerThread(renamePerHost.get(tgtHost), edges, edge);
-        if (err != pando::Status::Success) {
-          return err;
-        }
+        PANDO_CHECK_RETURN(insertLocalEdgesPerThread(renamePerHost.get(tgtHost), edges, edge));
       }
     }
   }
@@ -235,13 +201,9 @@ template <typename EdgeType>
     pando::Array<std::uint64_t> virtualToPhysicalMapping,
     galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
     galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
-  pando::Status err;
   for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
     galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
-    err = hash.initialize(0);
-    if (err != pando::Status::Success) {
-      return err;
-    }
+    PANDO_CHECK_RETURN(hash.initialize(0));
     hashRef = hash;
   }
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
@@ -250,18 +212,147 @@ template <typename EdgeType>
       auto tgtHost = getPhysical(edge.src, virtualToPhysicalMapping);
       pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> edges =
           partitionedEdges.get(tgtHost);
-      err = insertLocalEdgesPerThread(renamePerHost.get(tgtHost), edges, edge);
-      if (err != pando::Status::Success) {
-        return err;
-      }
+      PANDO_CHECK_RETURN(insertLocalEdgesPerThread(renamePerHost.get(tgtHost), edges, edge));
     }
   }
   return pando::Status::Success;
 }
 
+/**
+ * @brief Consumes the localVertices, and references a partitionMap to produce partitioned Vertices
+ */
+template <typename VertexType>
+[[nodiscard]] galois::PerHost<pando::Vector<VertexType>> partitionVertices(
+    galois::PerThreadVector<VertexType>&& vertexPerThreadRead, pando::Array<std::uint64_t> v2PM) {
+  galois::PerHost<pando::Vector<VertexType>> vertPart{};
+  PANDO_CHECK(vertPart.initialize());
+
+  galois::PerHost<pando::Vector<VertexType>> readPart{};
+  PANDO_CHECK(readPart.initialize());
+  for (pando::GlobalRef<pando::Vector<VertexType>> vec : readPart) {
+    PANDO_CHECK(fmap(vec, initialize, 0));
+  }
+  PANDO_CHECK(vertexPerThreadRead.hostFlattenAppend(readPart));
+
+#if FREE
+  auto freeLocalVertices = +[](PerThreadVector<VertexType> localVertices) {
+    localVertices.deinitialize();
+  };
+  PANDO_CHECK(pando::executeOn(pando::anyPlace, freeLocalVertices, localVertices));
+#endif
+
+  galois::PerHost<galois::PerHost<pando::Vector<VertexType>>> partVert{};
+  PANDO_CHECK(partVert.initialize());
+
+  struct PHPV {
+    pando::Array<std::uint64_t> v2PM;
+    PerHost<pando::Vector<VertexType>> pHV;
+  };
+
+  auto f = +[](PHPV phpv, pando::GlobalRef<PerHost<pando::Vector<VertexType>>> partVert) {
+    const std::uint64_t hostID = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
+    PANDO_CHECK(galois::internal::perHostPartitionVertex<VertexType>(
+        phpv.v2PM, phpv.pHV.get(hostID), &partVert));
+  };
+  PANDO_CHECK(galois::doAll(PHPV{v2PM, readPart}, partVert, f));
+
+#if FREE
+  auto freeReadPart = +[](PerHost<pando::Vector<VertexType>> readPart) {
+    for (pando::Vector<WMDVertex> vec : readPart) {
+      vec.deinitialize();
+    }
+    readPart.deinitialize();
+  };
+  PANDO_CHECK(pando::executeOn(pando::anyPlace, freeReadPart, readPart));
+#endif
+
+  PANDO_CHECK(galois::doAll(
+      partVert, vertPart,
+      +[](decltype(partVert) pHPHV, pando::GlobalRef<pando::Vector<VertexType>> pHV) {
+        PANDO_CHECK(fmap(pHV, initialize, 0));
+        std::uint64_t currNode = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
+        for (galois::PerHost<pando::Vector<WMDVertex>> pHVRef : pHPHV) {
+          PANDO_CHECK(fmap(pHV, append, &pHVRef.get(currNode)));
+        }
+      }));
+
+#if FREE
+  auto freePartVert = +[](PerHost<PerHost<pando::Vector<VertexType>>> partVert) {
+    for (PerHost<pando::Vector<WMDVertex>> pVV : partVert) {
+      for (pando::Vector<WMDVertex> vV : pVV) {
+        vV.deinitialize();
+      }
+      pVV.deinitialize();
+    }
+    partVert.deinitialize();
+  };
+  PANDO_CHECK(pando::executeOn(pando::anyPlace, freePartVert, partVert));
+#endif
+
+  return vertPart;
+}
+
+/**
+ * @brief Consumes localEdges, and references a partitionMap to produced partitioned Edges grouped
+ * by Vertex, along with a rename set of Vertices
+ */
+template <typename EdgeType>
+[[nodiscard]] Pair<PerHost<pando::Vector<pando::Vector<EdgeType>>>,
+                   PerHost<HashTable<std::uint64_t, std::uint64_t>>>
+partitionEdgesPerHost(PerThreadVector<pando::Vector<EdgeType>>&& localEdges,
+                      pando::Array<std::uint64_t> v2PM) {
+  PerHost<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
+  PANDO_CHECK(partEdges.initialize());
+
+  for (pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> vvec : partEdges) {
+    PANDO_CHECK(fmap(vvec, initialize, 0));
+  }
+
+  PerHost<HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
+  PANDO_CHECK(renamePerHost.initialize());
+
+  PANDO_CHECK(galois::internal::partitionEdgesSerially(localEdges, v2PM, partEdges, renamePerHost));
+
+#if FREE
+  auto freeLocalEdges = +[](PerThreadVector<pando::Vector<EdgeType>> localEdges) {
+    for (pando::Vector<pando::Vector<EdgeType>> vVE : localEdges) {
+      for (pando::Vector<EdgeType> vE : vVE) {
+        vE.deinitialize();
+      }
+    }
+    localEdges.deinitialize();
+  };
+  PANDO_CHECK(pando::executeOn(pando::anyPlace, freeLocalEdges, localEdges));
+#endif
+  return galois::make_tpl(partEdges, renamePerHost);
+}
+
+uint64_t inline getFileReadOffset(galois::ifstream& file, uint64_t segment, uint64_t numSegments) {
+  uint64_t fileSize = file.size();
+  if (segment == 0) {
+    return 0;
+  }
+  if (segment >= numSegments) {
+    return fileSize;
+  }
+
+  uint64_t bytesPerSegment = fileSize / numSegments;
+  uint64_t offset = segment * bytesPerSegment;
+  pando::Vector<char> line;
+  PANDO_CHECK(line.initialize(0));
+
+  // check for partial line at start
+  file.seekg(offset - 1);
+  file.getline(line, '\n');
+  // if not at start of a line, discard partial line
+  if (!line.empty())
+    offset += line.size();
+  line.deinitialize();
+  return offset;
+}
+
 /*
  * Load graph info from the file.
- * Expect a WMD format csv
  *
  * @param filename loaded file for the graph
  * @param segmentsPerHost the number of file segments each host will load.
@@ -276,23 +367,13 @@ template <typename EdgeType>
  *
  * @note per thread method
  */
-template <typename VertexType, typename EdgeType>
-void loadGraphFilePerThread(
-    pando::NotificationHandle done, pando::Array<char> filename, uint64_t segmentsPerThread,
-    std::uint64_t numThreads, std::uint64_t threadID, bool isEdgelist,
-    galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
-    pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
-    galois::PerThreadVector<VertexType> localVertices,
-    galois::DAccumulator<std::uint64_t> totVerts) {
-  pando::Vector<char> line;
-  PANDO_CHECK(line.initialize(0));
-
+template <typename ParseFunc>
+pando::Status loadGraphFilePerThread(pando::Array<char> filename, uint64_t segmentsPerThread,
+                                     std::uint64_t numThreads, std::uint64_t threadID,
+                                     ParseFunc parseFunc) {
   galois::ifstream graphFile;
-  PANDO_CHECK(graphFile.open(filename));
-
+  PANDO_CHECK_RETURN(graphFile.open(filename));
   uint64_t numSegments = numThreads * segmentsPerThread;
-  uint64_t fileSize = graphFile.size();
-  uint64_t bytesPerSegment = fileSize / numSegments; // file size / number of segments
 
   // init per thread data struct
 
@@ -300,34 +381,11 @@ void loadGraphFilePerThread(
   // N, N + numHosts, N + numHosts * 2, ..., N + numHosts * (segmentsPerHost - 1)
   for (uint64_t cur = 0; cur < segmentsPerThread; cur++) {
     uint64_t segmentID = (uint64_t)threadID + cur * numThreads;
-    uint64_t start = segmentID * bytesPerSegment;
-    uint64_t end = start + bytesPerSegment;
-
-    // check for partial line at start
-    if (segmentID != 0) {
-      graphFile.seekg(start - 1);
-      graphFile.getline(line, '\n');
-
-      // if not at start of a line, discard partial line
-      if (!line.empty())
-        start += line.size();
+    uint64_t start = getFileReadOffset(graphFile, segmentID, numSegments);
+    uint64_t end = getFileReadOffset(graphFile, segmentID + 1, numSegments);
+    if (start == end) {
+      continue;
     }
-
-    // check for partial line at end
-    line.deinitialize();
-    PANDO_CHECK(line.initialize(0));
-    if (segmentID != numSegments - 1) {
-      graphFile.seekg(end - 1);
-      graphFile.getline(line, '\n');
-
-      // if not at end of a line, include next line
-      if (!line.empty())
-        end += line.size();
-    } else { // last locale processes to end of file
-      end = fileSize;
-    }
-
-    line.deinitialize();
     graphFile.seekg(start);
 
     // load segment into memory
@@ -351,33 +409,13 @@ void loadGraphFilePerThread(
         continue;
       }
 
-      auto vfunc = [&localVertices, &totVerts](VertexType v) {
-        PANDO_CHECK(localVertices.pushBack(v));
-        totVerts.add(1);
-      };
-      pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef =
-          perThreadRename[threadID];
-      auto efunc = [&localEdges, hashRef](EdgeType e, agile::TYPES inverseEdgeType) {
-        EdgeType inverseE = e;
-        inverseE.type = inverseEdgeType;
-        std::swap(inverseE.src, inverseE.dst);
-        std::swap(inverseE.srcType, inverseE.dstType);
-        PANDO_CHECK(insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), e));
-        PANDO_CHECK(insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), inverseE));
-      };
-      if (!isEdgelist)
-        galois::genParse<VertexType, EdgeType>(10, currentLine, vfunc, efunc);
-      else
-        galois::genParse<EdgeType>(2, currentLine, efunc);
-
+      PANDO_CHECK_RETURN(parseFunc(currentLine));
       currentLine = nextLine;
     }
     delete[] segmentBuffer;
   }
-
   graphFile.close();
-
-  done.notify();
+  return pando::Status::Success;
 }
 
 /*
@@ -388,78 +426,15 @@ void loadVertexFilePerThread(pando::NotificationHandle done,
                              galois::VertexParser<VertexType> parser, uint64_t segmentsPerThread,
                              std::uint64_t numThreads, std::uint64_t threadID,
                              galois::PerThreadVector<VertexType> localVertices) {
-  pando::Vector<char> line;
-  PANDO_CHECK(line.initialize(0));
-
-  galois::ifstream graphFile;
-  PANDO_CHECK(graphFile.open(parser.filename));
-
-  uint64_t numSegments = numThreads * segmentsPerThread;
-  uint64_t fileSize = graphFile.size();
-  uint64_t bytesPerSegment = fileSize / numSegments; // file size / number of segments
-
-  // init per thread data struct
-
-  // for each host N, it will read segment like:
-  // N, N + numHosts, N + numHosts * 2, ..., N + numHosts * (segmentsPerHost - 1)
-  for (uint64_t cur = 0; cur < segmentsPerThread; cur++) {
-    uint64_t segmentID = (uint64_t)threadID + cur * numThreads;
-    uint64_t start = segmentID * bytesPerSegment;
-    uint64_t end = start + bytesPerSegment;
-
-    // check for partial line at start
-    if (segmentID != 0) {
-      graphFile.seekg(start - 1);
-      graphFile.getline(line, '\n');
-
-      // if not at start of a line, discard partial line
-      if (!line.empty())
-        start += line.size();
+  pando::GlobalRef<pando::Vector<VertexType>> localVert = localVertices.getThreadVector();
+  auto parseLine = [&parser, &localVert](const char* currentLine) {
+    if (currentLine[0] != parser.comment) {
+      PANDO_CHECK_RETURN(fmap(localVert, pushBack, parser.parser(currentLine)));
     }
-
-    // check for partial line at end
-    line.deinitialize();
-    PANDO_CHECK(line.initialize(0));
-    if (segmentID != numSegments - 1) {
-      graphFile.seekg(end - 1);
-      graphFile.getline(line, '\n');
-
-      // if not at end of a line, include next line
-      if (!line.empty())
-        end += line.size();
-    } else { // last locale processes to end of file
-      end = fileSize;
-    }
-
-    line.deinitialize();
-    graphFile.seekg(start);
-
-    // load segment into memory
-    uint64_t segmentLength = end - start;
-    char* segmentBuffer = new char[segmentLength];
-    graphFile.read(segmentBuffer, segmentLength);
-
-    // A parallel loop that parse the segment
-    // task 1: get token to global id mapping
-    // task 2: get token to edges mapping
-    char* currentLine = segmentBuffer;
-    char* endLine = currentLine + segmentLength;
-
-    while (currentLine < endLine) {
-      assert(std::strchr(currentLine, '\n'));
-      char* nextLine = std::strchr(currentLine, '\n') + 1;
-
-      // skip comments
-      if (currentLine[0] == parser.comment) {
-        currentLine = nextLine;
-        continue;
-      }
-      PANDO_CHECK(localVertices.pushBack(parser.parser(currentLine)));
-      currentLine = nextLine;
-    }
-    delete[] segmentBuffer;
-  }
-  graphFile.close();
+    return pando::Status::Success;
+  };
+  PANDO_CHECK(
+      loadGraphFilePerThread(parser.filename, segmentsPerThread, numThreads, threadID, parseLine));
   done.notify();
 }
 
@@ -468,88 +443,23 @@ void loadEdgeFilePerThread(
     pando::NotificationHandle done, galois::EdgeParser<EdgeType> parser, uint64_t segmentsPerThread,
     std::uint64_t numThreads, std::uint64_t threadID,
     galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
-    pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
-  pando::Vector<char> line;
-  PANDO_CHECK(line.initialize(0));
+    galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
+  auto hartID = localEdges.getLocalVectorID();
+  auto localEdgeVec = localEdges.getThreadVector();
+  auto hashRef = perThreadRename[hartID];
 
-  galois::ifstream graphFile;
-  PANDO_CHECK(graphFile.open(parser.filename));
-
-  uint64_t numSegments = numThreads * segmentsPerThread;
-  uint64_t fileSize = graphFile.size();
-  uint64_t bytesPerSegment = fileSize / numSegments; // file size / number of segments
-  pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef =
-      perThreadRename[threadID];
-
-  // init per thread data struct
-
-  // for each host N, it will read segment like:
-  // N, N + numHosts, N + numHosts * 2, ..., N + numHosts * (segmentsPerHost - 1)
-  for (uint64_t cur = 0; cur < segmentsPerThread; cur++) {
-    uint64_t segmentID = (uint64_t)threadID + cur * numThreads;
-    uint64_t start = segmentID * bytesPerSegment;
-    uint64_t end = start + bytesPerSegment;
-
-    // check for partial line at start
-    if (segmentID != 0) {
-      graphFile.seekg(start - 1);
-      graphFile.getline(line, '\n');
-
-      // if not at start of a line, discard partial line
-      if (!line.empty())
-        start += line.size();
-    }
-
-    // check for partial line at end
-    line.deinitialize();
-    PANDO_CHECK(line.initialize(0));
-    if (segmentID != numSegments - 1) {
-      graphFile.seekg(end - 1);
-      graphFile.getline(line, '\n');
-
-      // if not at end of a line, include next line
-      if (!line.empty())
-        end += line.size();
-    } else { // last locale processes to end of file
-      end = fileSize;
-    }
-
-    line.deinitialize();
-    graphFile.seekg(start);
-
-    // load segment into memory
-    uint64_t segmentLength = end - start;
-    char* segmentBuffer = new char[segmentLength];
-    graphFile.read(segmentBuffer, segmentLength);
-
-    // A parallel loop that parse the segment
-    // task 1: get token to global id mapping
-    // task 2: get token to edges mapping
-    char* currentLine = segmentBuffer;
-    char* endLine = currentLine + segmentLength;
-
-    while (currentLine < endLine) {
-      assert(std::strchr(currentLine, '\n'));
-      char* nextLine = std::strchr(currentLine, '\n') + 1;
-
-      // skip comments
-      if (currentLine[0] == parser.comment) {
-        currentLine = nextLine;
-        continue;
-      }
+  auto parseLine = [&parser, &localEdgeVec, &hashRef](const char* currentLine) {
+    if (currentLine[0] != parser.comment) {
       ParsedEdges<EdgeType> parsed = parser.parser(currentLine);
       if (parsed.isEdge) {
-        PANDO_CHECK(insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), parsed.edge1));
+        PANDO_CHECK_RETURN(insertLocalEdgesPerThread(hashRef, localEdgeVec, parsed.edge1));
         if (parsed.has2Edges) {
-          PANDO_CHECK(
-              insertLocalEdgesPerThread(hashRef, localEdges.getThreadVector(), parsed.edge2));
+          PANDO_CHECK_RETURN(insertLocalEdgesPerThread(hashRef, localEdgeVec, parsed.edge2));
         }
       }
-      currentLine = nextLine;
     }
-    delete[] segmentBuffer;
-  }
-  graphFile.close();
+    return pando::Status::Success;
+  };
   done.notify();
 }
 
@@ -565,68 +475,20 @@ struct ImportState {
 
 template <typename EdgeType>
 void loadGraphFile(ImportState<EdgeType>& state, uint64_t segmentID, uint64_t numSegments) {
-  galois::ifstream graphFile;
-  PANDO_CHECK(graphFile.open(state.parser.filename));
-  uint64_t fileSize = graphFile.size();
-  uint64_t bytesPerSegment = fileSize / numSegments;
-  uint64_t start = segmentID * bytesPerSegment;
-  uint64_t end = start + bytesPerSegment;
-
-  pando::Vector<char> line;
-  PANDO_CHECK(line.initialize(0));
-
-  // check for partial line at start
-  if (segmentID != 0) {
-    graphFile.seekg(start - 1);
-    graphFile.getline(line, '\n');
-
-    // if not at start of a line, discard partial line
-    if (!line.empty())
-      start += line.size();
-  }
-  // check for partial line at end
-  line.deinitialize();
-  PANDO_CHECK(line.initialize(0));
-  if (segmentID != numSegments - 1) {
-    graphFile.seekg(end - 1);
-    graphFile.getline(line, '\n');
-
-    // if not at end of a line, include next line
-    if (!line.empty())
-      end += line.size();
-  } else { // last locale processes to end of file
-    end = fileSize;
-  }
-  line.deinitialize();
-  graphFile.seekg(start);
-
-  // load segment into memory
-  uint64_t segmentLength = end - start;
-  char* segmentBuffer = new char[segmentLength];
-  graphFile.read(segmentBuffer, segmentLength);
-
-  char* currentLine = segmentBuffer;
-  char* endLine = currentLine + segmentLength;
-
-  while (currentLine < endLine) {
-    char* nextLine = std::strchr(currentLine, '\n') + 1;
-
-    // skip comments
+  auto parseLine = [&state](const char* currentLine) {
     if (currentLine[0] == state.parser.comment) {
-      currentLine = nextLine;
-      continue;
+      return pando::Status::Success;
     }
     ParsedEdges<EdgeType> parsed = state.parser.parser(currentLine);
     if (parsed.isEdge) {
-      PANDO_CHECK(state.localEdges.pushBack(parsed.edge1));
+      PANDO_CHECK_RETURN(state.localEdges.pushBack(parsed.edge1));
       if (parsed.has2Edges) {
-        PANDO_CHECK(state.localEdges.pushBack(parsed.edge2));
+        PANDO_CHECK_RETURN(state.localEdges.pushBack(parsed.edge2));
       }
     }
-    currentLine = nextLine;
-  }
-  delete[] segmentBuffer;
-  graphFile.close();
+    return pando::Status::Success;
+  };
+  PANDO_CHECK(loadGraphFilePerThread(state.parser.filename, 1, numSegments, segmentID, parseLine));
 }
 
 } // namespace galois::internal

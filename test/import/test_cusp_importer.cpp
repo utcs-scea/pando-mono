@@ -7,10 +7,12 @@
 #include <numeric>
 
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
+#include <pando-lib-galois/import/ingest_rmat_el.hpp>
+#include <pando-lib-galois/import/ingest_wmd_csv.hpp>
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 
-uint64_t getNumEdges(std::string& filename) {
+uint64_t getNumEdges(const std::string& filename) {
   uint64_t numEdges = 0;
   std::ifstream file(filename);
   std::string line;
@@ -326,7 +328,8 @@ TEST(BuildEdgeCountToSend, SmallSequentialTest) {
     i++;
   }
 
-  galois::internal::buildEdgeCountToSend(numVirtualHosts, perThreadLocalEdges, *edgeCounts);
+  PANDO_CHECK(
+      galois::internal::buildEdgeCountToSend(numVirtualHosts, perThreadLocalEdges, *edgeCounts));
 
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts = *edgeCounts;
   uint64_t cnt = 1;
@@ -378,8 +381,8 @@ TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
     pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
     pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
 
-    galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges,
-                                                            *edgeCounts);
+    PANDO_CHECK(galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges,
+                                                                        *edgeCounts));
 
     pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts = *edgeCounts;
     std::uint64_t i = 0;
@@ -672,8 +675,8 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
     pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
     pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
 
-    galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges,
-                                                            *edgeCounts);
+    PANDO_CHECK(galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges,
+                                                                        *edgeCounts));
 
     for (std::uint64_t numHosts = 2; numHosts <= numVirtualHosts; numHosts *= 3) {
       pando::Array<std::uint64_t> totEdges;
@@ -764,8 +767,8 @@ TEST(loadGraphFilePerThread, loadGraph) {
   for (uint64_t i = 0; i < wmdFile.size(); i++)
     filename[i] = wmdFile[i];
 
-  pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
-  PANDO_CHECK(perThreadRename.initialize(numThreads));
+  galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
+  PANDO_CHECK(perThreadRename.initialize(localEdges.size()));
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
     perThreadRename[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
     pando::Status err = fmap(perThreadRename[i], initialize, 0);
@@ -778,23 +781,28 @@ TEST(loadGraphFilePerThread, loadGraph) {
     EXPECT_EQ(err, pando::Status::Success);
   }
 
-  pando::Place place = pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore};
-  pando::NotificationArray done;
-  PANDO_CHECK(done.init(numThreads));
   galois::DAccumulator<std::uint64_t> totVerts;
   EXPECT_EQ(totVerts.initialize(), pando::Status::Success);
 
+  galois::WaitGroup wg;
+  EXPECT_EQ(pando::Status::Success, wg.initialize(numThreads));
+  auto wgh = wg.getHandle();
+
   for (uint64_t i = 0; i < numThreads; i++) {
-    pando::Status err = pando::executeOn(
-        place, &galois::internal::loadGraphFilePerThread<galois::WMDVertex, galois::WMDEdge>,
-        done.getHandle(i), filename, segmentsPerThread, numThreads, i, false, localEdges,
-        perThreadRename, localVertices, totVerts);
+    pando::Place place =
+        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % pando::getPlaceDims().node.id)},
+                     pando::anyPod, pando::anyCore};
+    pando::Status err =
+        pando::executeOn(place, &galois::loadWMDFilePerThread, wgh, filename, segmentsPerThread,
+                         numThreads, i, localEdges, perThreadRename, localVertices, totVerts);
     EXPECT_EQ(err, pando::Status::Success);
   }
-  done.wait();
+  EXPECT_EQ(pando::Status::Success, wg.wait());
+
+  wg.deinitialize();
 
   auto freeStuff =
-      +[](pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
+      +[](galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
         for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
           hash.deinitialize();
         }
@@ -813,7 +821,7 @@ TEST(loadGraphFilePerThread, loadGraph) {
   uint64_t edges = 0;
   for (uint64_t i = 0; i < localEdges.size(); i++) {
     for (uint64_t j = 0; j < lift(*localEdges.get(i), size); j++) {
-      pando::Vector<galois::WMDEdge> vec = localEdges.get(i)->get(j);
+      pando::Vector<galois::WMDEdge> vec = fmap(*localEdges.get(i), get, j);
       edges += vec.size();
     }
   }
@@ -822,49 +830,44 @@ TEST(loadGraphFilePerThread, loadGraph) {
   totVerts.deinitialize();
 }
 
-TEST(loadGraphFilePerThread, loadEdgelist) {
-  uint64_t numThreads = 2;
+TEST(loadGraphFilePerThread, loadEdgeList) {
   uint64_t segmentsPerThread = 1;
-  galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
+  galois::PerThreadVector<pando::Vector<galois::ELEdge>> localEdges;
   EXPECT_EQ(localEdges.initialize(), pando::Status::Success);
-  galois::PerThreadVector<galois::WMDVertex> localVertices;
-  EXPECT_EQ(localVertices.initialize(), pando::Status::Success);
+
   pando::Array<char> filename;
-  std::string edgelistFile = "/pando/graphs/simple.el";
+  const std::string edgelistFile = "/pando/graphs/simple.el";
+  const std::uint64_t numVertices = 10;
   PANDO_CHECK(filename.initialize(edgelistFile.size()));
   for (uint64_t i = 0; i < edgelistFile.size(); i++)
     filename[i] = edgelistFile[i];
 
-  pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
-  PANDO_CHECK(perThreadRename.initialize(numThreads));
+  const std::uint64_t numThreads = localEdges.size() - pando::getPlaceDims().node.id;
+
+  galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename{};
+  PANDO_CHECK(perThreadRename.initialize(localEdges.size()));
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
     perThreadRename[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
     pando::Status err = fmap(perThreadRename[i], initialize, 0);
     EXPECT_EQ(err, pando::Status::Success);
   }
 
-  for (std::uint64_t i = 0; i < numThreads; i++) {
-    perThreadRename[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
-    pando::Status err = fmap(perThreadRename[i], initialize, 0);
-    EXPECT_EQ(err, pando::Status::Success);
-  }
-
-  pando::Place place = pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore};
-  pando::NotificationArray done;
-  galois::DAccumulator<std::uint64_t> totVerts;
-  EXPECT_EQ(totVerts.initialize(), pando::Status::Success);
-  PANDO_CHECK(done.init(numThreads));
+  galois::WaitGroup wg;
+  EXPECT_EQ(pando::Status::Success, wg.initialize(numThreads));
+  auto wgh = wg.getHandle();
   for (uint64_t i = 0; i < numThreads; i++) {
-    pando::Status err = pando::executeOn(
-        place, &galois::internal::loadGraphFilePerThread<galois::WMDVertex, galois::WMDEdge>,
-        done.getHandle(i), filename, segmentsPerThread, numThreads, i, true, localEdges,
-        perThreadRename, localVertices, totVerts);
+    std::int16_t nodeId =
+        static_cast<std::int16_t>(i % static_cast<std::uint64_t>(pando::getPlaceDims().node.id));
+    pando::Place place = pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore};
+    pando::Status err =
+        pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, segmentsPerThread,
+                         numThreads, i, localEdges, perThreadRename, numVertices);
     EXPECT_EQ(err, pando::Status::Success);
   }
-  done.wait();
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
 
   auto freeStuff =
-      +[](pando::Array<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
+      +[](galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
         for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
           hash.deinitialize();
         }
@@ -876,10 +879,11 @@ TEST(loadGraphFilePerThread, loadEdgelist) {
   uint64_t edges = 0;
   for (uint64_t i = 0; i < localEdges.size(); i++) {
     for (uint64_t j = 0; j < lift(*localEdges.get(i), size); j++) {
-      pando::Vector<galois::WMDEdge> vec = fmap(*localEdges.get(i), get, j);
-      edges += vec.size();
+      auto lEij = fmap(*localEdges.get(i), get, j);
+      edges += lift(lEij, size);
+      liftVoid(lEij, deinitialize);
     }
   }
-  EXPECT_EQ(edges, 2 * numEdges);
-  totVerts.deinitialize();
+  EXPECT_EQ(edges, numEdges);
+  localEdges.deinitialize();
 }

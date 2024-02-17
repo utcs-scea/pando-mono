@@ -188,6 +188,9 @@ public:
 
   /// @brief If key is in hashtable, return true else return false
   bool contains(const Key& key) {
+    if (m_buffer.size() == 0) {
+      return false;
+    }
     Entry e = m_buffer[probe(m_buffer, key)];
 
     if (e.occupied && e.key == key) {

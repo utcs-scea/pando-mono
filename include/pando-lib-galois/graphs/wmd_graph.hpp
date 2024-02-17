@@ -27,7 +27,7 @@ public:
     type = agile::TYPES::NONE;
   }
   WMDVertex(uint64_t id_, agile::TYPES type_) : id(id_), edges(0), type(type_) {}
-  explicit WMDVertex(pando::Vector<galois::StringView> tokens) {
+  explicit WMDVertex(pando::Array<galois::StringView> tokens) {
     if (tokens[0] == galois::StringView("Person")) {
       type = agile::TYPES::PERSON;
     } else if (tokens[0] == galois::StringView("ForumEvent")) {
@@ -77,7 +77,7 @@ public:
   WMDEdge(uint64_t src_, uint64_t dst_, agile::TYPES type_, agile::TYPES srcType_,
           agile::TYPES dstType_)
       : src(src_), dst(dst_), type(type_), srcType(srcType_), dstType(dstType_) {}
-  explicit WMDEdge(pando::Vector<galois::StringView> tokens) {
+  explicit WMDEdge(pando::Array<galois::StringView> tokens) {
     galois::StringView token0(tokens[0]);
     galois::StringView token1(tokens[1]);
     galois::StringView token2(tokens[2]);

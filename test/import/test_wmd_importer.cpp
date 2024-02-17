@@ -7,17 +7,18 @@
 #include <numeric>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
+#include <pando-lib-galois/import/ingest_rmat_el.hpp>
+#include <pando-lib-galois/import/ingest_wmd_csv.hpp>
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 
-using Graph = galois::DistLocalCSR<galois::WMDVertex, galois::WMDEdge>;
-
-void getVerticesAndEdges(std::string& filename,
-                         std::unordered_map<std::uint64_t, galois::WMDVertex>& vertices,
-                         std::unordered_map<std::uint64_t, std::vector<galois::WMDEdge>>& hashTable,
-                         bool isEdgelist) {
+void getVerticesAndEdgesWMD(
+    const std::string& filename, std::unordered_map<std::uint64_t, galois::WMDVertex>& vertices,
+    std::unordered_map<std::uint64_t, std::vector<galois::WMDEdge>>& hashTable) {
   std::ifstream file(filename);
   std::string line;
+  pando::Array<galois::StringView> tokens;
+  PANDO_CHECK(tokens.initialize(10));
   while (std::getline(file, line)) {
     if (line.find("//") != std::string::npos || line.find("#") != std::string::npos) {
       continue;
@@ -25,11 +26,7 @@ void getVerticesAndEdges(std::string& filename,
       continue;
     } else {
       const char* ptr = line.c_str();
-      pando::Vector<galois::StringView> tokens;
-      if (isEdgelist)
-        tokens = galois::splitLine(ptr, ' ', 2);
-      else
-        tokens = galois::splitLine(ptr, ',', 10);
+      galois::splitLine<10>(ptr, ',', tokens);
       bool isNode = tokens[0] == galois::StringView("Person") ||
                     tokens[0] == galois::StringView("ForumEvent") ||
                     tokens[0] == galois::StringView("Forum") ||
@@ -50,20 +47,18 @@ void getVerticesAndEdges(std::string& filename,
         hashTable[edge.src].push_back(edge);
         // Inverse edge
         agile::TYPES inverseEdgeType = agile::TYPES::NONE;
-        if (!isEdgelist) {
-          if (tokens[0] == galois::StringView("Sale")) {
-            inverseEdgeType = agile::TYPES::PURCHASE;
-          } else if (tokens[0] == galois::StringView("Author")) {
-            inverseEdgeType = agile::TYPES::WRITTENBY;
-          } else if (tokens[0] == galois::StringView("Includes")) {
-            inverseEdgeType = agile::TYPES::INCLUDEDIN;
-          } else if (tokens[0] == galois::StringView("HasTopic")) {
-            inverseEdgeType = agile::TYPES::TOPICIN;
-          } else if (tokens[0] == galois::StringView("HasOrg")) {
-            inverseEdgeType = agile::TYPES::ORG_IN;
-          } else {
-            ASSERT_TRUE(false) << "Should never be reached" << std::endl;
-          }
+        if (tokens[0] == galois::StringView("Sale")) {
+          inverseEdgeType = agile::TYPES::PURCHASE;
+        } else if (tokens[0] == galois::StringView("Author")) {
+          inverseEdgeType = agile::TYPES::WRITTENBY;
+        } else if (tokens[0] == galois::StringView("Includes")) {
+          inverseEdgeType = agile::TYPES::INCLUDEDIN;
+        } else if (tokens[0] == galois::StringView("HasTopic")) {
+          inverseEdgeType = agile::TYPES::TOPICIN;
+        } else if (tokens[0] == galois::StringView("HasOrg")) {
+          inverseEdgeType = agile::TYPES::ORG_IN;
+        } else {
+          ASSERT_TRUE(false) << "Should never be reached" << std::endl;
         }
         galois::WMDEdge inverseEdge(edge.dst, edge.src, inverseEdgeType, edge.dstType,
                                     edge.srcType);
@@ -72,9 +67,26 @@ void getVerticesAndEdges(std::string& filename,
         }
         hashTable[inverseEdge.src].push_back(inverseEdge);
       }
-      tokens.deinitialize();
     }
   }
+  tokens.deinitialize();
+}
+
+void getVerticesAndEdgesEL(const std::string& filename, std::uint64_t numVertices,
+                           std::unordered_map<std::uint64_t, std::vector<std::uint64_t>>& graph) {
+  std::ifstream file(filename);
+  std::uint64_t src, dst;
+  while (file >> src && file >> dst) {
+    if (src < numVertices && dst < numVertices) {
+      graph[src].push_back(dst);
+    }
+  }
+  for (std::uint64_t i = 0; i < numVertices; i++) {
+    if (graph.find(i) == graph.end()) {
+      graph[i] = std::vector<std::uint64_t>();
+    }
+  }
+  file.close();
 }
 
 class DLCSRInit : public ::testing::TestWithParam<const char*> {};
@@ -82,46 +94,45 @@ class DLCSRInit : public ::testing::TestWithParam<const char*> {};
 TEST_P(DLCSRInit, initializeWMD) {
   using ET = galois::WMDEdge;
   using VT = galois::WMDVertex;
+  using Graph = galois::DistLocalCSR<VT, ET>;
   Graph graph;
   pando::Array<char> filename;
   std::string wmdFile = GetParam();
-  bool isEdgelist = false;
   PANDO_CHECK(filename.initialize(wmdFile.size()));
   for (uint64_t i = 0; i < wmdFile.size(); i++)
     filename[i] = wmdFile[i];
-  pando::GlobalPtr<Graph> dGraphPtr = static_cast<decltype(dGraphPtr)>(
-      pando::getDefaultMainMemoryResource()->allocate(sizeof(Graph)));
-  PANDO_CHECK(fmap(*dGraphPtr, initializeWMD, filename, isEdgelist));
+
+  auto dGraph = galois::initializeWMDDLCSR<galois::WMDVertex, galois::WMDEdge>(filename);
 
   // Validate
   std::unordered_map<std::uint64_t, std::vector<ET>> goldenTable;
   std::unordered_map<std::uint64_t, VT> goldenVertices;
-  getVerticesAndEdges(wmdFile, goldenVertices, goldenTable, false);
+  getVerticesAndEdgesWMD(wmdFile, goldenVertices, goldenTable);
 
-  EXPECT_EQ(goldenVertices.size(), lift(*dGraphPtr, size));
+  EXPECT_EQ(goldenVertices.size(), dGraph.size());
   // Iterate over vertices
   std::uint64_t vid = 0;
 
-  typename Graph::VertexRange vertices = lift(*dGraphPtr, vertices);
+  typename Graph::VertexRange vertices = dGraph.vertices();
   for (typename Graph::VertexTopologyID vert : vertices) {
-    EXPECT_EQ(vid, fmap(*dGraphPtr, getVertexIndex, vert));
+    EXPECT_EQ(vid, dGraph.getVertexIndex(vert));
     vid++;
-    typename Graph::VertexTokenID id = fmap(*dGraphPtr, getTokenID, vert);
+    typename Graph::VertexTokenID id = dGraph.getTokenID(vert);
 
-    typename Graph::VertexData vertex = fmap(*dGraphPtr, getData, vert);
+    typename Graph::VertexData vertex = dGraph.getData(vert);
     EXPECT_NE(goldenVertices.find(id), goldenVertices.end())
         << "Failed to get tok_id:" << id << "\t with index: " << (vid - 1);
 
     VT goldenVertex = goldenVertices[id];
-    vertex = fmap(*dGraphPtr, getData, vert);
+    vertex = dGraph.getData(vert);
     EXPECT_EQ(goldenVertex.id, vertex.id);
     goldenVertex.id = 0;
     EXPECT_EQ(goldenVertex.type, vertex.type);
     goldenVertex.type = agile::TYPES::NONE;
     EXPECT_EQ(goldenVertex.edges, vertex.edges);
     goldenVertex.edges = 0;
-    fmapVoid(*dGraphPtr, setData, vert, goldenVertex);
-    vertex = fmap(*dGraphPtr, getData, vert);
+    dGraph.setData(vert, goldenVertex);
+    vertex = dGraph.getData(vert);
     EXPECT_EQ(0, vertex.id);
     EXPECT_EQ(agile::TYPES::NONE, vertex.type);
     EXPECT_EQ(0, vertex.edges);
@@ -130,13 +141,13 @@ TEST_P(DLCSRInit, initializeWMD) {
     EXPECT_NE(goldenTable.find(id), goldenTable.end())
         << "Failed to find edges with tok_id:" << id << "\t with index: " << (vid - 1);
     std::vector<ET> goldenEdges = goldenTable[id];
-    EXPECT_EQ(goldenEdges.size(), fmap(*dGraphPtr, getNumEdges, vert))
+    EXPECT_EQ(goldenEdges.size(), dGraph.getNumEdges(vert))
         << "Number of edges for tok_id: " << id << "\t with index: " << (vid - 1);
-    for (typename Graph::EdgeHandle eh : fmap(*dGraphPtr, edges, vert)) {
-      typename Graph::EdgeData eData = fmap(*dGraphPtr, getEdgeData, eh);
 
-      typename Graph::VertexTokenID dstTok =
-          fmap(*dGraphPtr, getTokenID, fmap(*dGraphPtr, getEdgeDst, eh));
+    for (typename Graph::EdgeHandle eh : dGraph.edges(vert)) {
+      typename Graph::EdgeData eData = dGraph.getEdgeData(eh);
+
+      typename Graph::VertexTokenID dstTok = dGraph.getTokenID(dGraph.getEdgeDst(eh));
       EXPECT_EQ(eData.dst, dstTok);
 
       auto goldenEdgeIt = std::find(goldenEdges.begin(), goldenEdges.end(), eData);
@@ -150,8 +161,8 @@ TEST_P(DLCSRInit, initializeWMD) {
       goldenEdge.type = agile::TYPES::NONE;
       goldenEdge.srcType = agile::TYPES::NONE;
       goldenEdge.dstType = agile::TYPES::NONE;
-      fmapVoid(*dGraphPtr, setEdgeData, eh, goldenEdge);
-      eData = fmap(*dGraphPtr, getEdgeData, eh);
+      dGraph.setEdgeData(eh, goldenEdge);
+      eData = dGraph.getEdgeData(eh);
       EXPECT_EQ(0, eData.src);
       EXPECT_EQ(0, eData.dst);
       EXPECT_EQ(agile::TYPES::NONE, eData.type);
@@ -160,8 +171,9 @@ TEST_P(DLCSRInit, initializeWMD) {
     }
   }
   // deinitialize
-  liftVoid(*dGraphPtr, deinitialize);
+  dGraph.deinitialize();
 }
+
 INSTANTIATE_TEST_SUITE_P(SmallFiles, DLCSRInit,
                          ::testing::Values("/pando/graphs/simple_wmd.csv",
                                            "/pando/graphs/data.00001.csv"));
@@ -171,82 +183,90 @@ INSTANTIATE_TEST_SUITE_P(DISABLED_BigFiles, DLCSRInit,
                                            "/pando/graphs/data.005.csv",
                                            "/pando/graphs/data.01.csv"));
 
-class DLCSRInitEdgelist : public ::testing::TestWithParam<const char*> {};
-TEST_P(DLCSRInitEdgelist, initializeWMD) {
-  using ET = galois::WMDEdge;
-  using VT = galois::WMDVertex;
-  Graph graph;
-  pando::Array<char> filename;
-  std::string wmdFile = "/pando/graphs/simple.el";
-  bool isEdgelist = true;
-  PANDO_CHECK(filename.initialize(wmdFile.size()));
-  for (uint64_t i = 0; i < wmdFile.size(); i++)
-    filename[i] = wmdFile[i];
-  pando::GlobalPtr<Graph> dGraphPtr = static_cast<decltype(dGraphPtr)>(
-      pando::getDefaultMainMemoryResource()->allocate(sizeof(Graph)));
+class DLCSRInitEdgeList : public ::testing::TestWithParam<std::tuple<const char*, std::uint64_t>> {
+};
+TEST_P(DLCSRInitEdgeList, initializeEL) {
+  using ET = galois::ELEdge;
+  using VT = galois::ELVertex;
+  using Graph = galois::DistLocalCSR<VT, ET>;
 
-  PANDO_CHECK(dGraphPtr->initializeWMD(filename, isEdgelist));
+  const std::string elFile = std::get<0>(GetParam());
+  const std::uint64_t numVertices = std::get<1>(GetParam());
+
+  pando::Array<char> filename;
+  EXPECT_EQ(pando::Status::Success, filename.initialize(elFile.size()));
+  for (uint64_t i = 0; i < elFile.size(); i++)
+    filename[i] = elFile[i];
+
+  Graph graph = galois::initializeELDLCSR<galois::ELVertex, galois::ELEdge>(filename, numVertices);
 
   // Validate
-  std::unordered_map<std::uint64_t, std::vector<ET>> goldenTable;
-  std::unordered_map<std::uint64_t, VT> goldenVertices;
-  getVerticesAndEdges(wmdFile, goldenVertices, goldenTable, true);
-  EXPECT_EQ(goldenTable.size(), lift(*dGraphPtr, size));
+  std::unordered_map<std::uint64_t, std::vector<std::uint64_t>> goldenTable;
+  getVerticesAndEdgesEL(elFile, numVertices, goldenTable);
+  EXPECT_EQ(goldenTable.size(), graph.size());
+
   // Iterate over vertices
   std::uint64_t vid = 0;
 
-  typename Graph::VertexRange vertices = lift(*dGraphPtr, vertices);
-  for (typename Graph::VertexTopologyID vert : vertices) {
-    EXPECT_EQ(vid, fmap(*dGraphPtr, getVertexIndex, vert));
+  for (typename Graph::VertexTopologyID vert : graph.vertices()) {
+    EXPECT_EQ(vid, graph.getVertexIndex(vert));
     vid++;
-    typename Graph::VertexTokenID id = fmap(*dGraphPtr, getTokenID, vert);
+    typename Graph::VertexTokenID srcTok = graph.getTokenID(vert);
 
-    typename Graph::VertexData vertex = fmap(*dGraphPtr, getData, vert);
+    EXPECT_LT(srcTok, numVertices);
 
-    vertex = fmap(*dGraphPtr, getData, vert);
+    typename Graph::VertexData vertexData = graph.getData(vert);
+    EXPECT_EQ(srcTok, vertexData.id);
+
+    VT dumbVertex = VT{numVertices};
+    graph.setData(vert, dumbVertex);
+    vertexData = graph.getData(vert);
+    EXPECT_EQ(vertexData.id, numVertices);
 
     // Iterate over edges
-    EXPECT_NE(goldenTable.find(id), goldenTable.end())
-        << "Failed to find edges with tok_id:" << id << "\t with index: " << (vid - 1);
-    std::vector<ET> goldenEdges = goldenTable[id];
-    EXPECT_EQ(goldenEdges.size(), fmap(*dGraphPtr, getNumEdges, vert))
-        << "Number of edges for tok_id: " << id << "\t with index: " << (vid - 1);
-    for (typename Graph::EdgeHandle eh : fmap(*dGraphPtr, edges, vert)) {
-      typename Graph::EdgeData eData = fmap(*dGraphPtr, getEdgeData, eh);
+    EXPECT_NE(goldenTable.find(srcTok), goldenTable.end())
+        << "Failed to find edges with tok_id:" << srcTok << "\t with index: " << (vid - 1);
+    std::vector<std::uint64_t> goldenEdges = goldenTable[srcTok];
 
-      typename Graph::VertexTokenID dstTok =
-          fmap(*dGraphPtr, getTokenID, fmap(*dGraphPtr, getEdgeDst, eh));
+    EXPECT_EQ(goldenEdges.size(), graph.getNumEdges(vert))
+        << "Number of edges for tok_id: " << srcTok << "\t with index: " << (vid - 1);
+
+    for (typename Graph::EdgeHandle eh : graph.edges(vert)) {
+      typename Graph::EdgeData eData = graph.getEdgeData(eh);
+
+      EXPECT_EQ(eData.src, srcTok);
+
+      typename Graph::VertexTokenID dstTok = graph.getTokenID(graph.getEdgeDst(eh));
       EXPECT_EQ(eData.dst, dstTok);
 
-      auto goldenEdgeIt = std::find(goldenEdges.begin(), goldenEdges.end(), eData);
+      auto goldenEdgeIt = std::find(goldenEdges.begin(), goldenEdges.end(), dstTok);
       EXPECT_NE(goldenEdgeIt, goldenEdges.end())
-          << "Unable to find edge with src_tok: " << id << "\tand dst_tok: " << dstTok
+          << "Unable to find edge with src_tok: " << srcTok << "\tand dst_tok: " << dstTok
           << "\tat vertex: " << (vid - 1);
-
-      EXPECT_EQ(goldenEdgeIt->src, eData.src);
-      EXPECT_EQ(goldenEdgeIt->dst, eData.dst);
-      EXPECT_EQ(goldenEdgeIt->type, eData.type);
-      EXPECT_EQ(goldenEdgeIt->srcType, eData.srcType);
-      EXPECT_EQ(goldenEdgeIt->dstType, eData.dstType);
-
-      ET goldenEdge = *goldenEdgeIt;
-      goldenEdge.src = 0;
-      goldenEdge.dst = 0;
-      goldenEdge.type = agile::TYPES::NONE;
-      goldenEdge.srcType = agile::TYPES::NONE;
-      goldenEdge.dstType = agile::TYPES::NONE;
-      fmapVoid(*dGraphPtr, setEdgeData, eh, goldenEdge);
-      eData = fmap(*dGraphPtr, getEdgeData, eh);
-      EXPECT_EQ(0, eData.src);
-      EXPECT_EQ(0, eData.dst);
-      EXPECT_EQ(agile::TYPES::NONE, eData.type);
-      EXPECT_EQ(agile::TYPES::NONE, eData.srcType);
-      EXPECT_EQ(agile::TYPES::NONE, eData.dstType);
+      ET dumbEdge = ET{numVertices, numVertices};
+      graph.setEdgeData(eh, dumbEdge);
+      eData = graph.getEdgeData(eh);
+      EXPECT_EQ(eData.src, numVertices);
+      EXPECT_EQ(eData.dst, numVertices);
     }
   }
-  liftVoid(*dGraphPtr, deinitialize);
+  graph.deinitialize();
 }
+
 INSTANTIATE_TEST_SUITE_P(
-    SmallFiles, DLCSRInitEdgelist,
-    ::testing::Values("/pando/graphs/simple.el",
-                      "/pando/graphs/rmat_571919_seed1_scale10_nV1024_nE10447.el"));
+    SmallFiles, DLCSRInitEdgeList,
+    ::testing::Values(std::make_tuple("/pando/graphs/simple.el", 10),
+                      std::make_tuple("/pando/graphs/rmat_571919_seed1_scale10_nV1024_nE10447.el",
+                                      1024)));
+
+INSTANTIATE_TEST_SUITE_P(
+    DISABLED_BigFiles, DLCSRInitEdgeList,
+    ::testing::Values(
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale11_nV2048_nE22601.el", 2048),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale12_nV4096_nE48335.el", 4096),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale13_nV8192_nE102016.el", 8192),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale14_nV16384_nE213350.el", 16384),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale15_nV32768_nE441929.el", 32768),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale16_nV65536_nE909846.el", 65536),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale17_nV131072_nE1864704.el", 131072),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale18_nV262144_nE3806162.el", 262144)));

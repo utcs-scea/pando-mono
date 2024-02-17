@@ -34,7 +34,9 @@ MAIN_MEMORY_SIZE="${MAIN_MEMORY_SIZE-8589934592}"
 LAUNCH_DIR="${LAUNCH_DIR:-$(realpath ${DRV_ROOT}/../../)}"
 LAUNCH_SCRIPT="${LAUNCH_SCRIPT:-${LAUNCH_DIR}/pando-drv/tests/PANDOHammerDrvX.py}"
 
-while getopts "p:n:c:t:h" option; do
+DBG=""
+
+while getopts "p:n:c:t:hd" option; do
 	case ${option} in
 	p) # host threads
 		HOST_THREADS=${OPTARG}
@@ -52,6 +54,10 @@ while getopts "p:n:c:t:h" option; do
 		HARTS=${OPTARG}
 		;;
 
+	d) # Run with gdb
+		DBG="gdb --args"
+		;;
+
 	h) # help
 		show_help
 		exit
@@ -63,7 +69,7 @@ shift $(expr $OPTIND - 1)
 PROG=$1
 shift
 
-sst -n ${HOST_THREADS} \
+${DBG} sst -n ${HOST_THREADS} \
 	"${LAUNCH_SCRIPT}" -- \
 	--with-command-processor="${PROG}" \
 	--num-pxn=${PROCS} \

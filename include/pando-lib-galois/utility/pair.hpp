@@ -52,7 +52,7 @@ struct Pair {
   OP_EXISTS(equals, ==);
 
   template <
-      std::enable_if_t<exists_equals<T0, T0>::exists && exists_equals<T1, T1>::exists>* = nullptr>
+      std::enable_if<exists_equals<T0, T0>::exists && exists_equals<T1, T1>::exists>* = nullptr>
   friend bool operator==(const Pair& a, const Pair& b) {
     return a.first == b.first && a.second == b.second;
   }
@@ -75,7 +75,7 @@ struct Pair {
   }
 
   friend bool less(const Pair& a, const Pair& b, std::false_type, std::false_type) {
-    static_assert(exists_less<T0, T0>::exists && exists_less<T1, T1>::exists);
+    static_assert(!(exists_less<T0, T0>::exists && exists_less<T1, T1>::exists));
     return false;
   }
 
