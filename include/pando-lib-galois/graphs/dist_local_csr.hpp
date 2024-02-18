@@ -159,7 +159,7 @@ public:
   };
 
   class VertexDataIt {
-    pando::Array<CSR> arrayOfCSRs;
+    PerHost<CSR> arrayOfCSRs;
     typename CSR::VertexDataRange::iterator m_pos;
 
   public:
@@ -169,7 +169,7 @@ public:
     using pointer = pando::GlobalPtr<VertexData>;
     using reference = pando::GlobalRef<VertexData>;
 
-    VertexDataIt(pando::Array<CSR> arrayOfCSRs, typename pando::GlobalPtr<VertexData> pos)
+    constexpr VertexDataIt(PerHost<CSR> arrayOfCSRs, typename pando::GlobalPtr<VertexData> pos)
         : arrayOfCSRs(arrayOfCSRs), m_pos(pos) {}
 
     constexpr VertexDataIt() noexcept = default;
@@ -193,68 +193,69 @@ public:
     }
 
     VertexDataIt& operator++() {
-      auto currNode = static_cast<std::uint64_t>(galois::localityOf(&m_pos).node.id);
+      auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos + 1;
-      CSR csrCurr = arrayOfCSRs[currNode];
-      if (csrCurr.vertexData.end() > ptr || currNode == pando::getPlaceDims().node.id - 1) {
+      CSR csrCurr = arrayOfCSRs.get(currNode);
+      if (csrCurr.vertexData.end() > ptr ||
+          currNode == static_cast<std::uint64_t>(pando::getPlaceDims().node.id - 1)) {
         m_pos = ptr;
       } else {
-        csrCurr = arrayOfCSRs[currNode + 1];
+        csrCurr = arrayOfCSRs.get(currNode + 1);
         m_pos = csrCurr.vertexData.begin();
       }
-      return this;
+      return *this;
     }
 
     VertexDataIt operator++(int) {
-      VertexIt tmp = *this;
+      VertexDataIt tmp = *this;
       ++(*this);
       return tmp;
     }
 
     VertexDataIt& operator--() {
-      auto currNode = static_cast<std::uint64_t>(galois::localityOf(&m_pos).node.id);
+      auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos - 1;
-      CSR csrCurr = arrayOfCSRs[currNode];
+      CSR csrCurr = arrayOfCSRs.get(currNode);
       if (csrCurr.vertexData.begin() <= ptr || currNode == 0) {
         m_pos = *ptr;
       } else {
-        csrCurr = arrayOfCSRs[currNode - 1];
+        csrCurr = arrayOfCSRs.get(currNode - 1);
         m_pos = *csrCurr.vertexData.end() - 1;
       }
       return *this;
     }
 
-    VertexIt operator--(int) {
-      VertexIt tmp = *this;
+    VertexDataIt operator--(int) {
+      VertexDataIt tmp = *this;
       --(*this);
       return tmp;
     }
 
-    friend bool operator==(const VertexIt& a, const VertexIt& b) {
+    friend bool operator==(const VertexDataIt& a, const VertexDataIt& b) {
       return a.m_pos == b.m_pos;
     }
 
-    friend bool operator!=(const VertexIt& a, const VertexIt& b) {
+    friend bool operator!=(const VertexDataIt& a, const VertexDataIt& b) {
       return !(a == b);
     }
 
-    friend bool operator<(const VertexIt& a, const VertexIt& b) {
+    friend bool operator<(const VertexDataIt& a, const VertexDataIt& b) {
       return localityOf(a.m_pos).node.id < localityOf(b.m_pos).node.id || a.m_pos < b.m_pos;
     }
 
-    friend bool operator>(const VertexIt& a, const VertexIt& b) {
+    friend bool operator>(const VertexDataIt& a, const VertexDataIt& b) {
       return localityOf(a.m_pos).node.id > localityOf(b.m_pos).node.id || a.m_pos > b.m_pos;
     }
 
-    friend bool operator<=(const VertexIt& a, const VertexIt& b) {
+    friend bool operator<=(const VertexDataIt& a, const VertexDataIt& b) {
       return !(a > b);
     }
 
-    friend bool operator>=(const VertexIt& a, const VertexIt& b) {
+    friend bool operator>=(const VertexDataIt& a, const VertexDataIt& b) {
       return !(a < b);
     }
 
-    friend pando::Place localityOf(VertexIt& a) {
+    friend pando::Place localityOf(VertexDataIt& a) {
       return galois::localityOf(a.m_pos);
     }
   };
@@ -297,7 +298,7 @@ public:
     pando::GlobalPtr<VertexData> m_end;
     std::uint64_t m_size;
 
-    using iterator = VertexIt;
+    using iterator = VertexDataIt;
     iterator begin() noexcept {
       return iterator(arrayOfCSRs, m_beg);
     }
@@ -507,7 +508,7 @@ public:
 
       std::uint64_t j = 0;
       pando::Vector<ReadVertexType> vertexDataVec = vertexData.getLocal();
-      for (VertexData data : vertexDataVec) {
+      for (ReadVertexType data : vertexDataVec) {
         currentCSR.topologyToToken[j] = data.id;
         currentCSR.vertexData[j] = VertexData(data);
         PANDO_CHECK(currentCSR.tokenToTopology.put(data.id, &currentCSR.vertexEdgeOffsets[j]));
@@ -536,7 +537,7 @@ public:
             galois::PerHost<std::uint64_t> numVerticesPerHost, std::uint64_t i,
             galois::WaitGroup::HandleType wgh) {
           CSR currentCSR = dlcsr.arrayOfCSRs.get(i);
-          pando::Vector<pando::Vector<EdgeData>> currEdgeData = edgeData.get(i);
+          pando::Vector<pando::Vector<ReadEdgeType>> currEdgeData = edgeData.get(i);
           std::uint64_t numVertices = numVerticesPerHost.get(i);
           galois::HashTable<std::uint64_t, std::uint64_t> currEdgeMap = edgeMap.get(i);
           std::uint64_t edgeCurr = 0;
@@ -556,7 +557,7 @@ public:
                 e.dst = dlcsr.getTopologyID(eData.dst);
                 currentCSR.edgeDestinations[edgeCurr] = e;
                 pando::GlobalPtr<HalfEdge> eh = &currentCSR.edgeDestinations[edgeCurr];
-                currentCSR.setEdgeData(eh, EdgeData(edges[j]));
+                currentCSR.setEdgeData(eh, EdgeData(static_cast<ReadEdgeType>(edges[j])));
               }
             }
             currentCSR.vertexEdgeOffsets[vertexCurr + 1] =

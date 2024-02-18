@@ -15,6 +15,9 @@ namespace galois {
 
 struct ELVertex {
   std::uint64_t id;
+  constexpr operator std::uint64_t() {
+    return id;
+  }
 };
 
 struct ELEdge {
