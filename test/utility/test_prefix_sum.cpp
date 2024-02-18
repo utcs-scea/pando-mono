@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <pando-rt/export.h>
 
+#include <pando-lib-galois/containers/array.hpp>
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/containers/per_thread.hpp>
 #include <pando-lib-galois/utility/prefix_sum.hpp>
@@ -78,4 +79,31 @@ TEST(PrefixSum, PerThread) {
   EXPECT_EQ(prefixSum.initialize(), pando::Status::Success);
   prefixSum.computePrefixSum(prefixArr.size());
   EXPECT_EQ(prefixArr[prefixArr.size() - 1], arr.sizeAll());
+}
+
+TEST(PrefixSum, Array) {
+  constexpr std::uint64_t size = 1000;
+  galois::Array<std::uint64_t> arr;
+  PANDO_CHECK(arr.initialize(size));
+  for (std::uint64_t i = 0; i < size; i++) {
+    arr[i] = 1;
+  }
+
+  using SRC = galois::Array<uint64_t>;
+  using DST = galois::Array<uint64_t>;
+  using SRC_VAL = uint64_t;
+  using DST_VAL = uint64_t;
+  using PFXSUM = galois::PrefixSum<SRC, DST, SRC_VAL, DST_VAL, transmute<std::uint64_t>,
+                                   scan_op<SRC_VAL, DST_VAL>, combiner<DST_VAL>, galois::Array>;
+  PFXSUM pfxsum(arr, arr);
+
+  PANDO_CHECK(pfxsum.initialize());
+
+  pfxsum.computePrefixSum(size);
+
+  for (std::uint64_t i = 0; i < size; i++) {
+    EXPECT_EQ(arr[i], i + 1) << "The arrays are not equal @" << i << "v: \t" << arr[i] << std::endl;
+  }
+  pfxsum.deinitialize();
+  arr.deinitialize();
 }
