@@ -114,6 +114,14 @@ public:
   reverse_iterator rend() const noexcept {
     return reverse_iterator(begin()--);
   }
+
+  friend bool operator==(const PerHost& a, const PerHost& b) {
+    return a.m_items == b.m_items;
+  }
+
+  friend bool operator!=(const PerHost& a, const PerHost& b) {
+    return !(a == b);
+  }
 };
 
 template <typename T>

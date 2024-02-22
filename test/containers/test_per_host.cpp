@@ -62,6 +62,8 @@ TEST(PerHost, DoAll) {
   pando::Status err;
 
   EXPECT_EQ(ph.initialize(), pando::Status::Success);
+  EXPECT_TRUE(ph == ph);
+  EXPECT_FALSE(ph != ph);
 
   for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
     ph.get(i) = 0xDEADBEEF;
