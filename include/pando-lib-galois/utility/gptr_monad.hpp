@@ -46,4 +46,15 @@
     ref = tmp;                                                            \
   } while (0)
 
+/**
+ * @brief Breaks down an expected type and gives back the inner type or returns a status error
+ */
+#define PANDO_EXPECT_RETURN(e) \
+  __extension__({              \
+    if (!e.hasValue()) {       \
+      return e.error();        \
+    }                          \
+    e.value();                 \
+  })
+
 #endif // PANDO_LIB_GALOIS_UTILITY_GPTR_MONAD_HPP_

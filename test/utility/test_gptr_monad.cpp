@@ -9,6 +9,7 @@
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
+#include <pando-rt/utility/expected.hpp>
 
 TEST(Fmap, GVectorInitialize) {
   constexpr std::uint64_t SIZE = 10;
@@ -142,4 +143,29 @@ TEST(LiftVoid, GVectorDeinitialize) {
   EXPECT_EQ(lift(*gvec, size), SIZE);
   liftVoid(*gvec, deinitialize);
   pando::deallocateMemory(gvec, 1);
+}
+
+TEST(PANDO_EXPECT_RETURN, Success) {
+  auto success = +[]() -> pando::Status {
+    const std::int32_t value = 42;
+
+    pando::Expected<std::int32_t> e(value);
+    std::int32_t v = PANDO_EXPECT_RETURN(e);
+    EXPECT_EQ(v, value);
+    return pando::Status::Error;
+  };
+  EXPECT_EQ(pando::Status::Error, success());
+}
+
+TEST(PANDO_EXPECT_RETURN, Fail) {
+  auto returnFailure = +[]() -> pando::Status {
+    const auto value = pando::Status::NotImplemented;
+
+    pando::Expected<std::int32_t> e(value);
+    std::int32_t v = PANDO_EXPECT_RETURN(e);
+    EXPECT_TRUE(false) << "Should not have gotten here";
+    EXPECT_EQ(v, 100);
+    return pando::Status::Error;
+  };
+  EXPECT_EQ(pando::Status::NotImplemented, returnFailure());
 }
