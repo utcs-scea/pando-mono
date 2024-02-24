@@ -49,12 +49,13 @@
 /**
  * @brief Breaks down an expected type and gives back the inner type or returns a status error
  */
-#define PANDO_EXPECT_RETURN(e) \
-  __extension__({              \
-    if (!e.hasValue()) {       \
-      return e.error();        \
-    }                          \
-    e.value();                 \
+#define PANDO_EXPECT_RETURN(e)          \
+  __extension__({                       \
+    const auto expect##__LINE__ = e;    \
+    if (!expect##__LINE__.hasValue()) { \
+      return expect##__LINE__.error();  \
+    }                                   \
+    expect##__LINE__.value();           \
   })
 
 #endif // PANDO_LIB_GALOIS_UTILITY_GPTR_MONAD_HPP_

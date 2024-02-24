@@ -149,8 +149,7 @@ TEST(PANDO_EXPECT_RETURN, Success) {
   auto success = +[]() -> pando::Status {
     const std::int32_t value = 42;
 
-    pando::Expected<std::int32_t> e(value);
-    std::int32_t v = PANDO_EXPECT_RETURN(e);
+    std::int32_t v = PANDO_EXPECT_RETURN(pando::Expected<std::int32_t>(value));
     EXPECT_EQ(v, value);
     return pando::Status::Error;
   };
@@ -161,8 +160,7 @@ TEST(PANDO_EXPECT_RETURN, Fail) {
   auto returnFailure = +[]() -> pando::Status {
     const auto value = pando::Status::NotImplemented;
 
-    pando::Expected<std::int32_t> e(value);
-    std::int32_t v = PANDO_EXPECT_RETURN(e);
+    std::int32_t v = PANDO_EXPECT_RETURN(pando::Expected<std::int32_t>(value));
     EXPECT_TRUE(false) << "Should not have gotten here";
     EXPECT_EQ(v, 100);
     return pando::Status::Error;
