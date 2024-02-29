@@ -136,7 +136,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
 
   /** Generate Vertex Partition **/
   galois::PerHost<pando::Vector<WMDVertex>> pHV =
-      internal::partitionVertices(std::move(localVertices), *v2PM);
+      internal::partitionVerticesParallel(std::move(localVertices), *v2PM);
 
   /** Generate Edge Partition **/
   auto [partEdges, renamePerHost] = internal::partitionEdgesPerHost(std::move(localEdges), *v2PM);

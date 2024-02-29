@@ -8,6 +8,7 @@
 
 #include <utility>
 
+#include <pando-lib-galois/containers/array.hpp>
 #include <pando-lib-galois/containers/per_host.hpp>
 #include <pando-lib-galois/containers/per_thread.hpp>
 #include <pando-lib-galois/graphs/local_csr.hpp>
@@ -628,7 +629,7 @@ public:
 
       PANDO_CHECK_RETURN(pHV.initialize());
     } else {
-      pHV = galois::internal::partitionVertices(std::move(localVertices), v2PM);
+      pHV = galois::internal::partitionVerticesParallel(std::move(localVertices), v2PM);
     }
 
     auto [partEdges, renamePerHost] = internal::partitionEdgesPerHost(std::move(localEdges), *v2PM);
