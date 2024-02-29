@@ -157,6 +157,7 @@ TEST(Tuple8, DoAll) {
   for (std::uint64_t i = 0; i < size; i++) {
     EXPECT_EQ(arr[i], 10ull * NUM);
   }
+
   arr.deinitialize();
 }
 

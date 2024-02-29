@@ -202,7 +202,8 @@ Tuple7<A0, A1, A2, A3, A4, A5, A6> make_tpl(A0 a0, A1 a1, A2 a2, A3 a3, A4 a4, A
   return Tuple7<A0, A1, A2, A3, A4, A5, A6>{a0, a1, a2, a3, a4, a5, a6};
 }
 
-template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
+template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6,
+          typename T7>
 struct Tuple8 {
   static constexpr std::uint64_t size = 8;
   using myTuple = Tuple8<T0, T1, T2, T3, T4, T5, T6, T7>;
@@ -234,8 +235,10 @@ struct Tuple8 {
   }
 };
 
-template <typename A0, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7>
-Tuple8<A0, A1, A2, A3, A4, A5, A6, A7> make_tpl(A0 a0, A1 a1, A2 a2, A3 a3, A4 a4, A5 a5, A6 a6, A7 a7) {
+template <typename A0, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6,
+          typename A7>
+Tuple8<A0, A1, A2, A3, A4, A5, A6, A7> make_tpl(A0 a0, A1 a1, A2 a2, A3 a3, A4 a4, A5 a5, A6 a6,
+                                                A7 a7) {
   return Tuple8<A0, A1, A2, A3, A4, A5, A6, A7>{a0, a1, a2, a3, a4, a5, a6, a7};
 }
 }; // namespace galois
