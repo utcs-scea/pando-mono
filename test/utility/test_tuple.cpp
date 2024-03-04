@@ -122,6 +122,45 @@ TEST(Tuple6, DoAll) {
   arr.deinitialize();
 }
 
+TEST(Tuple7, DoAll) {
+  using galois::make_tpl;
+  constexpr std::uint64_t size = 10;
+  constexpr std::uint64_t NUM = 7;
+  auto tpl7 = make_tpl(10ull, 10ull, 10ull, 10ull, 10ull, 10ull, 10ull);
+  pando::Array<std::uint64_t> arr{};
+  EXPECT_EQ(pando::Status::Success, arr.initialize(size));
+  auto err = galois::doAll(
+      tpl7, arr, +[](decltype(tpl7) tpl, pando::GlobalRef<std::uint64_t> v) {
+        auto [val1, val2, val3, val4, val5, val6, val7] = tpl;
+        v = val1 + val2 + val3 + val4 + val5 + val6 + val7;
+      });
+  EXPECT_EQ(pando::Status::Success, err);
+  for (std::uint64_t i = 0; i < size; i++) {
+    EXPECT_EQ(arr[i], 10ull * NUM);
+  }
+  arr.deinitialize();
+}
+
+TEST(Tuple8, DoAll) {
+  using galois::make_tpl;
+  constexpr std::uint64_t size = 10;
+  constexpr std::uint64_t NUM = 8;
+  auto tpl8 = make_tpl(10ull, 10ull, 10ull, 10ull, 10ull, 10ull, 10ull, 10ull);
+  pando::Array<std::uint64_t> arr{};
+  EXPECT_EQ(pando::Status::Success, arr.initialize(size));
+  auto err = galois::doAll(
+      tpl8, arr, +[](decltype(tpl8) tpl, pando::GlobalRef<std::uint64_t> v) {
+        auto [val1, val2, val3, val4, val5, val6, val7, val8] = tpl;
+        v = val1 + val2 + val3 + val4 + val5 + val6 + val7 + val8;
+      });
+  EXPECT_EQ(pando::Status::Success, err);
+  for (std::uint64_t i = 0; i < size; i++) {
+    EXPECT_EQ(arr[i], 10ull * NUM);
+  }
+
+  arr.deinitialize();
+}
+
 TEST(Tuple1, get) {
   using galois::make_tpl;
   auto tpl1 = make_tpl(10ull);
@@ -167,7 +206,32 @@ TEST(Tuple6, get) {
   EXPECT_EQ(10ull, std::get<0>(tpl6));
   EXPECT_EQ(10ull, std::get<1>(tpl6));
   EXPECT_EQ(10ull, std::get<2>(tpl6));
-  EXPECT_EQ(10ull, std::get<0>(tpl6));
-  EXPECT_EQ(10ull, std::get<1>(tpl6));
-  EXPECT_EQ(10ull, std::get<2>(tpl6));
+  EXPECT_EQ(10ull, std::get<3>(tpl6));
+  EXPECT_EQ(10ull, std::get<4>(tpl6));
+  EXPECT_EQ(10ull, std::get<5>(tpl6));
+}
+
+TEST(Tuple7, get) {
+  using galois::make_tpl;
+  auto tpl7 = make_tpl(10ull, 10ull, 10ull, 10ull, 10ull, 10ull, 10ull);
+  EXPECT_EQ(10ull, std::get<0>(tpl7));
+  EXPECT_EQ(10ull, std::get<1>(tpl7));
+  EXPECT_EQ(10ull, std::get<2>(tpl7));
+  EXPECT_EQ(10ull, std::get<3>(tpl7));
+  EXPECT_EQ(10ull, std::get<4>(tpl7));
+  EXPECT_EQ(10ull, std::get<5>(tpl7));
+  EXPECT_EQ(10ull, std::get<6>(tpl7));
+}
+
+TEST(Tuple8, get) {
+  using galois::make_tpl;
+  auto tpl8 = make_tpl(10ull, 10ull, 10ull, 10ull, 10ull, 10ull, 10ull, 10ull);
+  EXPECT_EQ(10ull, std::get<0>(tpl8));
+  EXPECT_EQ(10ull, std::get<1>(tpl8));
+  EXPECT_EQ(10ull, std::get<2>(tpl8));
+  EXPECT_EQ(10ull, std::get<3>(tpl8));
+  EXPECT_EQ(10ull, std::get<4>(tpl8));
+  EXPECT_EQ(10ull, std::get<5>(tpl8));
+  EXPECT_EQ(10ull, std::get<6>(tpl8));
+  EXPECT_EQ(10ull, std::get<7>(tpl8));
 }
