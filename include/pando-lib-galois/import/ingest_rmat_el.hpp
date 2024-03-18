@@ -149,7 +149,8 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
   PANDO_CHECK(
       galois::doAll(GenerateVerticesState{numVertices, *v2PM}, pHV, generateVerticesPerHost));
 
-  auto [partEdges, renamePerHost] = internal::partitionEdgesPerHost(std::move(localEdges), *v2PM);
+  auto [partEdges, renamePerHost] =
+      internal::partitionEdgesParallely(pHV, std::move(localEdges), *v2PM);
 
   using Graph = galois::DistLocalCSR<VertexType, EdgeType>;
   Graph graph;
