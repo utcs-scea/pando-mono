@@ -7,5 +7,5 @@ pando_add_driver_test(test_per_thread test_per_thread.cpp)
 pando_add_driver_test(test_stack test_stack.cpp)
 
 if (NOT PANDO_RT_BACKEND STREQUAL "DRVX")
-  pando_add_driver_test(test_per_host test_per_host.cpp)
+  pando_add_driver_test(test_host_indexed_map test_host_indexed_map.cpp)
 endif()

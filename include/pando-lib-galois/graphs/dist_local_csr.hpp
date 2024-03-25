@@ -9,7 +9,7 @@
 #include <utility>
 
 #include <pando-lib-galois/containers/array.hpp>
-#include <pando-lib-galois/containers/per_host.hpp>
+#include <pando-lib-galois/containers/host_indexed_map.hpp>
 #include <pando-lib-galois/containers/per_thread.hpp>
 #include <pando-lib-galois/graphs/local_csr.hpp>
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
@@ -31,13 +31,13 @@ struct DLCSR_InitializeState {
   using CSR = LCSR<VertexType, EdgeType>;
 
   DLCSR_InitializeState() = default;
-  DLCSR_InitializeState(galois::PerHost<CSR> arrayOfCSRs_,
+  DLCSR_InitializeState(galois::HostIndexedMap<CSR> arrayOfCSRs_,
                         galois::PerThreadVector<VertexType> vertices_,
                         galois::PerThreadVector<EdgeType> edges_,
                         galois::PerThreadVector<uint64_t> edgeCounts_)
       : arrayOfCSRs(arrayOfCSRs_), vertices(vertices_), edges(edges_), edgeCounts(edgeCounts_) {}
 
-  galois::PerHost<CSR> arrayOfCSRs;
+  galois::HostIndexedMap<CSR> arrayOfCSRs;
   galois::PerThreadVector<VertexType> vertices;
   galois::PerThreadVector<EdgeType> edges;
   galois::PerThreadVector<uint64_t> edgeCounts;
@@ -58,7 +58,7 @@ public:
   using CSR = LCSR<VertexType, EdgeType>;
 
   class VertexIt {
-    galois::PerHost<CSR> arrayOfCSRs{};
+    galois::HostIndexedMap<CSR> arrayOfCSRs{};
     pando::GlobalPtr<Vertex> m_pos;
 
   public:
@@ -68,7 +68,7 @@ public:
     using pointer = pando::GlobalPtr<Vertex>;
     using reference = VertexTopologyID;
 
-    VertexIt(galois::PerHost<CSR> arrayOfCSRs, VertexTopologyID pos)
+    VertexIt(galois::HostIndexedMap<CSR> arrayOfCSRs, VertexTopologyID pos)
         : arrayOfCSRs(arrayOfCSRs), m_pos(pos) {}
 
     constexpr VertexIt() noexcept = default;
@@ -160,7 +160,7 @@ public:
   };
 
   class VertexDataIt {
-    PerHost<CSR> arrayOfCSRs;
+    HostIndexedMap<CSR> arrayOfCSRs;
     typename CSR::VertexDataRange::iterator m_pos;
 
   public:
@@ -170,7 +170,8 @@ public:
     using pointer = pando::GlobalPtr<VertexData>;
     using reference = pando::GlobalRef<VertexData>;
 
-    constexpr VertexDataIt(PerHost<CSR> arrayOfCSRs, typename pando::GlobalPtr<VertexData> pos)
+    constexpr VertexDataIt(HostIndexedMap<CSR> arrayOfCSRs,
+                           typename pando::GlobalPtr<VertexData> pos)
         : arrayOfCSRs(arrayOfCSRs), m_pos(pos) {}
 
     constexpr VertexDataIt() noexcept = default;
@@ -262,7 +263,7 @@ public:
   };
 
   struct VertexRange {
-    galois::PerHost<CSR> arrayOfCSRs{};
+    galois::HostIndexedMap<CSR> arrayOfCSRs{};
     VertexTopologyID m_beg;
     VertexTopologyID m_end;
     std::uint64_t m_size;
@@ -294,7 +295,7 @@ public:
   };
 
   struct VertexDataRange {
-    galois::PerHost<CSR> arrayOfCSRs{};
+    galois::HostIndexedMap<CSR> arrayOfCSRs{};
     pando::GlobalPtr<VertexData> m_beg;
     pando::GlobalPtr<VertexData> m_end;
     std::uint64_t m_size;
@@ -477,9 +478,9 @@ public:
 
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
-      galois::PerHost<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
-      galois::PerHost<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
-      galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
+      galois::HostIndexedMap<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
+      galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
+      galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
       pando::Array<std::uint64_t> numEdges, pando::Array<std::uint64_t> virtualToPhysical) {
     this->virtualToPhysicalMap = virtualToPhysical;
     this->numVertices = numVertices;
@@ -491,14 +492,14 @@ public:
     PANDO_CHECK_RETURN(wg.initialize(numHosts));
     auto wgh = wg.getHandle();
 
-    galois::PerHost<std::uint64_t> numVerticesPerHost{};
+    galois::HostIndexedMap<std::uint64_t> numVerticesPerHost{};
     PANDO_CHECK_RETURN(numVerticesPerHost.initialize());
     for (std::uint64_t i = 0; i < numHosts; i++) {
       numVerticesPerHost.get(i) = lift(vertexData.get(i), size);
     }
 
-    auto createCSRFuncs = +[](galois::PerHost<CSR> arrayOfCSRs,
-                              galois::PerHost<pando::Vector<ReadVertexType>> vertexData,
+    auto createCSRFuncs = +[](galois::HostIndexedMap<CSR> arrayOfCSRs,
+                              galois::HostIndexedMap<pando::Vector<ReadVertexType>> vertexData,
                               pando::Array<std::uint64_t> numEdges, std::uint64_t i,
                               galois::WaitGroup::HandleType wgh) {
       CSR currentCSR;
@@ -533,9 +534,9 @@ public:
 
     auto fillCSRFuncs =
         +[](DistLocalCSR<VertexType, EdgeType> dlcsr,
-            galois::PerHost<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
-            galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
-            galois::PerHost<std::uint64_t> numVerticesPerHost, std::uint64_t i,
+            galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
+            galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
+            galois::HostIndexedMap<std::uint64_t> numVerticesPerHost, std::uint64_t i,
             galois::WaitGroup::HandleType wgh) {
           CSR currentCSR = dlcsr.arrayOfCSRs.get(i);
           pando::Vector<pando::Vector<ReadEdgeType>> currEdgeData = edgeData.get(i);
@@ -613,10 +614,10 @@ public:
         static_cast<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>(*labeledEdgeCounts)));
 #endif
 
-    galois::PerHost<pando::Vector<VertexType>> pHV{};
+    galois::HostIndexedMap<pando::Vector<VertexType>> pHV{};
 
     if constexpr (isEdgeList) {
-      pando::GlobalPtr<galois::PerHost<pando::Vector<VertexType>>> readPart{};
+      pando::GlobalPtr<galois::HostIndexedMap<pando::Vector<VertexType>>> readPart{};
       pando::LocalStorageGuard readPartGuard(readPart, 1);
       PANDO_CHECK_RETURN(localVertices.hostFlatten((*readPart)));
 
@@ -640,8 +641,8 @@ public:
         PANDO_CHECK(fmap(pHV.get(h), initialize, 0));
       }
       struct PHPV {
-        PerHost<pando::Vector<pando::Vector<EdgeType>>> partEdges;
-        PerHost<pando::Vector<VertexType>> pHV;
+        HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges;
+        HostIndexedMap<pando::Vector<VertexType>> pHV;
       };
       PHPV phpv{partEdges, pHV};
       galois::doAllEvenlyPartition(
@@ -723,24 +724,24 @@ public:
 
     PANDO_CHECK_RETURN(galois::internal::buildVirtualToPhysicalMapping(numHosts, *labeledEdgeCounts,
                                                                        v2PM, numEdges));
-    galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
+    galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
     PANDO_CHECK_RETURN(partEdges.initialize());
 
     for (pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> vvec : partEdges) {
       PANDO_CHECK_RETURN(fmap(vvec, initialize, 0));
     }
 
-    galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
+    galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
     PANDO_CHECK_RETURN(renamePerHost.initialize());
 
     PANDO_CHECK_RETURN(galois::internal::partitionEdgesSerially<EdgeType>(
         localEdges, *v2PM, partEdges, renamePerHost));
-    galois::PerHost<pando::Vector<VertexType>> pHV{};
+    galois::HostIndexedMap<pando::Vector<VertexType>> pHV{};
     PANDO_CHECK_RETURN(pHV.initialize());
 
     PANDO_CHECK_RETURN(galois::doAll(
         partEdges, pHV,
-        +[](galois::PerHost<pando::Vector<pando::Vector<EdgeType>>> partEdges,
+        +[](galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges,
             pando::GlobalRef<pando::Vector<VertexType>> pHV) {
           PANDO_CHECK(fmap(pHV, initialize, 0));
           pando::Vector<pando::Vector<EdgeType>> localEdges = partEdges.getLocal();
@@ -1066,7 +1067,7 @@ public:
   }
 
 private:
-  galois::PerHost<CSR> arrayOfCSRs;
+  galois::HostIndexedMap<CSR> arrayOfCSRs;
   std::uint64_t numVertices;
   std::uint64_t numEdges;
   std::uint64_t numVHosts;

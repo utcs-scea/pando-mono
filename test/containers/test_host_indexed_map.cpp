@@ -4,12 +4,12 @@
 #include <gtest/gtest.h>
 #include <pando-rt/export.h>
 
-#include <pando-lib-galois/containers/per_host.hpp>
+#include <pando-lib-galois/containers/host_indexed_map.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/pando-rt.hpp>
 
-TEST(PerHost, Init) {
-  galois::PerHost<std::uint64_t> ph;
+TEST(HostIndexedMap, Init) {
+  galois::HostIndexedMap<std::uint64_t> ph;
   pando::Status err;
 
   EXPECT_EQ(ph.initialize(), pando::Status::Success);
@@ -18,7 +18,8 @@ TEST(PerHost, Init) {
     val = i;
     i++;
   }
-  auto f = +[](galois::PerHost<std::uint64_t> ph, std::uint64_t i, pando::NotificationHandle done) {
+  auto f = +[](galois::HostIndexedMap<std::uint64_t> ph, std::uint64_t i,
+               pando::NotificationHandle done) {
     EXPECT_EQ(&ph.getLocal(), &ph.get(i));
     EXPECT_EQ(ph.getLocal(), ph.getCurrentNode());
     done.notify();
@@ -57,8 +58,8 @@ TEST(PerHost, Init) {
   ph.deinitialize();
 }
 
-TEST(PerHost, DoAll) {
-  galois::PerHost<std::uint64_t> ph;
+TEST(HostIndexedMap, DoAll) {
+  galois::HostIndexedMap<std::uint64_t> ph;
   pando::Status err;
 
   EXPECT_EQ(ph.initialize(), pando::Status::Success);
@@ -77,7 +78,8 @@ TEST(PerHost, DoAll) {
 
   EXPECT_EQ(err, pando::Status::Success);
 
-  auto f = +[](galois::PerHost<std::uint64_t> ph, std::uint64_t i, pando::NotificationHandle done) {
+  auto f = +[](galois::HostIndexedMap<std::uint64_t> ph, std::uint64_t i,
+               pando::NotificationHandle done) {
     EXPECT_EQ(&ph.getLocal(), &ph.get(i));
     EXPECT_EQ(ph.getLocal(), ph.getCurrentNode());
     done.notify();

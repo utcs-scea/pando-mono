@@ -199,7 +199,7 @@ TEST(PerThreadVector, DoAll) {
   perThreadVec.deinitialize();
 }
 
-TEST(PerThreadVector, PerHostVector) {
+TEST(PerThreadVector, HostIndexedMapVector) {
   constexpr std::uint64_t size = 32;
   pando::Status err;
 
@@ -207,7 +207,7 @@ TEST(PerThreadVector, PerHostVector) {
   err = ptv.initialize();
   EXPECT_EQ(err, pando::Status::Success);
 
-  galois::PerHost<std::uint64_t> phu{};
+  galois::HostIndexedMap<std::uint64_t> phu{};
 
   galois::doAll(
       ptv, phu, +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t) {
@@ -220,14 +220,14 @@ TEST(PerThreadVector, PerHostVector) {
             });
       });
 
-  pando::GlobalPtr<galois::PerHost<pando::Vector<std::uint64_t>>> phv;
+  pando::GlobalPtr<galois::HostIndexedMap<pando::Vector<std::uint64_t>>> phv;
 
   pando::LocalStorageGuard memGuard(phv, 1);
 
   err = ptv.hostFlatten(*phv);
   EXPECT_EQ(err, pando::Status::Success);
 
-  galois::PerHost<pando::Vector<std::uint64_t>> phvNoRef = *phv;
+  galois::HostIndexedMap<pando::Vector<std::uint64_t>> phvNoRef = *phv;
 
   for (pando::GlobalRef<pando::Vector<std::uint64_t>> vecRef : phvNoRef) {
     EXPECT_EQ(lift(vecRef, size), size);
@@ -239,7 +239,7 @@ TEST(PerThreadVector, PerHostVector) {
   }
 }
 
-TEST(PerThreadVector, PerHostVectorAppend) {
+TEST(PerThreadVector, HostIndexedMapVectorAppend) {
   constexpr std::uint64_t size = 32;
   pando::Status err;
 
@@ -247,7 +247,7 @@ TEST(PerThreadVector, PerHostVectorAppend) {
   err = ptv.initialize();
   EXPECT_EQ(err, pando::Status::Success);
 
-  galois::PerHost<std::uint64_t> phu{};
+  galois::HostIndexedMap<std::uint64_t> phu{};
 
   galois::doAll(
       ptv, phu, +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t) {
@@ -260,7 +260,7 @@ TEST(PerThreadVector, PerHostVectorAppend) {
             });
       });
 
-  galois::PerHost<pando::Vector<std::uint64_t>> phv{};
+  galois::HostIndexedMap<pando::Vector<std::uint64_t>> phv{};
   EXPECT_EQ(phv.initialize(), pando::Status::Success);
 
   for (std::int16_t i = 0; i < static_cast<std::int16_t>(phv.getNumHosts()); i++) {
@@ -291,7 +291,7 @@ TEST(PerThreadVector, Clear) {
   err = ptv.initialize();
   EXPECT_EQ(err, pando::Status::Success);
 
-  galois::PerHost<std::uint64_t> phu{};
+  galois::HostIndexedMap<std::uint64_t> phu{};
 
   galois::doAll(
       ptv, phu, +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t) {

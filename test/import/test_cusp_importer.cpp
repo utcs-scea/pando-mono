@@ -432,7 +432,7 @@ TEST(BuildVertexPartition, SmallTest) {
   constexpr std::uint64_t numVertices = 1'000;
   pando::Status err;
 
-  galois::PerHost<pando::Vector<galois::WMDVertex>> readPartitions{};
+  galois::HostIndexedMap<pando::Vector<galois::WMDVertex>> readPartitions{};
   err = readPartitions.initialize();
   EXPECT_EQ(err, pando::Status::Success);
   for (std::uint64_t i = 0; i < readPartitions.size(); i++) {
@@ -463,17 +463,18 @@ TEST(BuildVertexPartition, SmallTest) {
     hostID++;
   }
 
-  galois::PerHost<galois::PerHost<pando::Vector<galois::WMDVertex>>> partVert{};
+  galois::HostIndexedMap<galois::HostIndexedMap<pando::Vector<galois::WMDVertex>>> partVert{};
   err = partVert.initialize();
   EXPECT_EQ(err, pando::Status::Success);
 
   struct PHPV {
     pando::Array<std::uint64_t> v2PM;
-    galois::PerHost<pando::Vector<galois::WMDVertex>> pHV;
+    galois::HostIndexedMap<pando::Vector<galois::WMDVertex>> pHV;
   };
 
   auto f =
-      +[](PHPV phpv, pando::GlobalRef<galois::PerHost<pando::Vector<galois::WMDVertex>>> partVert) {
+      +[](PHPV phpv,
+          pando::GlobalRef<galois::HostIndexedMap<pando::Vector<galois::WMDVertex>>> partVert) {
         const std::uint64_t hostID = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
         auto err = galois::internal::perHostPartitionVertex<galois::WMDVertex>(
             phpv.v2PM, phpv.pHV.get(hostID), &partVert);
@@ -484,8 +485,9 @@ TEST(BuildVertexPartition, SmallTest) {
   EXPECT_EQ(err, pando::Status::Success);
 
   err = galois::doAll(
-      partVert, +[](pando::GlobalRef<galois::PerHost<pando::Vector<galois::WMDVertex>>> pHVRef) {
-        galois::PerHost<pando::Vector<galois::WMDVertex>> pHV = pHVRef;
+      partVert,
+      +[](pando::GlobalRef<galois::HostIndexedMap<pando::Vector<galois::WMDVertex>>> pHVRef) {
+        galois::HostIndexedMap<pando::Vector<galois::WMDVertex>> pHV = pHVRef;
         auto err = galois::doAll(
             pHV, +[](pando::Vector<galois::WMDVertex> vertices) {
               const std::uint64_t numHosts =
@@ -501,7 +503,7 @@ TEST(BuildVertexPartition, SmallTest) {
       });
   EXPECT_EQ(err, pando::Status::Success);
 
-  for (galois::PerHost<pando::Vector<galois::WMDVertex>> pVV : partVert) {
+  for (galois::HostIndexedMap<pando::Vector<galois::WMDVertex>> pVV : partVert) {
     pVV.deinitialize();
   }
   partVert.deinitialize();
@@ -565,7 +567,7 @@ TEST(PartitionEdgesSerially, Serially) {
     v2PM[i] = i % numHosts;
   }
 
-  galois::PerHost<pando::Vector<pando::Vector<galois::WMDEdge>>> partitionedEdges{};
+  galois::HostIndexedMap<pando::Vector<pando::Vector<galois::WMDEdge>>> partitionedEdges{};
   err = partitionedEdges.initialize();
   EXPECT_EQ(err, pando::Status::Success);
   for (pando::GlobalRef<pando::Vector<pando::Vector<galois::WMDEdge>>> vvec : partitionedEdges) {
@@ -573,7 +575,7 @@ TEST(PartitionEdgesSerially, Serially) {
     EXPECT_EQ(err, pando::Status::Success);
   }
 
-  galois::PerHost<galois::HashTable<std::uint64_t, std::uint64_t>> perHostRename{};
+  galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> perHostRename{};
   err = perHostRename.initialize();
   EXPECT_EQ(err, pando::Status::Success);
 

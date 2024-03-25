@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_LIB_GALOIS_CONTAINERS_PER_HOST_HPP_
-#define PANDO_LIB_GALOIS_CONTAINERS_PER_HOST_HPP_
+#ifndef PANDO_LIB_GALOIS_CONTAINERS_HOST_INDEXED_MAP_HPP_
+#define PANDO_LIB_GALOIS_CONTAINERS_HOST_INDEXED_MAP_HPP_
 
 #include <pando-rt/export.h>
 
@@ -12,23 +12,23 @@
 namespace galois {
 
 template <typename T>
-class PerHostIt;
+class HostIndexedMapIt;
 
 template <typename T>
-class PerHost {
+class HostIndexedMap {
   pando::GlobalPtr<T> m_items;
 
 public:
-  PerHost() noexcept = default;
-  PerHost(const PerHost&) = default;
-  PerHost(PerHost&&) = default;
+  HostIndexedMap() noexcept = default;
+  HostIndexedMap(const HostIndexedMap&) = default;
+  HostIndexedMap(HostIndexedMap&&) = default;
 
-  ~PerHost() = default;
+  ~HostIndexedMap() = default;
 
-  PerHost& operator=(const PerHost&) = default;
-  PerHost& operator=(PerHost&&) = default;
+  HostIndexedMap& operator=(const HostIndexedMap&) = default;
+  HostIndexedMap& operator=(HostIndexedMap&&) = default;
 
-  using iterator = PerHostIt<T>;
+  using iterator = HostIndexedMapIt<T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
 
   [[nodiscard]] constexpr std::uint64_t getNumHosts() const noexcept {
@@ -115,17 +115,17 @@ public:
     return reverse_iterator(begin()--);
   }
 
-  friend bool operator==(const PerHost& a, const PerHost& b) {
+  friend bool operator==(const HostIndexedMap& a, const HostIndexedMap& b) {
     return a.m_items == b.m_items;
   }
 
-  friend bool operator!=(const PerHost& a, const PerHost& b) {
+  friend bool operator!=(const HostIndexedMap& a, const HostIndexedMap& b) {
     return !(a == b);
   }
 };
 
 template <typename T>
-class PerHostIt {
+class HostIndexedMapIt {
   pando::GlobalPtr<T> m_curr;
   std::int16_t m_loc;
 
@@ -136,15 +136,15 @@ public:
   using pointer = pando::GlobalPtr<T>;
   using reference = pando::GlobalRef<T>;
 
-  PerHostIt(pando::GlobalPtr<T> curr, std::int16_t loc) : m_curr(curr), m_loc(loc) {}
+  HostIndexedMapIt(pando::GlobalPtr<T> curr, std::int16_t loc) : m_curr(curr), m_loc(loc) {}
 
-  constexpr PerHostIt() noexcept = default;
-  constexpr PerHostIt(PerHostIt&&) noexcept = default;
-  constexpr PerHostIt(const PerHostIt&) noexcept = default;
-  ~PerHostIt() = default;
+  constexpr HostIndexedMapIt() noexcept = default;
+  constexpr HostIndexedMapIt(HostIndexedMapIt&&) noexcept = default;
+  constexpr HostIndexedMapIt(const HostIndexedMapIt&) noexcept = default;
+  ~HostIndexedMapIt() = default;
 
-  constexpr PerHostIt& operator=(const PerHostIt&) noexcept = default;
-  constexpr PerHostIt& operator=(PerHostIt&&) noexcept = default;
+  constexpr HostIndexedMapIt& operator=(const HostIndexedMapIt&) noexcept = default;
+  constexpr HostIndexedMapIt& operator=(HostIndexedMapIt&&) noexcept = default;
 
   reference operator*() const noexcept {
     return *m_curr;
@@ -158,76 +158,76 @@ public:
     return m_curr;
   }
 
-  PerHostIt& operator++() {
+  HostIndexedMapIt& operator++() {
     m_curr++;
     m_loc++;
     return *this;
   }
 
-  PerHostIt operator++(int) {
-    PerHostIt tmp = *this;
+  HostIndexedMapIt operator++(int) {
+    HostIndexedMapIt tmp = *this;
     ++(*this);
     return tmp;
   }
 
-  PerHostIt& operator--() {
+  HostIndexedMapIt& operator--() {
     m_curr--;
     m_loc--;
     return *this;
   }
 
-  PerHostIt operator--(int) {
-    PerHostIt tmp = *this;
+  HostIndexedMapIt operator--(int) {
+    HostIndexedMapIt tmp = *this;
     --(*this);
     return tmp;
   }
 
-  constexpr PerHostIt operator+(std::uint64_t n) const noexcept {
-    return PerHostIt(m_curr + n, m_loc + n);
+  constexpr HostIndexedMapIt operator+(std::uint64_t n) const noexcept {
+    return HostIndexedMapIt(m_curr + n, m_loc + n);
   }
 
-  constexpr PerHostIt& operator+=(std::uint64_t n) noexcept {
+  constexpr HostIndexedMapIt& operator+=(std::uint64_t n) noexcept {
     m_curr += n;
     m_loc += n;
     return *this;
   }
 
-  constexpr PerHostIt operator-(std::uint64_t n) const noexcept {
-    return PerHostIt(m_curr - n, m_loc - n);
+  constexpr HostIndexedMapIt operator-(std::uint64_t n) const noexcept {
+    return HostIndexedMapIt(m_curr - n, m_loc - n);
   }
 
-  constexpr difference_type operator-(PerHostIt b) const noexcept {
+  constexpr difference_type operator-(HostIndexedMapIt b) const noexcept {
     return m_loc - b.loc;
   }
 
-  friend bool operator==(const PerHostIt& a, const PerHostIt& b) {
+  friend bool operator==(const HostIndexedMapIt& a, const HostIndexedMapIt& b) {
     return a.m_curr == b.m_curr;
   }
 
-  friend bool operator!=(const PerHostIt& a, const PerHostIt& b) {
+  friend bool operator!=(const HostIndexedMapIt& a, const HostIndexedMapIt& b) {
     return !(a == b);
   }
 
-  friend bool operator<(const PerHostIt& a, const PerHostIt& b) {
+  friend bool operator<(const HostIndexedMapIt& a, const HostIndexedMapIt& b) {
     return a.m_curr < b.m_curr;
   }
 
-  friend bool operator<=(const PerHostIt& a, const PerHostIt& b) {
+  friend bool operator<=(const HostIndexedMapIt& a, const HostIndexedMapIt& b) {
     return a.m_curr <= b.m_curr;
   }
 
-  friend bool operator>(const PerHostIt& a, const PerHostIt& b) {
+  friend bool operator>(const HostIndexedMapIt& a, const HostIndexedMapIt& b) {
     return a.m_curr > b.m_curr;
   }
 
-  friend bool operator>=(const PerHostIt& a, const PerHostIt& b) {
+  friend bool operator>=(const HostIndexedMapIt& a, const HostIndexedMapIt& b) {
     return a.m_curr >= b.m_curr;
   }
 
-  friend pando::Place localityOf(PerHostIt& a) {
+  friend pando::Place localityOf(HostIndexedMapIt& a) {
     return pando::Place{pando::NodeIndex{a.m_loc}, pando::anyPod, pando::anyCore};
   }
 };
 } // namespace galois
 
-#endif // PANDO_LIB_GALOIS_CONTAINERS_PER_HOST_HPP_
+#endif // PANDO_LIB_GALOIS_CONTAINERS_HOST_INDEXED_MAP_HPP_

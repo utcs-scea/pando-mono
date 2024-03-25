@@ -9,7 +9,7 @@
 
 #include "pando-rt/export.h"
 #include <pando-lib-galois/containers/dist_array.hpp>
-#include <pando-lib-galois/containers/per_host.hpp>
+#include <pando-lib-galois/containers/host_indexed_map.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-lib-galois/utility/prefix_sum.hpp>
@@ -290,10 +290,10 @@ public:
   }
 
   template <typename Y>
-  using PHV = galois::PerHost<pando::Vector<Y>>;
+  using PHV = galois::HostIndexedMap<pando::Vector<Y>>;
 
   [[nodiscard]] pando::Status hostFlatten(
-      pando::GlobalRef<galois::PerHost<pando::Vector<T>>> flat) {
+      pando::GlobalRef<galois::HostIndexedMap<pando::Vector<T>>> flat) {
     pando::Status err;
     err = lift(flat, initialize);
     PANDO_CHECK_RETURN(err);
@@ -333,7 +333,7 @@ public:
     return pando::Status::Success;
   }
 
-  [[nodiscard]] pando::Status hostFlattenAppend(galois::PerHost<pando::Vector<T>> flat) {
+  [[nodiscard]] pando::Status hostFlattenAppend(galois::HostIndexedMap<pando::Vector<T>> flat) {
     pando::Status err;
 
     if (!indices_computed) {

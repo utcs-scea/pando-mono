@@ -123,7 +123,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
       static_cast<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>(*labeledEdgeCounts)));
 #endif
 
-  galois::PerHost<pando::Vector<ELVertex>> pHV{};
+  galois::HostIndexedMap<pando::Vector<ELVertex>> pHV{};
   PANDO_CHECK(pHV.initialize());
 
   /**
