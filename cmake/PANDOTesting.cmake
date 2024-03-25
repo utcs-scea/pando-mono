@@ -64,7 +64,7 @@ function(pando_add_driver_test TARGET SOURCEFILE)
   endif ()
 
   if (PANDO_RT_BACKEND STREQUAL "DRVX")
-    set(HTHREADS "-p 4")
+    set(HTHREADS "-p 1")
     set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/scripts/run-drv.sh)
   else ()
     set(HTHREADS "")

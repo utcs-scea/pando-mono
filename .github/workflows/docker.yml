@@ -80,7 +80,7 @@ jobs:
     - name: Build
       timeout-minutes: 15
       run: |
-        CONTAINER_CMD="setarch `uname -m` -R bash -c '. ~/spack_env && make -j8 || make || make'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -c '. ~/.profile && make -j8 || make || make'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           CONTAINER_WORKDIR="${{ env.CONTAINER_BUILD_DIR }}" \
@@ -92,7 +92,7 @@ jobs:
         PANDO_PREP_LOG_LEVEL: warning
       run: |
         mkdir -p data
-        CONTAINER_CMD="setarch `uname -m` -R bash -c 'export HOST_THREADS=8 && . ~/spack_env && scripts/run.sh'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -c 'export HOST_THREADS=8 && . ~/.profile && scripts/run.sh'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           make docker

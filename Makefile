@@ -176,20 +176,19 @@ drive-deps:
 
 run-tests-mpi:
 	set -o pipefail && \
-	. /dependencies/spack/share/spack/setup-env.sh && \
-	spack load gasnet qthreads openmpi && \
+	. ~/.profile && \
 	cd ${CONTAINER_BUILD_DIR} && ctest --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-smp:
 	set -o pipefail && \
-	. /dependencies/spack/share/spack/setup-env.sh && \
-	spack load gasnet qthreads&& \
+	. ~/.profile && \
 	cd ${CONTAINER_BUILD_DIR}-smp && ctest --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-drv:
 	set -o pipefail && \
+	. ~/.profile && \
 	cd ${DRV_BUILD_DIR} && ctest --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
