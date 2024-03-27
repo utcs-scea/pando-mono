@@ -141,7 +141,7 @@ TEST(PerThreadVector, DoAll) {
     work[i] = i;
   }
 
-  galois::DAccumulator<uint64_t> sum;
+  galois::DAccumulator<uint64_t> sum{};
   EXPECT_EQ(sum.initialize(), pando::Status::Success);
   EXPECT_EQ(sum.get(), 0);
 
@@ -342,7 +342,7 @@ TEST(PerThreadVector, ClearCompute) {
     work[i] = i;
   }
 
-  galois::DAccumulator<uint64_t> sum;
+  galois::DAccumulator<uint64_t> sum{};
   EXPECT_EQ(sum.initialize(), pando::Status::Success);
   EXPECT_EQ(sum.get(), 0);
 

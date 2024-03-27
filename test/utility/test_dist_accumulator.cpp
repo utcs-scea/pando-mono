@@ -29,7 +29,7 @@ TEST(DistAccumulator, Init) {
 }
 
 TEST(DistAccumulator, SingleHost) {
-  galois::DAccumulator<uint64_t> sum;
+  galois::DAccumulator<uint64_t> sum{};
   EXPECT_EQ(sum.initialize(), pando::Status::Success);
   EXPECT_EQ(sum.get(), 0);
   sum.increment();
@@ -48,7 +48,7 @@ TEST(DistAccumulator, Distributed) {
   const uint64_t workItemsPerHost = 1000;
   const uint64_t pxns = pando::getPlaceDims().node.id;
   galois::DistArray<uint64_t> distributedWork = getDistributedWorkArray(workItemsPerHost);
-  galois::DAccumulator<uint64_t> sum;
+  galois::DAccumulator<uint64_t> sum{};
   EXPECT_EQ(sum.initialize(), pando::Status::Success);
   EXPECT_EQ(sum.get(), 0);
 

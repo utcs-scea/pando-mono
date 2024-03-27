@@ -14,6 +14,7 @@
 #include <pando-rt/sync/notification.hpp>
 
 #include <pando-lib-galois/containers/dist_array.hpp>
+#include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/sync/atomic.hpp>
 
@@ -25,8 +26,8 @@ namespace galois {
  */
 template <typename T>
 class DAccumulator {
-  ///@brief This is a distributed array of the counters used by each PXN
-  galois::DistArray<T> localCounters;
+  ///@brief This is a local storage of the counters used by each PXN
+  galois::HostLocalStorage<T> localCounters{};
   ///@brief This is a pointer to the computed global value, populated by reduce()
   pando::GlobalPtr<T> globalValue;
   ///@brief Tracks whether global_value holds a valid value
@@ -45,7 +46,6 @@ public:
    */
   [[nodiscard]] pando::Status initialize(pando::Place place, pando::MemoryType memoryType) {
     pando::Status err;
-    int16_t pxns = pando::getPlaceDims().node.id;
 
     auto expect = pando::allocateMemory<T>(1, place, memoryType);
     if (!expect.hasValue()) {
@@ -53,20 +53,7 @@ public:
     }
     globalValue = expect.value();
 
-    pando::Vector<galois::PlaceType> vec;
-    err = vec.initialize(pxns);
-    if (err != pando::Status::Success) {
-      pando::deallocateMemory<T>(globalValue, 1);
-      return err;
-    }
-
-    for (std::int16_t i = 0; i < pxns; i++) {
-      vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
-                         pando::MemoryType::Main};
-    }
-
-    err = localCounters.initialize(vec.begin(), vec.end(), pxns);
-    vec.deinitialize();
+    err = localCounters.initialize();
     if (err != pando::Status::Success) {
       pando::deallocateMemory<T>(globalValue, 1);
       return err;
@@ -137,7 +124,7 @@ public:
    * @brief add adds the given delta to the local accumulator
    */
   void add(T delta) {
-    pando::atomicFetchAdd(&localCounters[pando::getCurrentPlace().node.id], delta,
+    pando::atomicFetchAdd(&localCounters.get(pando::getCurrentPlace().node.id), delta,
                           std::memory_order_release);
   }
   /**
@@ -150,7 +137,7 @@ public:
    * @brief subtract subtracts the given delta from the local accumulator
    */
   void subtract(T delta) {
-    pando::atomicFetchSub(&localCounters[pando::getCurrentPlace().node.id], delta,
+    pando::atomicFetchSub(&localCounters.get(pando::getCurrentPlace().node.id), delta,
                           std::memory_order_release);
   }
   /**

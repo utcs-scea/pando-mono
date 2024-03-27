@@ -130,7 +130,7 @@ TEST(doALL, CustomLocality) {
 }
 
 TEST(onEach, VerifyLocality) {
-  galois::DAccumulator<uint64_t> loops;
+  galois::DAccumulator<uint64_t> loops{};
   EXPECT_EQ(loops.initialize(), pando::Status::Success);
   galois::onEach(
       loops, +[](galois::DAccumulator<uint64_t>& loops, uint64_t threadID, uint64_t ts) {
@@ -154,7 +154,7 @@ TEST(onEach, VerifyLocality) {
 TEST(doAll, EvenlyPartition) {
   // deliberately prime
   static const uint64_t workItems = 71;
-  galois::DAccumulator<uint64_t> loops;
+  galois::DAccumulator<uint64_t> loops{};
   EXPECT_EQ(loops.initialize(), pando::Status::Success);
   galois::doAllEvenlyPartition(
       loops, workItems,
