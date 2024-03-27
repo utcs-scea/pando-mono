@@ -8,7 +8,7 @@
 
 #include <utility>
 
-#include <pando-rt/containers/array.hpp>
+#include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/specific_storage.hpp>
@@ -258,6 +258,28 @@ public:
     return pando::Place{pando::NodeIndex{a.m_loc}, pando::anyPod, pando::anyCore};
   }
 };
+
+template <typename T>
+[[nodiscard]] pando::Expected<galois::HostLocalStorage<T>> copyToAllHosts(T&& cont) {
+  galois::HostLocalStorage<T> ret{};
+  PANDO_CHECK_RETURN(ret.initialize());
+  PANDO_CHECK_RETURN(galois::doAll(
+      cont, ret, +[](T cont, pando::GlobalRef<T> refcopy) {
+        T copy;
+        if (galois::localityOf(cont).node.id != pando::getCurrentPlace().node.id) {
+          const std::uint64_t size = cont.size();
+          PANDO_CHECK(copy.initialize(size));
+          for (std::uint64_t i = 0; i < cont.size(); i++) {
+            copy.get(i) = cont.get(i);
+          }
+        } else {
+          copy = cont;
+        }
+        refcopy = copy;
+      }));
+  return ret;
+}
+
 } // namespace galois
 
 #endif // PANDO_LIB_GALOIS_CONTAINERS_HOST_LOCAL_STORAGE_HPP_

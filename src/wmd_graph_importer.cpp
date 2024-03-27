@@ -3,32 +3,28 @@
 
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
 
-[[nodiscard]] pando::Status galois::internal::buildVirtualToPhysicalMapping(
-    std::uint64_t numHosts,
-    pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledVirtualCounts,
-    pando::GlobalPtr<pando::Array<std::uint64_t>> virtualToPhysicalMapping,
-    pando::Array<std::uint64_t> numEdges) {
-  pando::Status err;
+#include <pando-lib-galois/containers/host_indexed_map.hpp>
 
+[[nodiscard]] pando::Expected<
+    galois::Pair<pando::Array<std::uint64_t>, galois::HostIndexedMap<std::uint64_t>>>
+galois::internal::buildVirtualToPhysicalMapping(
+    std::uint64_t numHosts,
+    pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledVirtualCounts) {
   std::sort(labeledVirtualCounts.begin(), labeledVirtualCounts.end());
 
   pando::Array<std::uint64_t> vTPH;
-  err = vTPH.initialize(labeledVirtualCounts.size());
-  if (err != pando::Status::Success) {
-    return err;
-  }
+  PANDO_CHECK_RETURN(vTPH.initialize(labeledVirtualCounts.size()));
+
+  galois::HostIndexedMap<std::uint64_t> numEdges{};
+  PANDO_CHECK_RETURN(numEdges.initialize());
 
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> intermediateSort;
-  err = intermediateSort.initialize(numHosts);
-  if (err != pando::Status::Success) {
-    vTPH.deinitialize();
-    return err;
-  }
+  PANDO_CHECK_RETURN(intermediateSort.initialize(numHosts));
 
   for (std::uint64_t i = 0; i < numHosts; i++) {
     intermediateSort[i] =
         galois::Pair<std::uint64_t, std::uint64_t>{static_cast<std::uint64_t>(0), i};
-    numEdges[0] = 0;
+    numEdges.get(0) = 0;
   }
 
   for (auto it = labeledVirtualCounts.rbegin(); it != labeledVirtualCounts.rend(); it++) {
@@ -45,13 +41,12 @@
     vTPH[virtualPair.second] = physicalPair.second;
     // Update the count
     physicalPair.first += virtualPair.first;
-    numEdges[physicalPair.second] = physicalPair.first;
+    numEdges.get(physicalPair.second) = physicalPair.first;
     // Store back
     intermediateSort[0] = physicalPair;
   }
 
   intermediateSort.deinitialize();
 
-  *virtualToPhysicalMapping = vTPH;
-  return pando::Status::Success;
+  return galois::make_tpl(vTPH, numEdges);
 }

@@ -122,6 +122,10 @@ public:
   friend bool operator!=(const HostIndexedMap& a, const HostIndexedMap& b) {
     return !(a == b);
   }
+
+  friend pando::Place localityOf(HostIndexedMap& a) {
+    return pando::localityOf(a.m_items);
+  }
 };
 
 template <typename T>

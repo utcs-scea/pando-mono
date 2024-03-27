@@ -104,14 +104,8 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
   PANDO_CHECK(
       galois::internal::buildEdgeCountToSend<ELEdge>(numVHosts, localEdges, *labeledEdgeCounts));
 
-  pando::GlobalPtr<pando::Array<std::uint64_t>> v2PM;
-  pando::LocalStorageGuard vTPMGuard(v2PM, 1);
-
-  pando::Array<std::uint64_t> numEdges;
-  PANDO_CHECK(numEdges.initialize(hosts));
-
-  PANDO_CHECK(
-      galois::internal::buildVirtualToPhysicalMapping(hosts, *labeledEdgeCounts, v2PM, numEdges));
+  auto [v2PM, numEdges] = PANDO_EXPECT_CHECK(
+      galois::internal::buildVirtualToPhysicalMapping(hosts, *labeledEdgeCounts));
 
 #if FREE
   auto freeLabeledEdgeCounts =
@@ -147,15 +141,16 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
       };
 
   PANDO_CHECK(
-      galois::doAll(GenerateVerticesState{numVertices, *v2PM}, pHV, generateVerticesPerHost));
+      galois::doAll(GenerateVerticesState{numVertices, v2PM}, pHV, generateVerticesPerHost));
 
   auto [partEdges, renamePerHost] =
-      internal::partitionEdgesParallely(pHV, std::move(localEdges), *v2PM);
+      internal::partitionEdgesParallely(pHV, std::move(localEdges), v2PM);
 
   using Graph = galois::DistLocalCSR<VertexType, EdgeType>;
   Graph graph;
   graph.template initializeAfterGather<galois::ELVertex, galois::ELEdge>(
-      pHV, numVertices, partEdges, renamePerHost, numEdges, *v2PM);
+      pHV, numVertices, partEdges, renamePerHost, numEdges,
+      PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM))));
 
 #if FREE
   auto freeTheRest = +[](decltype(pHV) pHV, decltype(partEdges) partEdges,

@@ -97,3 +97,21 @@ TEST(HostLocalStorage, DoAll) {
 
   ph.deinitialize();
 }
+
+TEST(HostLocalStorage, copyToAllHosts) {
+  const std::uint64_t SIZE = 100;
+  pando::Array<std::uint64_t> arr;
+  EXPECT_EQ(pando::Status::Success, arr.initialize(100));
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    arr[i] = i;
+  }
+  auto hlsarr = PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(arr)));
+  for (pando::Array<std::uint64_t> tocheck : hlsarr) {
+    EXPECT_EQ(tocheck.size(), SIZE);
+    for (std::uint64_t i = 0; i < SIZE; i++) {
+      EXPECT_EQ(tocheck.get(i), i);
+    }
+    tocheck.deinitialize();
+  }
+  hlsarr.deinitialize();
+}

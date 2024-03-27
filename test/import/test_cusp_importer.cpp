@@ -681,15 +681,12 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
                                                                         *edgeCounts));
 
     for (std::uint64_t numHosts = 2; numHosts <= numVirtualHosts; numHosts *= 3) {
-      pando::Array<std::uint64_t> totEdges;
-      err = totEdges.initialize(numHosts);
-      EXPECT_EQ(err, pando::Status::Success);
-      err = galois::internal::buildVirtualToPhysicalMapping(numHosts, *edgeCounts,
-                                                            virtualToPhysicalMapping, totEdges);
+      auto [virtualToPhysicalMapping, totEdges] = PANDO_EXPECT_CHECK(
+          galois::internal::buildVirtualToPhysicalMapping(numHosts, *edgeCounts));
       totEdges.deinitialize();
       if (numHosts == 1) {
         for (std::uint64_t i = 0; i < numVirtualHosts; i++) {
-          EXPECT_EQ(static_cast<std::uint64_t>(0), fmap(*virtualToPhysicalMapping, operator[], i));
+          EXPECT_EQ(static_cast<std::uint64_t>(0), virtualToPhysicalMapping[i]);
         }
       } else {
         pando::Array<std::uint64_t> interArray;
@@ -698,7 +695,7 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
 
         // Rebuild intermediate array
         for (galois::WMDEdge edge : edges) {
-          std::uint64_t i = fmap(*virtualToPhysicalMapping, operator[], edge.src % numVirtualHosts);
+          std::uint64_t i = virtualToPhysicalMapping[edge.src % numVirtualHosts];
           interArray[i] += 1;
         }
 
@@ -715,7 +712,7 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
         EXPECT_EQ(sum, SIZE * SIZE);
         interArray.deinitialize();
       }
-      liftVoid(*virtualToPhysicalMapping, deinitialize);
+      virtualToPhysicalMapping.deinitialize();
     }
     for (std::uint64_t i = 0; i < localEdges.size(); i++) {
       galois::HashTable<std::uint64_t, std::uint64_t> table = hashPtr[i];

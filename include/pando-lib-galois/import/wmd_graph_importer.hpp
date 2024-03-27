@@ -127,11 +127,11 @@ void buildEdgeCountToSend(
   labeledEdgeCounts = sumArray;
 }
 
-[[nodiscard]] pando::Status buildVirtualToPhysicalMapping(
+[[nodiscard]] pando::Expected<
+    galois::Pair<pando::Array<std::uint64_t>, galois::HostIndexedMap<std::uint64_t>>>
+buildVirtualToPhysicalMapping(
     std::uint64_t numHosts,
-    pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledVirtualCounts,
-    pando::GlobalPtr<pando::Array<std::uint64_t>> virtualToPhysicalMapping,
-    pando::Array<std::uint64_t> numEdges);
+    pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledVirtualCounts);
 
 inline std::uint64_t getPhysical(std::uint64_t id,
                                  pando::Array<std::uint64_t> virtualToPhysicalMapping) {

@@ -22,6 +22,11 @@ pando::Place localityOf(pando::GlobalPtr<T> ptr) {
   return (ptr == nullptr) ? pando::getCurrentPlace() : pando::localityOf(ptr);
 }
 
+template <typename T>
+pando::Place localityOf(pando::Array<T> ptr) {
+  return pando::localityOf(ptr.data());
+}
+
 static inline uint64_t getTotalThreads() {
   uint64_t coreY = pando::getPlaceDims().core.y;
   uint64_t cores = pando::getPlaceDims().core.x * coreY;
