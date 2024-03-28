@@ -9,7 +9,7 @@
 
 #include "pando-rt/export.h"
 #include <pando-lib-galois/containers/dist_array.hpp>
-#include <pando-lib-galois/containers/host_indexed_map.hpp>
+#include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-lib-galois/utility/prefix_sum.hpp>
@@ -290,10 +290,10 @@ public:
   }
 
   template <typename Y>
-  using PHV = galois::HostIndexedMap<pando::Vector<Y>>;
+  using HLSV = galois::HostLocalStorage<pando::Vector<Y>>;
 
   [[nodiscard]] pando::Status hostFlatten(
-      pando::GlobalRef<galois::HostIndexedMap<pando::Vector<T>>> flat) {
+      pando::GlobalRef<galois::HostLocalStorage<pando::Vector<T>>> flat) {
     pando::Status err;
     err = lift(flat, initialize);
     PANDO_CHECK_RETURN(err);
@@ -315,7 +315,7 @@ public:
     }
 
     // Reduce into the per host vectors
-    auto f = +[](AssignState<PHV> assign, std::uint64_t i, uint64_t) {
+    auto f = +[](AssignState<HLSV> assign, std::uint64_t i, uint64_t) {
       std::uint64_t host = i / (assign.data.cores * assign.data.threads);
       std::uint64_t index =
           static_cast<std::uint64_t>(host) * assign.data.cores * assign.data.threads - 1;
@@ -329,11 +329,11 @@ public:
         curr++;
       }
     };
-    galois::onEach(AssignState<PHV>(*this, flat), f);
+    galois::onEach(AssignState<HLSV>(*this, flat), f);
     return pando::Status::Success;
   }
 
-  [[nodiscard]] pando::Status hostFlattenAppend(galois::HostIndexedMap<pando::Vector<T>> flat) {
+  [[nodiscard]] pando::Status hostFlattenAppend(galois::HostLocalStorage<pando::Vector<T>> flat) {
     pando::Status err;
 
     if (!indices_computed) {
@@ -355,7 +355,7 @@ public:
     }
 
     // Reduce into the per host vectors
-    auto f = +[](AssignState<PHV> assign, std::uint64_t i, uint64_t) {
+    auto f = +[](AssignState<HLSV> assign, std::uint64_t i, uint64_t) {
       std::uint64_t host = i / (assign.data.cores * assign.data.threads);
       std::uint64_t index =
           static_cast<std::uint64_t>(host) * assign.data.cores * assign.data.threads - 1;
@@ -372,7 +372,7 @@ public:
         curr++;
       }
     };
-    galois::onEach(AssignState<PHV>(*this, flat), f);
+    galois::onEach(AssignState<HLSV>(*this, flat), f);
     return pando::Status::Success;
   }
 

@@ -432,7 +432,7 @@ TEST(BuildVertexPartition, SmallTest) {
   constexpr std::uint64_t numVertices = 1'000;
   pando::Status err;
 
-  galois::HostIndexedMap<pando::Vector<galois::WMDVertex>> readPartitions{};
+  galois::HostLocalStorage<pando::Vector<galois::WMDVertex>> readPartitions{};
   err = readPartitions.initialize();
   EXPECT_EQ(err, pando::Status::Success);
   for (std::uint64_t i = 0; i < readPartitions.size(); i++) {
@@ -463,25 +463,24 @@ TEST(BuildVertexPartition, SmallTest) {
     hostID++;
   }
 
-  galois::HostIndexedMap<galois::HostIndexedMap<pando::Vector<galois::WMDVertex>>> partVert{};
+  auto v2PM = PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(virtualToPhysicalMapping)));
+
+  galois::HostLocalStorage<galois::HostIndexedMap<pando::Vector<galois::WMDVertex>>> partVert{};
   err = partVert.initialize();
   EXPECT_EQ(err, pando::Status::Success);
 
-  struct PHPV {
-    pando::Array<std::uint64_t> v2PM;
-    galois::HostIndexedMap<pando::Vector<galois::WMDVertex>> pHV;
-  };
-
+  auto tpl = galois::make_tpl(v2PM, readPartitions);
   auto f =
-      +[](PHPV phpv,
+      +[](decltype(tpl) tpl,
           pando::GlobalRef<galois::HostIndexedMap<pando::Vector<galois::WMDVertex>>> partVert) {
+        auto [v2PM, readPartitions] = tpl;
         const std::uint64_t hostID = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
         auto err = galois::internal::perHostPartitionVertex<galois::WMDVertex>(
-            phpv.v2PM, phpv.pHV.get(hostID), &partVert);
+            v2PM, readPartitions.get(hostID), &partVert);
         EXPECT_EQ(err, pando::Status::Success);
       };
 
-  err = galois::doAll(PHPV{virtualToPhysicalMapping, readPartitions}, partVert, f);
+  err = galois::doAll(tpl, partVert, f);
   EXPECT_EQ(err, pando::Status::Success);
 
   err = galois::doAll(

@@ -145,7 +145,8 @@ inline std::uint64_t getPhysical(std::uint64_t id,
  */
 template <typename VertexType>
 [[nodiscard]] pando::Status perHostPartitionVertex(
-    pando::Array<std::uint64_t> virtualToPhysicalMapping, pando::Vector<VertexType> vertices,
+    galois::HostLocalStorage<pando::Array<std::uint64_t>> virtualToPhysicalMapping,
+    pando::Vector<VertexType> vertices,
     pando::GlobalPtr<galois::HostIndexedMap<pando::Vector<VertexType>>> partitionedVertices) {
   galois::HostIndexedMap<pando::Vector<VertexType>> partitioned;
   PANDO_CHECK_RETURN(partitioned.initialize());
@@ -156,9 +157,9 @@ template <typename VertexType>
     PANDO_CHECK_RETURN(fmap(vec, reserve, initSize));
   }
 
+  pando::Array<std::uint64_t> v2PM = virtualToPhysicalMapping.getLocal();
   for (VertexType vert : vertices) {
-    PANDO_CHECK_RETURN(
-        fmap(partitioned.get(getPhysical(vert.id, virtualToPhysicalMapping)), pushBack, vert));
+    PANDO_CHECK_RETURN(fmap(partitioned.get(getPhysical(vert.id, v2PM)), pushBack, vert));
   }
 
   *partitionedVertices = partitioned;
@@ -399,12 +400,13 @@ template <typename EdgeType>
  * @brief Consumes the localVertices, and references a partitionMap to produce partitioned Vertices
  */
 template <typename VertexType>
-[[nodiscard]] galois::HostIndexedMap<pando::Vector<VertexType>> partitionVertices(
-    galois::PerThreadVector<VertexType>&& vertexPerThreadRead, pando::Array<std::uint64_t> v2PM) {
-  galois::HostIndexedMap<pando::Vector<VertexType>> vertPart{};
+[[nodiscard]] galois::HostLocalStorage<pando::Vector<VertexType>> partitionVertices(
+    galois::PerThreadVector<VertexType>&& vertexPerThreadRead,
+    HostLocalStorage<pando::Array<std::uint64_t>> v2PM) {
+  galois::HostLocalStorage<pando::Vector<VertexType>> vertPart{};
   PANDO_CHECK(vertPart.initialize());
 
-  galois::HostIndexedMap<pando::Vector<VertexType>> readPart{};
+  galois::HostLocalStorage<pando::Vector<VertexType>> readPart{};
   PANDO_CHECK(readPart.initialize());
   for (pando::GlobalRef<pando::Vector<VertexType>> vec : readPart) {
     PANDO_CHECK(fmap(vec, initialize, 0));
@@ -418,20 +420,18 @@ template <typename VertexType>
   PANDO_CHECK(pando::executeOn(pando::anyPlace, freeLocalVertices, localVertices));
 #endif
 
-  galois::HostIndexedMap<galois::HostIndexedMap<pando::Vector<VertexType>>> partVert{};
+  galois::HostLocalStorage<galois::HostIndexedMap<pando::Vector<VertexType>>> partVert{};
   PANDO_CHECK(partVert.initialize());
 
-  struct PHPV {
-    pando::Array<std::uint64_t> v2PM;
-    HostIndexedMap<pando::Vector<VertexType>> pHV;
-  };
-
-  auto f = +[](PHPV phpv, pando::GlobalRef<HostIndexedMap<pando::Vector<VertexType>>> partVert) {
+  auto phpv = galois::make_tpl(v2PM, partVert);
+  auto f = +[](decltype(phpv) phpv,
+               pando::GlobalRef<HostIndexedMap<pando::Vector<VertexType>>> partVert) {
+    auto [v2PM, pHV] = phpv;
     const std::uint64_t hostID = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-    PANDO_CHECK(galois::internal::perHostPartitionVertex<VertexType>(
-        phpv.v2PM, phpv.pHV.get(hostID), &partVert));
+    PANDO_CHECK(
+        galois::internal::perHostPartitionVertex<VertexType>(v2PM, pHV.get(hostID), &partVert));
   };
-  PANDO_CHECK(galois::doAll(PHPV{v2PM, readPart}, partVert, f));
+  PANDO_CHECK_RETURN(galois::doAll(phpv, partVert, f));
 
 #if FREE
   auto freeReadPart = +[](HostIndexedMap<pando::Vector<VertexType>> readPart) {
@@ -447,7 +447,7 @@ template <typename VertexType>
       partVert, vertPart,
       +[](decltype(partVert) pHPHV, pando::GlobalRef<pando::Vector<VertexType>> pHV) {
         PANDO_CHECK(fmap(pHV, initialize, 0));
-        std::uint64_t currNode = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
+        const std::uint64_t currNode = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
         for (galois::HostIndexedMap<pando::Vector<VertexType>> pHVRef : pHPHV) {
           PANDO_CHECK(fmap(pHV, append, &pHVRef.get(currNode)));
         }
