@@ -40,7 +40,9 @@ repos:
     rev: v0.31.1
     hooks:
       - id: markdownlint
+        exclude: ^pando-drv/
       - id: markdownlint-fix
+        exclude: ^pando-drv/
   - repo: https://github.com/jumanjihouse/pre-commit-hooks
     rev: 3.0.0
     hooks:
@@ -49,10 +51,13 @@ repos:
     rev: v2.2.6
     hooks:
       - id: codespell
+        exclude: ^pando-drv/
   - repo: https://github.com/pocc/pre-commit-hooks
     rev: v1.3.5
     hooks:
       - id: clang-format
+        exclude: ^pando-drv/
         args: [-i]
       - id: cpplint
+        exclude: ^pando-drv/
         args: [--quiet]
