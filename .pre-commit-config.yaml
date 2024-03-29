@@ -15,9 +15,9 @@ repos:
     rev: v1.5.4
     hooks:
       - id: forbid-tabs
-        exclude: ^scripts/|Makefile
+        exclude: ^scripts/|Makefile|.*\.mk$
       - id: remove-tabs
-        exclude: ^scripts/|Makefile
+        exclude: ^scripts/|Makefile|.*\.mk$
         args: [--whitespaces-count, '2']
       - id: insert-license
         files: .*\.sh$|.*\.yml$|.*\.yaml$|.*\.txt$|.*\.py|.*\.cmake|.*\.cfg$|Dockerfile.*|Makefile.*|.clang-format|.tool-versions

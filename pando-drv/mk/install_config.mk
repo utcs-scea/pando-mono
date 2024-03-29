@@ -14,10 +14,10 @@ DRV_INCLUDE_DIR = $(DRV_INSTALL_DIR)/include
 DRV_LIB_DIR = $(DRV_INSTALL_DIR)/lib
 
 $(DRV_BIN_DIR) $(DRV_INCLUDE_DIR) $(DRV_LIB_DIR):
-  @mkdir -p $@
+	@mkdir -p $@
 
 $(DRV_INSTALL_DIR): $(DRV_BIN_DIR) $(DRV_INCLUDE_DIR) $(DRV_LIB_DIR)
-  @mkdir -p $@
+	@mkdir -p $@
 
 .PHONY: $(DRV_INSTALL_DIR) $(DRV_BIN_DIR) $(DRV_INCLUDE_DIR) $(DRV_LIB_DIR)
 
