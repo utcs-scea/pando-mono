@@ -1,0 +1,10 @@
+default_stages: [pre-commit]
+fail_fast: true
+repos:
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: v1.3.5
+    hooks:
+      - id: clang-format
+        args: [-i]
+      - id: cpplint
+        args: [--quiet]

@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+# Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+
+FROM pando-rt:latest
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update -y \
+      &&  apt install -y \
+      vim \
+      gdb \
+      universal-ctags \
+      powerline \
+      zsh \
+      valgrind \
+      sudo \
+      doxygen \
+      texlive-latex-extra \
+      texlive-font-utils \
+      &&  apt clean \
+      &&  update-locale
+
+ARG UNAME
+ARG UID
+ARG GID
+
+RUN if [ "${UNAME}" != "root" ] ; then groupadd -g ${GID} ${UNAME} \
+      &&  useradd -ms /bin/bash  -u "${UID}" -g "${GID}" ${UNAME} ; fi
+
+RUN mkdir -p /home/${UNAME} \
+      && chown ${UNAME}:${UNAME} /home/${UNAME}
+
+USER ${UNAME}
+WORKDIR /home/${UNAME}
+
+RUN pip3 install compdb pre-commit cpplint "clang-format>=12.0.1"
+
+COPY --chown=${UNAME}:${UNAME} setup.sh /home/${UNAME}/setup.sh
+COPY --chown=${UNAME}:${UNAME} build.sh /home/${UNAME}/build.sh
+COPY --chown=${UNAME}:${UNAME} test.sh /home/${UNAME}/test.sh
+
+RUN chmod +x /home/${UNAME}/setup.sh  \
+      && chmod +x /home/${UNAME}/build.sh  \
+      && chmod +x /home/${UNAME}/test.sh
+
+RUN echo ". /dependencies/spack/share/spack/setup-env.sh" >> /home/${UNAME}/spack_env \
+      &&  echo "spack load openmpi qthreads gasnet" >> /home/${UNAME}/spack_env \
+      &&  echo ". /home/${UNAME}/spack_env" |tee -a /home/${UNAME}/.zshenv >> /home/${UNAME}/.bashrc
+
+RUN echo "PATH=/home/${UNAME}/.local/bin/:\$PATH" >> /home/${UNAME}/.zshenv
+WORKDIR ${SRC_DIR}

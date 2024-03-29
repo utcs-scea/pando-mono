@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+/* Copyright (c) 2024 Advanced Micro Devices, Inc. All rights reserved. */
+
+#ifndef PANDO_RT_TRACING_HPP_
+#define PANDO_RT_TRACING_HPP_
+
+#cmakedefine PANDO_STAT_TRACE_ENABLE
+
+#ifdef PANDO_STAT_TRACE_ENABLE
+
+#include "export.h"
+
+#include <string_view>
+
+namespace pando {
+
+/**
+ * @brief Flush buffered memory stat counters and create a new phase.
+ *
+ * @ingroup ROOT
+ */
+PANDO_RT_EXPORT void memStatNewPhase();
+
+/**
+ * @brief Start a new kernel.
+ *
+ * @ingroup ROOT
+ */
+PANDO_RT_EXPORT void memStatNewKernel(std::string_view kernelName);
+
+} // namespace pando
+
+#define PANDO_MEM_STAT_NEW_PHASE()  \
+do {                                \
+    pando::memStatNewPhase();       \
+} while(false)
+
+#define PANDO_MEM_STAT_NEW_KERNEL(KERNEL_NAME)  \
+do {                                            \
+    pando::memStatNewKernel((KERNEL_NAME));     \
+} while(false)
+#else
+#define PANDO_MEM_STAT_NEW_PHASE()
+#define PANDO_MEM_STAT_NEW_KERNEL(KERNEL_NAME)
+#endif
+
+#endif // PANDO_RT_TRACING_HPP_

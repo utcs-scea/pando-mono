@@ -1,0 +1,24 @@
+% SPDX-License-Identifier: MIT
+% Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{watermark}[]
+
+\RequirePackage{eso-pic,graphicx}
+
+\newcommand\WatermarkText{[Confidential - Distribution with NDA]}
+
+\newcommand\WatermarkColor{f78b00}
+
+\AddToShipoutPictureBG{%
+    \put(\LenToUnit{0.24\paperwidth},\LenToUnit{0.97\paperheight}){%
+            \makebox(0,0){%
+            \rotatebox{0}{%
+                \textcolor[HTML]{\WatermarkColor}{%
+                \fontsize{12}{14}\selectfont%
+                \WatermarkText%
+                }%
+            }%
+        }%
+    }%
+}

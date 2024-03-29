@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: MIT
+### Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. ###
+
+find_package(Doxygen)
+
+if (DOXYGEN_FOUND)
+
+    # add relevant paths to create documentation
+    list(APPEND DOXYGEN_SOURCES
+        "${PROJECT_SOURCE_DIR}/include"
+        "${PROJECT_SOURCE_DIR}/README.md"
+        "${PROJECT_SOURCE_DIR}/docs/developer.md"
+        "${PROJECT_SOURCE_DIR}/docs/DRVX.md"
+        "${PROJECT_SOURCE_DIR}/docs/memory-resources.md"
+        "${PROJECT_SOURCE_DIR}/docs/PGAS.md"
+        "${PROJECT_SOURCE_DIR}/docs/PREP.md"
+    )
+    option(BUILD_DOCS_INTERNAL "Build internal documentation" OFF)
+    if (BUILD_DOCS_INTERNAL)
+        list(APPEND DOXYGEN_SOURCES "${PROJECT_SOURCE_DIR}/src")
+    endif ()
+
+    # configure doxygen
+    set(DOXYGEN_ALPHABETICAL_INDEX YES)
+    set(DOXYGEN_BUILTIN_STL_SUPPORT YES)
+    set(DOXYGEN_CASE_SENSE_NAMES YES)
+    set(DOXYGEN_CLASS_DIAGRAMS YES)
+    set(DOXYGEN_DISTRIBUTE_GROUP_DOC YES)
+    set(DOXYGEN_EXAMPLE_PATH "${PROJECT_SOURCE_DIR}/examples")
+    set(DOXYGEN_EXCLUDE bin)
+    set(DOXYGEN_EXTRACT_ALL YES)
+    set(DOXYGEN_EXTRACT_LOCAL_CLASSES NO)
+    set(DOXYGEN_EXTRACT_PRIVATE NO)
+    set(DOXYGEN_FILE_PATTERNS *.hpp)
+    set(DOXYGEN_GENERATE_TREEVIEW YES)
+    set(DOXYGEN_HIDE_FRIEND_COMPOUNDS YES)
+    set(DOXYGEN_HIDE_IN_BODY_DOCS YES)
+    set(DOXYGEN_HIDE_UNDOC_CLASSES NO)
+    set(DOXYGEN_HIDE_UNDOC_MEMBERS NO)
+    set(DOXYGEN_JAVADOC_AUTOBRIEF YES)
+    set(DOXYGEN_QT_AUTOBRIEF YES)
+    set(DOXYGEN_QUIET YES)
+    set(DOXYGEN_RECURSIVE YES)
+    set(DOXYGEN_REFERENCED_BY_RELATION YES)
+    set(DOXYGEN_REFERENCES_RELATION YES)
+    set(DOXYGEN_SORT_BY_SCOPE_NAME YES)
+    set(DOXYGEN_SORT_MEMBER_DOCS YES)
+    set(DOXYGEN_SORT_MEMBERS_CTORS_1ST YES)
+    set(DOXYGEN_SORT_GROUP_NAMES YES)
+    set(DOXYGEN_SORT_BY_SCOPE_NAME YES)
+    set(DOXYGEN_STRIP_FROM_PATH "${PROJECT_SOURCE_DIR}")
+    set(DOXYGEN_SOURCE_BROWSER YES)
+    set(DOXYGEN_STRIP_CODE_COMMENTS NO)
+    set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "${PROJECT_SOURCE_DIR}/README.md")
+
+    # generate latex and PDF
+    set(DOXYGEN_GENERATE_LATEX YES)
+    set(DOXGEN_USE_PDFLATEX YES)
+    set(DOXYGEN_PDF_HYPERLINKS YES)
+
+    # preprocessor configuration
+    set(DOXYGEN_ENABLE_PREPROCESSING YES)
+    set(DOXYGEN_MACRO_EXPANSION YES)
+    set(DOXYGEN_EXPAND_ONLY_PREDEF YES)
+    set(DOXYGEN_PREDEFINED "\
+    PANDO_RT_EXPORT= \
+    "
+    )
+
+    doxygen_add_docs(doc_doxygen
+        ${DOXYGEN_SOURCES}
+        ALL
+        COMMENT "Generating API documentation"
+    )
+endif ()
