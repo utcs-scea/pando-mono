@@ -12,7 +12,7 @@ vpath %.c    $(DRV_DIR)/examples/gups_multi_node
 vpath %.cpp  $(DRV_DIR)/examples/gups_multi_node
 
 $(APP_NAME).o: gups_multi_node.cpp
-  $(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 APP_EXE ?= $(APP_PATH)/$(test-name)/$(APP_NAME).so
 
@@ -29,5 +29,5 @@ include $(DRV_DIR)/mk/application_common.mk
 
 .PHONY: debug
 debug:
-  @echo "APP_PATH: $(APP_PATH)"
-  @echo "APP_NAME: $(APP_NAME)"
+	@echo "APP_PATH: $(APP_PATH)"
+	@echo "APP_NAME: $(APP_NAME)"

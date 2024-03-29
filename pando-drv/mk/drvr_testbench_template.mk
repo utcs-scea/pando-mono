@@ -23,5 +23,5 @@ include $(DRV_DIR)/mk/riscv_common.mk
 
 .PHONY: debug
 debug:
-  @echo "APP_PATH: $(APP_PATH)"
-  @echo "APP_NAME: $(APP_NAME)"
+	@echo "APP_PATH: $(APP_PATH)"
+	@echo "APP_NAME: $(APP_NAME)"

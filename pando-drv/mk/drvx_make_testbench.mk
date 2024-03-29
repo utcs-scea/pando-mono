@@ -17,36 +17,36 @@ $(TESTBENCH_PATH): $(TESTBENCH_PATH)/$(TESTBENCH).cpp
 $(TESTBENCH_PATH): $(TESTBENCH_PATH)/.gitignore
 
 $(TESTBENCH_PATH)/Makefile: $(DRV_DIR)/py/benchmark_makefile_gen.py
-  mkdir -p $(dir $@)
-  python3 $< $(PARAMETERS) > $@
+	mkdir -p $(dir $@)
+	python3 $< $(PARAMETERS) > $@
 
 $(TESTBENCH_PATH)/template.mk: $(DRV_DIR)/mk/drvx_testbench_template.mk
-  mkdir -p $(dir $@)
-  cp $< $@
+	mkdir -p $(dir $@)
+	cp $< $@
 
 $(TESTBENCH_PATH)/app_path.mk:
-  mkdir -p $(dir $@)
-  echo 'APP_NAME = $(TESTBENCH)' > $@
-  echo 'APP_PATH = $$(DRV_DIR)/examples/$(TESTBENCH)' >> $@
+	mkdir -p $(dir $@)
+	echo 'APP_NAME = $(TESTBENCH)' > $@
+	echo 'APP_PATH = $$(DRV_DIR)/examples/$(TESTBENCH)' >> $@
 
 $(TESTBENCH_PATH)/tests.mk: $(DRV_DIR)/py/benchmark_tests_file_gen.py
-  mkdir -p $(dir $@)
-  python3 $< $(PARAMETERS) > $@
+	mkdir -p $(dir $@)
+	python3 $< $(PARAMETERS) > $@
 
 $(TESTBENCH_PATH)/$(TESTBENCH).cpp:
-  mkdir -p $(dir $@)
-  @echo "// SPDX-License-Identifier: MIT" > $@
-  @echo "// Copyright (c) 2024 University of Washington" >> $@
-  @echo "#include <DrvAPI.hpp>" >> $@
-  @echo "" >> $@
-  @echo "using namespace DrvAPI;" >> $@
-  @echo "" >> $@
-  @echo "int TestMain(int argc, char** argv) {" >> $@
-  @echo "    return 0;" >> $@
-  @echo "}" >> $@
-  @echo "" >> $@
-  @echo "declare_drv_api_main(TestMain);" >> $@
+	mkdir -p $(dir $@)
+	@echo "// SPDX-License-Identifier: MIT" > $@
+	@echo "// Copyright (c) 2024 University of Washington" >> $@
+	@echo "#include <DrvAPI.hpp>" >> $@
+	@echo "" >> $@
+	@echo "using namespace DrvAPI;" >> $@
+	@echo "" >> $@
+	@echo "int TestMain(int argc, char** argv) {" >> $@
+	@echo "    return 0;" >> $@
+	@echo "}" >> $@
+	@echo "" >> $@
+	@echo "declare_drv_api_main(TestMain);" >> $@
 
 $(TESTBENCH_PATH)/.gitignore:
-  mkdir -p $(dir $@)
-  echo "*/" > $@
+	mkdir -p $(dir $@)
+	echo "*/" > $@

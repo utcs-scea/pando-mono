@@ -48,33 +48,33 @@ RISCV_ASMSOURCE ?=
 RISCV_ASMOBJECT := $(patsubst %.S,%.o,$(RISCV_ASMSOURCE))
 
 $(RISCV_ASMOBJECT): %.o: %.S
-  $(RISCV_CC) $(RISCV_CFLAGS) -c -o $@ $<
+	$(RISCV_CC) $(RISCV_CFLAGS) -c -o $@ $<
 
 $(RISCV_COBJECT): %.o: %.c
-  $(RISCV_CC) $(RISCV_CFLAGS) -c -o $@ $<
+	$(RISCV_CC) $(RISCV_CFLAGS) -c -o $@ $<
 
 $(RISCV_CXXOBJECT): %.o: %.cpp
-  $(RISCV_CXX) $(RISCV_CXXFLAGS) -c -o $@ $<
+	$(RISCV_CXX) $(RISCV_CXXFLAGS) -c -o $@ $<
 
 RISCV_TARGET ?= exe.riscv
 
 $(RISCV_TARGET): %.riscv: $(RISCV_COBJECT) $(RISCV_CXXOBJECT) $(RISCV_ASMOBJECT)
-  $(RISCV_CXX) $(RISCV_CXXFLAGS) $(RISCV_LDFLAGS) -o $@ $(filter %.o,$^) $(RISCV_LIBS)
+	$(RISCV_CXX) $(RISCV_CXXFLAGS) $(RISCV_LDFLAGS) -o $@ $(filter %.o,$^) $(RISCV_LIBS)
 
 .PHONY: clean
 clean:
-  rm -f *.o *.riscv
+	rm -f *.o *.riscv
 
 SIM_OPTIONS ?=
 
 run: $(RISCV_TARGET)
-  $(SST) $(SCRIPT) -- $(SIM_OPTIONS) $(RISCV_TARGET) $(SIM_ARGS)
+	$(SST) $(SCRIPT) -- $(SIM_OPTIONS) $(RISCV_TARGET) $(SIM_ARGS)
 
 disassemble: $(RISCV_TARGET)
-  $(RISCV_OBJDUMP) -D $(RISCV_TARGET)
+	$(RISCV_OBJDUMP) -D $(RISCV_TARGET)
 
 opcode-mix: $(RISCV_TARGET)
-  python3 $(DRV_DIR)/py/opcode-mix.py stats.csv tags.csv
+	python3 $(DRV_DIR)/py/opcode-mix.py stats.csv tags.csv
 
 include $(DRV_DIR)/mk/command_processor.mk
 

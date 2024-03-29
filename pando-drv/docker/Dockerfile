@@ -110,7 +110,7 @@ RUN apt update -y \
         && apt install -y git automake gawk wget curl texinfo libgmp-dev flex bison \
         && git clone git@github.com:AMDResearch/pando-riscv-gnu-toolchain /riscv-gnu-toolchain \
         && cd /riscv-gnu-toolchain \
-  && git checkout pandodrvsim \
+        && git checkout pandodrvsim \
         && ./configure --enable-multilib --with-arch=rv64imafd --disable-linux --prefix=${DRV_ROOT} \
         && make -j `nproc` \
         && make install \

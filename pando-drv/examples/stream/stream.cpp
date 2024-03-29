@@ -13,7 +13,7 @@ uint32_t NUM_OF_FG_THREADS_PER_TILE = 16;
 
 /* Usual Stream defs */
 #ifndef STREAM_ARRAY_SIZE
-#define STREAM_ARRAY_SIZE 1024
+#define STREAM_ARRAY_SIZE       1024
 #endif
 
 #ifndef NTIMES
@@ -69,9 +69,9 @@ StreamInfo() {
 /*-------------------------- MAIN ------------------------*/
 int
 StreamMain(int argc, char* argv[]) {
-  int           n;
-  ssize_t       j;
-  STREAM_TYPE   scalar;
+  int                         n;
+  ssize_t                   j;
+  STREAM_TYPE           scalar;
   scalar = 5.0;
   DRAM_START = DrvAPI::DrvAPIVAddress::MyL2Base().encode();
 
@@ -97,13 +97,13 @@ StreamMain(int argc, char* argv[]) {
     DrvAPIThread::current()->threadId() == 0) {
     printf("<===== MAIN LOOP ======> \n");
   }
-  /*  --- MAIN LOOP --- */
+  /*    --- MAIN LOOP --- */
   for (n=0; n<NTIMES; n++) {
     //drv_STREAM_Copy();
     //drv_STREAM_Scale(scalar);
     //drv_STREAM_Add();
     drv_STREAM_Triad(scalar);
-  }
+        }
   if (DrvAPIThread::current()->coreId() == 0 &&
       DrvAPIThread::current()->threadId() == 0) {
     printf("Done Drving!\n");
@@ -116,7 +116,7 @@ StreamMain(int argc, char* argv[]) {
 /*-------------------- STREAM ROUTINES -------------------*/
 void drv_STREAM_Copy()
 {
-  ssize_t j;
+        ssize_t j;
   uint64_t tid = DrvAPIThread::current()->threadId();
   if (DrvAPIThread::current()->coreId() == 0 &&
       DrvAPIThread::current()->threadId() == 0) {
@@ -130,13 +130,13 @@ void drv_STREAM_Copy()
 
 void drv_STREAM_Scale(STREAM_TYPE scalar)
 {
-  ssize_t j;
+        ssize_t j;
   uint64_t tid = DrvAPIThread::current()->threadId();
   if (DrvAPIThread::current()->coreId() == 0 &&
       DrvAPIThread::current()->threadId() == 0) {
     printf("drv_STREAM_Scale() ...\n");
   }
-  for (j=0; j<STREAM_ARRAY_SIZE; j++) {
+        for (j=0; j<STREAM_ARRAY_SIZE; j++) {
       double val = DrvAPI::read<double>(index_c(j));
       val *= scalar;
       DrvAPI::write(index_b(j), val); //b[j] = scalar*c[j];
@@ -145,13 +145,13 @@ void drv_STREAM_Scale(STREAM_TYPE scalar)
 
 void drv_STREAM_Add()
 {
-  ssize_t j;
+        ssize_t j;
   uint64_t tid = DrvAPIThread::current()->threadId();
   if (DrvAPIThread::current()->coreId() == 0 &&
       DrvAPIThread::current()->threadId() == 0) {
     printf("drv_STREAM_Add() ...\n");
   }
-  for (j=0; j<STREAM_ARRAY_SIZE; j++) {
+        for (j=0; j<STREAM_ARRAY_SIZE; j++) {
       double val1, val2, val3;
       val1 = DrvAPI::read<double>(index_a(j));
       val2 = DrvAPI::read<double>(index_b(j));
@@ -162,7 +162,7 @@ void drv_STREAM_Add()
 
 void drv_STREAM_Triad(STREAM_TYPE scalar)
 {
-  ssize_t j;
+        ssize_t j;
   uint64_t tid = DrvAPIThread::current()->threadId();
   if (DrvAPIThread::current()->coreId() == 0 &&
       DrvAPIThread::current()->threadId() == 0) {

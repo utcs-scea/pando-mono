@@ -10,15 +10,15 @@ TESTS_DIRS ?= $(TESTS)
 ###########################################
 # rules for {test name}/app_path.mk
 $(addsuffix /app_path.mk,$(TESTS_DIRS)): %/app_path.mk: app_path.mk
-  @echo Creating $@
-  @mkdir -p $(dir $@)
-  @cp $< $@
+	@echo Creating $@
+	@mkdir -p $(dir $@)
+	@cp $< $@
 
 # rules for {test name}Makefile
 $(addsuffix /Makefile,$(TESTS_DIRS)): %/Makefile: template.mk
-  @echo Creating $@
-  @mkdir -p $(dir $@)
-  @cp template.mk $@
+	@echo Creating $@
+	@mkdir -p $(dir $@)
+	@cp template.mk $@
 
 # rule for creating {test name}
 $(TESTS_DIRS): %: %/app_path.mk
@@ -32,11 +32,11 @@ generate: $(TESTS_DIRS)
 # rules for running {test name}.{profile|exec|...} #
 ####################################################
 $(addsuffix .run,$(TESTS)): %.run: %
-  $(MAKE) -C $< run
+	$(MAKE) -C $< run
 $(addsuffix .debug,$(TESTS)): %.debug: %
-  $(MAKE) -C $< debug
+	$(MAKE) -C $< debug
 $(addsuffix .clean,$(TESTS)): %.clean: %
-  $(MAKE) -C $< clean
+	$(MAKE) -C $< clean
 ####################################
 # meta rules for running all tests #
 ####################################
@@ -50,4 +50,4 @@ clean: $(addsuffix .clean,$(TESTS))
 # purge all test directories #
 ##############################
 purge:
-  rm -rf $(TESTS_DIRS)
+	rm -rf $(TESTS_DIRS)

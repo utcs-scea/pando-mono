@@ -33,19 +33,19 @@ all: $(APP_NAME).so
 
 # clean rule
 clean:
-  rm -f $(APP_NAME).so $(APP_NAME).o
+	rm -f $(APP_NAME).so $(APP_NAME).o
 
 # generic object file build rule
 %.o: %.cpp
-  $(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.o: %.c
-  $(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 # build the app as a shared object
 $(APP_NAME).so: $(APP_NAME).o
 $(APP_NAME).so:
-  $(CXX) $(CXXFLAGS) -o $@ $(filter %.o,$^) $(LDFLAGS) $(LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $(filter %.o,$^) $(LDFLAGS) $(LIBS)
 
 
 #SCRIPT ?= drv-multicore-bus-test.py
@@ -54,4 +54,4 @@ SIM_THREADS ?= 1
 
 .PHONY: run
 run: $(APP_NAME).so
-  $(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS)
+	$(SST) -n $(SIM_THREADS)  $(DRV_DIR)/tests/$(SCRIPT) -- $(SIM_OPTIONS) $(APP_EXE) $(SIM_ARGS)
