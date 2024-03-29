@@ -41,6 +41,7 @@ data/
 .scannerwork/
 tmp/
 logs/
+deps/
 
 #Tags Files
 tags

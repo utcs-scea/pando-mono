@@ -21,16 +21,18 @@ repos:
         args: [--whitespaces-count, '2']
       - id: insert-license
         files: .*\.sh$|.*\.yml$|.*\.yaml$|.*\.txt$|.*\.py|.*\.cmake|.*\.cfg$|Dockerfile.*|Makefile.*|.clang-format|.tool-versions
-        exclude: LICENSE.txt
+        exclude: LICENSE.txt|^pando-drv/
         args:
           - --detect-license-in-X-top-lines=10
       - id: insert-license
+        exclude: ^pando-drv/
         files: .*\.c$|.*\.cc$|.*\.cpp$|.*\.hpp$|.*\.h$
         args:
           - --detect-license-in-X-top-lines=10
           - --comment-style
           - //
       - id: insert-license
+        exclude: ^pando-drv/
         files: .*\.md$
         args:
           - --detect-license-in-X-top-lines=10

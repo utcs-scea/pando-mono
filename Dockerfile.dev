@@ -39,8 +39,6 @@ RUN . /dependencies/spack/share/spack/setup-env.sh \
 # Build Drive X
 FROM ${GASNET_IMAGE} AS drivex
 
-COPY pando-drv /dependencies/pando-drv
-
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y \
       &&  apt-get install -y \
@@ -51,18 +49,27 @@ RUN apt-get update -y \
       &&  apt-get clean
 
 COPY scripts/build_drvx_deps.sh /tmp/build_drvx_deps.sh
+
+COPY deps/ /dependencies/pando-drv/deps
+
 WORKDIR /dependencies
 
 ARG GCC_VERSION=12.3.0
 ARG OMPI_VERSION=4.1.5
+
+RUN cd . ./load_drvx.sh \
+&&  . /dependencies/spack/share/spack/setup-env.sh \
+&&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} \
+&&  cd /dependencies && bash /tmp/build_drvx_deps.sh
+
+COPY pando-drv /dependencies/pando-drv
 
 RUN cd /dependencies/pando-drv && \
       . ./load_drvx.sh && \
       . /dependencies/spack/share/spack/setup-env.sh && \
       spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
       cd /dependencies && \
-      bash /tmp/build_drvx_deps.sh && \
-      DRV_DIR=/dependencies/pando-drv make -C /dependencies/pando-drv install
+      DRV_DIR=/dependencies/pando-drv make -j -C  /dependencies/pando-drv install
 
 FROM ${DRIVEX_IMAGE} AS drivex_wrapper
 

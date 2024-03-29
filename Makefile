@@ -170,9 +170,9 @@ setup-ci: cmake-mpi
 setup: cmake-mpi cmake-smp
 
 drive-deps:
-	@mkdir -p pando-drv/deps
-	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-core.git pando-drv/deps/sst-core-src
-	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-elements.git pando-drv/deps/sst-elements-src
+	@mkdir -p deps/
+	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-core.git deps/sst-core-src
+	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-elements.git deps/sst-elements-src
 
 run-tests-mpi:
 	set -o pipefail && \
