@@ -138,34 +138,6 @@ inline std::uint64_t getPhysical(std::uint64_t id,
   return virtualToPhysicalMapping[id % virtualToPhysicalMapping.size()];
 }
 
-/**
- * @brief PerHostVertex decomposition by partition
- *
- * TODO(AdityaAtulTewari) parallelize this
- */
-template <typename VertexType>
-[[nodiscard]] pando::Status perHostPartitionVertex(
-    galois::HostLocalStorage<pando::Array<std::uint64_t>> virtualToPhysicalMapping,
-    pando::Vector<VertexType> vertices,
-    pando::GlobalPtr<galois::HostIndexedMap<pando::Vector<VertexType>>> partitionedVertices) {
-  galois::HostIndexedMap<pando::Vector<VertexType>> partitioned;
-  PANDO_CHECK_RETURN(partitioned.initialize());
-
-  std::uint64_t initSize = vertices.size() / lift(*partitionedVertices, size);
-  for (pando::GlobalRef<pando::Vector<VertexType>> vec : partitioned) {
-    PANDO_CHECK_RETURN(fmap(vec, initialize, 0));
-    PANDO_CHECK_RETURN(fmap(vec, reserve, initSize));
-  }
-
-  pando::Array<std::uint64_t> v2PM = virtualToPhysicalMapping.getLocal();
-  for (VertexType vert : vertices) {
-    PANDO_CHECK_RETURN(fmap(partitioned.get(getPhysical(vert.id, v2PM)), pushBack, vert));
-  }
-
-  *partitionedVertices = partitioned;
-  return pando::Status::Success;
-}
-
 template <typename A>
 uint64_t transmute(A p) {
   return p;
@@ -394,79 +366,6 @@ template <typename EdgeType>
     }
   }
   return pando::Status::Success;
-}
-
-/**
- * @brief Consumes the localVertices, and references a partitionMap to produce partitioned Vertices
- */
-template <typename VertexType>
-[[nodiscard]] galois::HostLocalStorage<pando::Vector<VertexType>> partitionVertices(
-    galois::PerThreadVector<VertexType>&& vertexPerThreadRead,
-    HostLocalStorage<pando::Array<std::uint64_t>> v2PM) {
-  galois::HostLocalStorage<pando::Vector<VertexType>> vertPart{};
-  PANDO_CHECK(vertPart.initialize());
-
-  galois::HostLocalStorage<pando::Vector<VertexType>> readPart{};
-  PANDO_CHECK(readPart.initialize());
-  for (pando::GlobalRef<pando::Vector<VertexType>> vec : readPart) {
-    PANDO_CHECK(fmap(vec, initialize, 0));
-  }
-  PANDO_CHECK(vertexPerThreadRead.hostFlattenAppend(readPart));
-
-#if FREE
-  auto freeLocalVertices = +[](PerThreadVector<VertexType> localVertices) {
-    localVertices.deinitialize();
-  };
-  PANDO_CHECK(pando::executeOn(pando::anyPlace, freeLocalVertices, localVertices));
-#endif
-
-  galois::HostLocalStorage<galois::HostIndexedMap<pando::Vector<VertexType>>> partVert{};
-  PANDO_CHECK(partVert.initialize());
-
-  auto phpv = galois::make_tpl(v2PM, partVert);
-  auto f = +[](decltype(phpv) phpv,
-               pando::GlobalRef<HostIndexedMap<pando::Vector<VertexType>>> partVert) {
-    auto [v2PM, pHV] = phpv;
-    const std::uint64_t hostID = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-    PANDO_CHECK(
-        galois::internal::perHostPartitionVertex<VertexType>(v2PM, pHV.get(hostID), &partVert));
-  };
-  PANDO_CHECK_RETURN(galois::doAll(phpv, partVert, f));
-
-#if FREE
-  auto freeReadPart = +[](HostIndexedMap<pando::Vector<VertexType>> readPart) {
-    for (pando::Vector<VertexType> vec : readPart) {
-      vec.deinitialize();
-    }
-    readPart.deinitialize();
-  };
-  PANDO_CHECK(pando::executeOn(pando::anyPlace, freeReadPart, readPart));
-#endif
-
-  PANDO_CHECK(galois::doAll(
-      partVert, vertPart,
-      +[](decltype(partVert) pHPHV, pando::GlobalRef<pando::Vector<VertexType>> pHV) {
-        PANDO_CHECK(fmap(pHV, initialize, 0));
-        const std::uint64_t currNode = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-        for (galois::HostIndexedMap<pando::Vector<VertexType>> pHVRef : pHPHV) {
-          PANDO_CHECK(fmap(pHV, append, &pHVRef.get(currNode)));
-        }
-      }));
-
-#if FREE
-  auto freePartVert = +[](HostIndexedMap<HostIndexedMap<pando::Vector<VertexType>>> partVert) {
-    for (HostIndexedMap<pando::Vector<VertexType>> pVV : partVert) {
-      for (pando::Vector<VertexType> vV : pVV) {
-        vV.deinitialize();
-      }
-      pVV.deinitialize();
-    }
-    partVert.deinitialize();
-  };
-  PANDO_CHECK(pando::executeOn(pando::anyPlace, freePartVert, partVert));
-#endif
-
-  return vertPart;
 }
 
 template <typename VertexType>
