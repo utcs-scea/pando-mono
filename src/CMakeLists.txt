@@ -25,7 +25,7 @@ target_sources(pando-lib-galois
         ${CMAKE_CURRENT_LIST_DIR}/wmd_graph_importer.cpp
         ${CMAKE_CURRENT_LIST_DIR}/ingest_wmd_csv.cpp
         ${CMAKE_CURRENT_LIST_DIR}/ingest_rmat_el.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/host_local_storage.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/local_storage.cpp
 )
 
 pando_compiler_options(pando-lib-galois)
