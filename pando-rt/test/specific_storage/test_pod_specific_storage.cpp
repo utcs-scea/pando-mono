@@ -200,7 +200,7 @@ TEST(PodSpecificStorageAlias, ExecuteOn) {
   }
 }
 
-TEST(PodSpecificStorageAlias, SlicingFailure) {
+TEST(PodSpecificStorageAlias, SlicingFail) {
   pando::PodSpecificStorageAlias<std::int64_t> gI64(globalI64);
   for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
     for (std::int16_t j = 0; j < pando::getPlaceDims().pod.x * pando::getPlaceDims().pod.y; j++) {

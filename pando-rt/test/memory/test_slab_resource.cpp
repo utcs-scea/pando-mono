@@ -71,7 +71,7 @@ TYPED_TEST(SlabMemoryResourceTest, ExhaustTest) {
   }
 }
 
-TYPED_TEST(SlabMemoryResourceTest, ExhaustFailureTest) {
+TYPED_TEST(SlabMemoryResourceTest, ExhaustFailTest) {
   static constexpr auto slabSize = TypeParam::slabSize;
   static constexpr auto capacity = TypeParam::capacity;
   pando::GlobalPtr<void> mainMemoryStart = getMainMemoryStart();
@@ -104,7 +104,7 @@ TYPED_TEST(SlabMemoryResourceTest, ExhaustFailureTest) {
 // tasks and hence is only enabled for the PREP backend.
 #ifdef PANDO_RT_USE_BACKEND_PREP
 
-TYPED_TEST(SlabMemoryResourceTest, ConcurrentExhaustFailureTest) {
+TYPED_TEST(SlabMemoryResourceTest, ConcurrentExhaustFailTest) {
   static constexpr auto slabSize = TypeParam::slabSize;
   static constexpr auto capacity = TypeParam::capacity;
   pando::GlobalPtr<void> mainMemoryStart = getMainMemoryStart();
