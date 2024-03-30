@@ -8,4 +8,3 @@ graphs/repeats.el -filter=lfs -diff=lfs -merge=lfs -text
 ok/ifstream.ok -filter=lfs -diff=lfs -merge=lfs -text
 ok/repeats.el-import-dirOptCsrList-10.ok -filter=lfs -diff=lfs -merge=lfs -text
 ok/simple.el-import-csrlist-10.ok -filter=lfs -diff=lfs -merge=lfs -text
-docker/*.tar.gz filter=lfs diff=lfs merge=lfs -text
