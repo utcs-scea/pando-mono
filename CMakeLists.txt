@@ -17,10 +17,20 @@ if(CMAKE_CXX_FLAGS)
     message(STATUS "Provided CXX Flags: " ${CMAKE_CXX_FLAGS})
 endif()
 
-#set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
-#set(BUILD_TESTING OFF)
+if(NOT DEFINED DISABLE_PANDORT_TESTS)
+  set(ENABLE_PANDORT_TEST FALSE)
+endif()
+
+option(ENABLE_PANDORT_TESTS "Enable pando-rt to run tests" OFF)
+
+if (NOT ENABLE_PANDORT_TESTS)
+  set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
+  set(BUILD_TESTING OFF)
+endif()
 add_subdirectory(pando-rt)
-#set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
+if(NOT ENABLE_PANDORT_TESTS)
+  set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
+endif()
 
 # CMake modules
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/pando-rt/cmake/Modules)

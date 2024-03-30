@@ -64,6 +64,9 @@ jobs:
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
           echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -ePANDO_PREP_MAIN_NODE=8589934592 -e=PANDO_EXTRA_CXX_FLAGS='\"-fsanitize=address -fsanitize=undefined\"'" >> $GITHUB_ENV
         fi
+        if [ ${{ matrix.sanitizer-type }} == 'nosan' ]; then
+          echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON" >> $GITHUB_ENV
+        fi
         cat $GITHUB_ENV
 
     - name: Configure
