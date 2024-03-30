@@ -17,10 +17,6 @@ if(CMAKE_CXX_FLAGS)
     message(STATUS "Provided CXX Flags: " ${CMAKE_CXX_FLAGS})
 endif()
 
-if(NOT DEFINED DISABLE_PANDORT_TESTS)
-  set(ENABLE_PANDORT_TEST FALSE)
-endif()
-
 option(ENABLE_PANDORT_TESTS "Enable pando-rt to run tests" OFF)
 
 if (NOT ENABLE_PANDORT_TESTS)
