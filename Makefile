@@ -177,19 +177,19 @@ drive-deps:
 run-tests-mpi:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${CONTAINER_BUILD_DIR} && ctest --verbose | tee test.out && \
+	cd ${CONTAINER_BUILD_DIR} && ctest -j4 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-smp:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${CONTAINER_BUILD_DIR}-smp && ctest --verbose | tee test.out && \
+	cd ${CONTAINER_BUILD_DIR}-smp && ctest -j4 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-drv:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${DRV_BUILD_DIR} && ctest --verbose | tee test.out && \
+	cd ${DRV_BUILD_DIR} && ctest -j4 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests: run-tests-mpi

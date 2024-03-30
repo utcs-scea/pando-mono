@@ -17,10 +17,10 @@ if(CMAKE_CXX_FLAGS)
     message(STATUS "Provided CXX Flags: " ${CMAKE_CXX_FLAGS})
 endif()
 
-set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
-set(BUILD_TESTING OFF)
+#set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
+#set(BUILD_TESTING OFF)
 add_subdirectory(pando-rt)
-set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
+#set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
 
 # CMake modules
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/pando-rt/cmake/Modules)
