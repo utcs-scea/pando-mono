@@ -22,6 +22,7 @@ CONTAINER_CMD ?= setarch `uname -m` -R bash -l
 INTERACTIVE ?= i
 
 BUILD_TYPE ?= Release
+PANDORT_TESTS ?= OFF
 
 # CMake variables
 PANDO_TEST_DISCOVERY_TIMEOUT ?= 150
@@ -127,6 +128,7 @@ cmake-mpi:
   -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
   -DBUILD_TESTING=ON \
   -DBUILD_EXAMPLES=ON \
+	-DENABLE_PANDORT_TESTS=${PANDORT_TESTS} \
   -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
 	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
 	-DCMAKE_CXX_COMPILER=g++-12 \
@@ -145,6 +147,7 @@ cmake-smp:
   -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
   -DBUILD_TESTING=ON \
   -DBUILD_EXAMPLES=ON \
+	-DENABLE_PANDORT_TESTS=${PANDORT_TESTS} \
   -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
 	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
 	-DCMAKE_CXX_COMPILER=g++-12 \
@@ -161,6 +164,7 @@ cmake-drv:
 	-DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
 	-DBUILD_TESTING=ON \
 	-DBUILD_EXAMPLES=ON \
+	-DENABLE_PANDORT_TESTS=${PANDORT_TESTS} \
 	-DBUILD_DOCS=OFF \
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
@@ -177,19 +181,19 @@ drive-deps:
 run-tests-mpi:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${CONTAINER_BUILD_DIR} && ctest --verbose | tee test.out && \
+	cd ${CONTAINER_BUILD_DIR} && ctest -j4 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-smp:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${CONTAINER_BUILD_DIR}-smp && ctest --verbose | tee test.out && \
+	cd ${CONTAINER_BUILD_DIR}-smp && ctest -j4 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-drv:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${DRV_BUILD_DIR} && ctest --verbose | tee test.out && \
+	cd ${DRV_BUILD_DIR} && ctest -j4 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests: run-tests-mpi

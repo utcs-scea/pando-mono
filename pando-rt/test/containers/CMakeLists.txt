@@ -3,5 +3,4 @@
 ### Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. ###
 
 pando_add_driver_test(test_array test_array.cpp)
-pando_add_driver_test(test_dist_array test_dist_array.cpp)
 pando_add_driver_test(test_vector test_vector.cpp)

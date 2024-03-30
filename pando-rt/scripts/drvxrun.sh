@@ -55,13 +55,13 @@ prog=$1
 prog_with_args=$@
 
 # setup DRV-related env vars
-DRV_DIR=${DRV_ROOT:-$HOME/drv/install}
+DRV_DIR=${DRV_ROOT:-/dependencies/install}/../pando-drv/
 echo "Using DRV dir: ${DRV_DIR}. To change the DRV dir, set DRV_ROOT variable"
 PWD_DIR=`pwd`
-cd $DRV_DIR/..
-. load_drvx.sh
+cd $DRV_DIR/
+. ./load_drvx.sh
 cd $PWD_DIR
 
 # execute with SST/DRV
 # echo exec sst -n $sst_threads $DRV_DIR/../tests/PANDOHammerDrvX.py -- --with-command-processor=$prog --num-pxn=$nodes --pod-cores=$cores --drvx-stack-in-l1sp $prog_with_args
-exec sst -n $sst_threads $DRV_DIR/../tests/PANDOHammerDrvX.py -- --with-command-processor=$prog --num-pxn=$nodes --pod-cores=$cores --drvx-stack-in-l1sp $prog_with_args
+exec sst -n $sst_threads $DRV_DIR/tests/PANDOHammerDrvX.py -- --with-command-processor=$prog --num-pxn=$nodes --pod-cores=$cores --drvx-stack-in-l1sp $prog_with_args

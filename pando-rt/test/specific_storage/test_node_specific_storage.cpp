@@ -181,7 +181,7 @@ TEST(NodeSpecificStorage, ExecuteOn) {
   }
 }
 
-TEST(NodeSpecificStorageAlias, SlicingFailure) {
+TEST(NodeSpecificStorageAlias, SlicingFail) {
   pando::NodeSpecificStorageAlias<std::int64_t> gI64(globalI64);
   for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
     auto place = pando::Place{pando::NodeIndex(i), pando::anyPod, pando::anyCore};

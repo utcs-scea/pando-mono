@@ -59,7 +59,7 @@ TEST(Sync, PtrFutureInitNoReset) {
   free(ptrPtr, sizeof(GlobalPtr<std::uint64_t>));
 }
 
-TEST(Sync, PtrFutureWaitFailure) {
+TEST(Sync, PtrFutureWaitFail) {
   auto ptrPtr = static_cast<pando::GlobalPtr<pando::GlobalPtr<std::uint64_t>>>(
       malloc(pando::MemoryType::Main, sizeof(GlobalPtr<std::uint64_t>)));
   pando::PtrFuture<std::uint64_t> future;

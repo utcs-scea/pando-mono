@@ -55,6 +55,7 @@ jobs:
         echo "SRC_DIR=$(pwd)" >> $GITHUB_ENV
         echo "PANDO_TEST_DISCOVERY_TIMEOUT=600" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$(git log --pretty="%h" -1 Dockerfile.dev)" >> $GITHUB_ENV
+        echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON" >> $GITHUB_ENV
         cat $GITHUB_ENV
 
     - name: Configure
