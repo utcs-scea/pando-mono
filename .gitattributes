@@ -3,6 +3,7 @@
 graphs/simple.el -filter=lfs -diff=lfs -merge=lfs -text
 graphs/sample_wmd1.csv -filter=lfs -diff=lfs -merge=lfs -text
 graphs/sample_wmd.csv -filter=lfs -diff=lfs -merge=lfs -text
+graphs/simple_wmd.csv -filter=lfs -diff=lfs -merge=lfs -text
 graphs/repeats.el -filter=lfs -diff=lfs -merge=lfs -text
 *.ok filter=lfs diff=lfs merge=lfs -text
 ok/ifstream.ok -filter=lfs -diff=lfs -merge=lfs -text
