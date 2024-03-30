@@ -23,9 +23,9 @@ export PANDO_PREP_L1SP_HART=$STACK_SIZE
 export MPIRUN_CMD="mpirun -np %N -host localhost:${HOST_THREADS} --map-by slot:PE=${THREADS} %P %A"
 # TODO(Patrick) add in `-N ${HOSTS}`
 ${LAUNCH_SCRIPT} \
-	-n ${PROCS} \
-	-E PANDO_PREP_NUM_CORES,PANDO_PREP_NUM_HARTS,PANDO_PREP_L1SP_HART \
-	"${EXE}" \
-	${EXE_ARGS} \
-	-- \
-	2>&1 | tee "${LOGFILE}"
+    -n ${PROCS} \
+    -E PANDO_PREP_NUM_CORES,PANDO_PREP_NUM_HARTS,PANDO_PREP_L1SP_HART \
+    "${EXE}" \
+    ${EXE_ARGS} \
+    -- \
+    2>&1 | tee "${LOGFILE}"
