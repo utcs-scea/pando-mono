@@ -50,26 +50,30 @@ RUN apt-get update -y \
 
 COPY scripts/build_drvx_deps.sh /tmp/build_drvx_deps.sh
 
-COPY deps/ /dependencies/pando-drv/deps
+COPY deps/ /dependencies/deps
 
 WORKDIR /dependencies
 
 ARG GCC_VERSION=12.3.0
 ARG OMPI_VERSION=4.1.5
 
-RUN cd . ./load_drvx.sh \
+COPY scripts/load_drvx.sh /tmp/load_drvx.sh
+
+RUN cd . && . /tmp/load_drvx.sh \
 &&  . /dependencies/spack/share/spack/setup-env.sh \
 &&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} \
 &&  cd /dependencies && bash /tmp/build_drvx_deps.sh
 
 COPY pando-drv /dependencies/pando-drv
 
-RUN cd /dependencies/pando-drv && \
-      . ./load_drvx.sh && \
+RUN cd /dependencies && \
+      . /tmp/load_drvx.sh && \
       . /dependencies/spack/share/spack/setup-env.sh && \
       spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
       cd /dependencies && \
-      DRV_DIR=/dependencies/pando-drv make -j -C  /dependencies/pando-drv install
+      DRV_DIR=/dependencies/pando-drv make -j -C /dependencies/pando-drv install
+
+RUN  ln -s /dependencies/install /dependencies/pando-drv/install
 
 FROM ${DRIVEX_IMAGE} AS drivex_wrapper
 

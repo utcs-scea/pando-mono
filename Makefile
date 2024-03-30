@@ -36,7 +36,7 @@ DRV_ROOT ?=
 PANDO_CONTAINER_MOUNTS ?=
 PANDO_CONTAINER_ENV ?=
 
-.PHONY: docker
+.PHONY: docker docker-image-dependencies
 
 dependencies: dependencies-asdf
 

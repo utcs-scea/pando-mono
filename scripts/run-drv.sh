@@ -11,7 +11,7 @@ set -o pipefail
 # Help function
 #
 function show_help() {
-	echo "
+    echo "
 usage: preprun -n <n> prog [program args]
     options:
       -n <n> number of emulated PXNs
@@ -31,38 +31,38 @@ THREADD=$((${HOST_THREADS} * ${HOSTS} / ${PROCS}))
 THREADS="${THREADS:-${THREADD}}"
 # 8GB Main memory size by default
 MAIN_MEMORY_SIZE="${MAIN_MEMORY_SIZE-8589934592}"
-LAUNCH_DIR="${LAUNCH_DIR:-$(realpath ${DRV_ROOT}/../../)}"
+LAUNCH_DIR="${LAUNCH_DIR:-$(realpath ${DRV_ROOT}/../)}"
 LAUNCH_SCRIPT="${LAUNCH_SCRIPT:-${LAUNCH_DIR}/pando-drv/tests/PANDOHammerDrvX.py}"
 
 DBG=""
 
 while getopts "p:n:c:t:hd" option; do
-	case ${option} in
-	p) # host threads
-		HOST_THREADS=${OPTARG}
-		;;
+    case ${option} in
+    p) # host threads
+        HOST_THREADS=${OPTARG}
+        ;;
 
-	n) # number of emulated PXNs
-		HOSTS=${OPTARG}
-		;;
+    n) # number of emulated PXNs
+        HOSTS=${OPTARG}
+        ;;
 
-	c) # number of emulated cores per PXN
-		CORES=${OPTARG}
-		;;
+    c) # number of emulated cores per PXN
+        CORES=${OPTARG}
+        ;;
 
-	t) # number of emulated cores per PXN
-		HARTS=${OPTARG}
-		;;
+    t) # number of emulated cores per PXN
+        HARTS=${OPTARG}
+        ;;
 
-	d) # Run with gdb
-		DBG="gdb --args"
-		;;
+    d) # Run with gdb
+        DBG="gdb --args"
+        ;;
 
-	h) # help
-		show_help
-		exit
-		;;
-	esac
+    h) # help
+        show_help
+        exit
+        ;;
+    esac
 done
 
 shift $(expr $OPTIND - 1)
@@ -70,11 +70,11 @@ PROG=$1
 shift
 
 ${DBG} sst -n ${HOST_THREADS} \
-	"${LAUNCH_SCRIPT}" -- \
-	--with-command-processor="${PROG}" \
-	--num-pxn=${PROCS} \
-	--pod-cores=${CORES} \
-	--core-threads=${HARTS} \
-	--drvx-stack-in-l1sp \
-	--pxn-dram-size=${MAIN_MEMORY_SIZE} \
-	${PROG} $@
+    "${LAUNCH_SCRIPT}" -- \
+    --with-command-processor="${PROG}" \
+    --num-pxn=${PROCS} \
+    --pod-cores=${CORES} \
+    --core-threads=${HARTS} \
+    --drvx-stack-in-l1sp \
+    --pxn-dram-size=${MAIN_MEMORY_SIZE} \
+    ${PROG} $@
