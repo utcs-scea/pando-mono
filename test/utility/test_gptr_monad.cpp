@@ -5,11 +5,14 @@
 #include <pando-rt/export.h>
 
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
+#include <pando-lib-galois/import/ingest_rmat_el.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/utility/expected.hpp>
+
+using Graph = galois::DistArrayCSR<uint64_t, galois::ELEdge>;
 
 TEST(Fmap, GVectorInitialize) {
   constexpr std::uint64_t SIZE = 10;
@@ -81,20 +84,20 @@ TEST(Fmap, VectorPushBack) {
   EXPECT_EQ(SIZE, i);
 }
 
-pando::Vector<pando::Vector<std::uint64_t>> generateFullyConnectedGraph(std::uint64_t SIZE) {
-  pando::Vector<pando::Vector<std::uint64_t>> vec;
+pando::Vector<pando::Vector<galois::ELEdge>> generateFullyConnectedGraph(std::uint64_t SIZE) {
+  pando::Vector<pando::Vector<galois::ELEdge>> vec;
   EXPECT_EQ(vec.initialize(SIZE), pando::Status::Success);
-  for (pando::GlobalRef<pando::Vector<std::uint64_t>> edges : vec) {
-    pando::Vector<std::uint64_t> inner;
+  for (pando::GlobalRef<pando::Vector<galois::ELEdge>> edges : vec) {
+    pando::Vector<galois::ELEdge> inner;
     EXPECT_EQ(inner.initialize(0), pando::Status::Success);
     edges = inner;
   }
 
   galois::doAll(
-      SIZE, vec, +[](std::uint64_t size, pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
-        pando::Vector<std::uint64_t> inner = innerRef;
+      SIZE, vec, +[](std::uint64_t size, pando::GlobalRef<pando::Vector<galois::ELEdge>> innerRef) {
+        pando::Vector<galois::ELEdge> inner = innerRef;
         for (std::uint64_t i = 0; i < size; i++) {
-          EXPECT_EQ(inner.pushBack(i), pando::Status::Success);
+          EXPECT_EQ(inner.pushBack(galois::ELEdge{0, i}), pando::Status::Success);
         }
         innerRef = inner;
       });
@@ -105,15 +108,13 @@ template <typename T>
 pando::Status deleteVectorVector(pando::Vector<pando::Vector<T>> vec) {
   auto err = galois::doAll(
       vec, +[](pando::GlobalRef<pando::Vector<T>> innerRef) {
-        pando::Vector<std::uint64_t> inner = innerRef;
+        pando::Vector<T> inner = innerRef;
         inner.deinitialize();
         innerRef = inner;
       });
   vec.deinitialize();
   return err;
 }
-
-using Graph = galois::DistArrayCSR<std::uint64_t, std::uint64_t>;
 
 TEST(FmapVoid, GDistArrayCSR) {
   constexpr std::uint64_t SIZE = 10;
@@ -127,14 +128,15 @@ TEST(FmapVoid, GDistArrayCSR) {
   for (std::uint64_t i = 0; i < SIZE; i++) {
     fmapVoid(*ggraph, setData, i, i);
     for (std::uint64_t j = 0; j < SIZE; j++) {
-      fmapVoid(*ggraph, setEdgeData, i, j, i * j);
+      fmapVoid(*ggraph, setEdgeData, i, j, galois::ELEdge{i, i * j});
     }
   }
 
   for (std::uint64_t i = 0; i < SIZE; i++) {
     EXPECT_EQ(fmap(*ggraph, getData, i), i);
     for (std::uint64_t j = 0; j < SIZE; j++) {
-      EXPECT_EQ(fmap(*ggraph, getEdgeData, i, j), i * j);
+      galois::ELEdge actual = fmap(*ggraph, getEdgeData, i, j);
+      EXPECT_EQ(actual.dst, i * j);
     }
   }
   liftVoid(*ggraph, deinitialize);
