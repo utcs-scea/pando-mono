@@ -95,6 +95,10 @@ struct CountedIterator {
     return !(a == b);
   }
 
+  friend bool operator<(const CountedIterator<It>& a, const CountedIterator<It>& b) {
+    return a.m_count < b.m_count && a.m_iter < b.m_iter;
+  }
+
   friend pando::Place localityOf(CountedIterator<It>& a) {
     return localityOf(a.m_iter);
   }

@@ -454,6 +454,20 @@ public:
     Vertex v1 = *(vPtr + 1);
     return RefSpan<galois::HalfEdge>(v.edgeBegin, v1.edgeBegin - v.edgeBegin);
   }
+
+  EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr, uint64_t offset_st, uint64_t window_sz) {
+    Vertex v = *vPtr;
+    Vertex v1 = *(vPtr + 1);
+
+    auto beg = v.edgeBegin + offset_st;
+    if (beg > v1.edgeBegin)
+      return RefSpan<galois::HalfEdge>(v.edgeBegin, 0);
+    if (beg + window_sz <= v1.edgeBegin)
+      return RefSpan<galois::HalfEdge>(beg, window_sz);
+
+    return RefSpan<galois::HalfEdge>(beg, v1.edgeBegin - beg);
+  }
+
   VertexDataRange vertexDataRange() noexcept {
     return VertexDataRange{arrayOfCSRs, lift(arrayOfCSRs.get(0), vertexData.begin),
                            lift(arrayOfCSRs.get(arrayOfCSRs.size() - 1), vertexData.end),
