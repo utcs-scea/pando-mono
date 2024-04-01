@@ -458,7 +458,7 @@ public:
    *
    * @param[in] edgeList This is an edgeList with the edges of each vertex.
    */
-  pando::Status initialize(pando::Vector<pando::Vector<std::uint64_t>> edgeList) {
+  pando::Status initialize(pando::Vector<pando::Vector<EdgeType>> edgeList) {
     pando::Status err;
     pando::Vector<galois::PlaceType> vec;
     err = vec.initialize(pando::getPlaceDims().node.id);
@@ -490,7 +490,7 @@ public:
     }
 
     std::uint64_t edgeNums = 0;
-    for (pando::Vector<std::uint64_t> bucket : edgeList) {
+    for (pando::Vector<EdgeType> bucket : edgeList) {
       edgeNums += bucket.size();
     }
     numVertices = edgeList.size();
@@ -517,10 +517,9 @@ public:
 
     std::uint64_t edgeCurr = 0;
     for (std::uint64_t vertexCurr = 0; vertexCurr < edgeList.size(); vertexCurr++) {
-      pando::Vector<std::uint64_t> edges = edgeList[vertexCurr];
-      for (auto edgesIt = edges.cbegin(); edgesIt != edges.cend(); edgesIt++, edgeCurr++) {
-        edgeDestinations[edgeCurr] = *edgesIt;
-      }
+      pando::Vector<EdgeType> edges = edgeList[vertexCurr];
+      for (EdgeType e : edges)
+        edgeDestinations[edgeCurr++] = e.dst;
       vertexEdgeOffsets[vertexCurr] = edgeCurr;
       vertexTokenIDs[vertexCurr] = vertexCurr;
     }

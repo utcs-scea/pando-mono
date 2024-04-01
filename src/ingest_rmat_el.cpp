@@ -66,3 +66,34 @@ pando::Status galois::generateEdgesPerVirtualHost(
   }
   return pando::Status::Success;
 }
+
+pando::Vector<pando::Vector<galois::ELEdge>> galois::reduceLocalEdges(
+    galois::PerThreadVector<pando::Vector<galois::ELEdge>> localEdges, uint64_t numVertices) {
+  pando::Vector<pando::Vector<galois::ELEdge>> reducedEL;
+  PANDO_CHECK(reducedEL.initialize(numVertices));
+
+  for (uint64_t i = 0; i < numVertices; i++) {
+    pando::Vector<galois::ELEdge> ev = reducedEL[i];
+    PANDO_CHECK(ev.initialize(0));
+    reducedEL[i] = std::move(ev);
+  }
+
+  for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+    pando::Vector<pando::Vector<galois::ELEdge>> threadLocalEdges = *localEdges.get(i);
+    for (pando::Vector<galois::ELEdge> ev : threadLocalEdges) {
+      if (ev.size() > 0) {
+        ELEdge first_edge = ev[0];
+        uint64_t src = first_edge.src;
+        pando::Vector<galois::ELEdge> src_ev = reducedEL[src];
+        PANDO_CHECK(src_ev.append(&ev));
+        reducedEL[src] = std::move(src_ev);
+      }
+    }
+  }
+
+  galois::doAll(
+      reducedEL, +[](pando::Vector<galois::ELEdge> src_ev) {
+        std::sort(src_ev.begin(), src_ev.end());
+      });
+  return reducedEL;
+}
