@@ -6,6 +6,7 @@
 
 #include <pando-rt/export.h>
 
+#include <unordered_set>
 #include <utility>
 
 #include <pando-lib-galois/containers/array.hpp>
@@ -46,9 +47,13 @@ struct DLCSR_InitializeState {
 
 } // namespace internal
 
+template <typename VertexType, typename EdgeType>
+class MirrorDistLocalCSR;
+
 template <typename VertexType = WMDVertex, typename EdgeType = WMDEdge>
 class DistLocalCSR {
 public:
+  friend MirrorDistLocalCSR<VertexType, EdgeType>;
   using VertexTokenID = std::uint64_t;
   using VertexTopologyID = pando::GlobalPtr<Vertex>;
   using EdgeHandle = pando::GlobalPtr<HalfEdge>;
@@ -95,12 +100,12 @@ public:
     VertexIt& operator++() {
       auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos + 1;
-      CSR csrCurr = arrayOfCSRs[currNode];
+      CSR csrCurr = arrayOfCSRs.get(currNode);
       if (csrCurr.vertexEdgeOffsets.end() - 1 > ptr ||
           (int16_t)currNode == pando::getPlaceDims().node.id - 1) {
         m_pos = ptr;
       } else {
-        csrCurr = arrayOfCSRs[currNode + 1];
+        csrCurr = arrayOfCSRs.get(currNode + 1);
         this->m_pos = csrCurr.vertexEdgeOffsets.begin();
       }
       return *this;
@@ -351,6 +356,8 @@ private:
 
   template <typename, typename>
   friend class DistLocalCSR;
+  template <typename, typename>
+  friend class MirrorDistLocalCSR;
 
 public:
   constexpr DistLocalCSR() noexcept = default;
@@ -394,7 +401,20 @@ public:
   VertexTopologyID getTopologyID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
     std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
-    return fmap(arrayOfCSRs[physicalHost], getTopologyID, tid);
+    auto [ret, found] = fmap(getLocalCSR(), relaxedgetTopologyID, tid);
+    if (!found) {
+      return fmap(arrayOfCSRs.get(physicalHost), getTopologyID, tid);
+    } else {
+      return ret;
+    }
+  }
+  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
+    return fmap(getLocalCSR(), getTopologyID, tid);
+  }
+  VertexTopologyID getGlobalTopologyID(VertexTokenID tid) {
+    std::uint64_t virtualHostID = tid % this->numVHosts();
+    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocal(), get, virtualHostID);
+    return fmap(arrayOfCSRs.get(physicalHost), getTopologyID, tid);
   }
 
   VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
@@ -461,6 +481,13 @@ public:
   }
   EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
     return fmap(getCSR(vertex), edgeDataRange, vertex);
+  }
+
+  /** Host Information **/
+  std::uint64_t getPhysicalHostID(VertexTokenID tid) {
+    std::uint64_t virtualHostID = tid % this->numVHosts();
+    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocal(), get, virtualHostID);
+    return physicalHost;
   }
 
   /** Topology Modifications **/
@@ -691,6 +718,62 @@ public:
         pando::executeOn(pando::anyPlace, freeTheRest, pHV, partEdges, renamePerHost, numEdges));
 #endif
     return pando::Status::Success;
+  }
+
+  /**
+   * @brief This function creates a mirror list for each host. Currently it implements full
+   * mirroring
+   */
+  template <typename ReadEdgeType>
+  HostLocalStorage<pando::Array<std::uint64_t>> getMirrorList(
+      galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
+      HostLocalStorage<pando::Array<std::uint64_t>> V2PM) {
+    HostLocalStorage<pando::Array<std::uint64_t>> mirrorList;
+    PANDO_CHECK(mirrorList.initialize());
+    auto createMirrors =
+        +[](galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
+            HostLocalStorage<pando::Array<std::uint64_t>> mirrorList,
+            HostLocalStorage<pando::Array<std::uint64_t>> V2PM, std::uint64_t i,
+            galois::WaitGroup::HandleType wgh) {
+          pando::Array<uint64_t> mirrors;
+
+          // Populating the mirror list in a set to avoid duplicates
+          std::unordered_set<uint64_t> mirrorMap;
+          pando::Array<uint64_t> localV2PM = V2PM.getLocal();
+          for (std::uint64_t k = 0; k < lift(partEdges.getLocal(), size); k++) {
+            pando::Vector<ReadEdgeType> currentEdge = fmap(partEdges.getLocal(), get, k);
+            for (ReadEdgeType tmp : currentEdge) {
+              std::uint64_t dstVHost = tmp.dst % localV2PM.size();
+              std::uint64_t dstPHost = fmap(localV2PM, get, dstVHost);
+              if (dstPHost != i)
+                mirrorMap.insert(tmp.dst);
+            }
+          }
+          PANDO_CHECK(mirrors.initialize(mirrorMap.size()));
+
+          // TODO(Divija): Make this parallel
+          // Populate the mirror list
+          uint64_t idx = 0;
+          for (auto& mirror : mirrorMap) {
+            mirrors[idx] = mirror;
+            idx++;
+          }
+
+          mirrorList.getLocal() = mirrors;
+          wgh.done();
+        };
+
+    std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+    galois::WaitGroup wg;
+    PANDO_CHECK(wg.initialize(numHosts));
+    auto wgh = wg.getHandle();
+    for (std::uint64_t i = 0; i < numHosts; i++) {
+      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
+                                        pando::anyPod, pando::anyCore};
+      PANDO_CHECK(pando::executeOn(place, createMirrors, partEdges, mirrorList, V2PM, i, wgh));
+    }
+    PANDO_CHECK(wg.wait());
+    return mirrorList;
   }
 
   /**
