@@ -265,7 +265,7 @@ TEST(PerThreadVector, HostLocalStorageVectorAppend) {
 
   for (std::int16_t i = 0; i < static_cast<std::int16_t>(phv.getNumHosts()); i++) {
     auto place = pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore};
-    auto ref = phv.get(i);
+    auto ref = phv[i];
     EXPECT_EQ(fmap(ref, initialize, 0, place, pando::MemoryType::Main), pando::Status::Success);
   }
 

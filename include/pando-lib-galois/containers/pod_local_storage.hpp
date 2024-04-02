@@ -72,19 +72,19 @@ public:
   using iterator = PodLocalStorageIt<T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
 
-  [[nodiscard]] constexpr std::uint64_t getNumPods() const noexcept {
+  [[nodiscard]] static constexpr std::uint64_t getNumPods() noexcept {
     const auto p = pando::getPlaceDims();
     return static_cast<std::uint64_t>(p.node.id * p.pod.x * p.pod.y);
   }
 
-  [[nodiscard]] constexpr std::uint64_t getCurrentPodIdx() const noexcept {
+  [[nodiscard]] static constexpr std::uint64_t getCurrentPodIdx() noexcept {
     const auto dim = pando::getPlaceDims();
     const auto cur = pando::getCurrentPlace();
     return static_cast<std::uint64_t>(cur.node.id * dim.pod.x * dim.pod.y + cur.pod.x * dim.pod.y +
                                       cur.pod.y);
   }
 
-  [[nodiscard]] constexpr pando::Place getPlaceFromPodIdx(std::uint64_t idx) const noexcept {
+  [[nodiscard]] static constexpr pando::Place getPlaceFromPodIdx(std::uint64_t idx) noexcept {
     const auto dim = pando::getPlaceDims();
     const auto pods = dim.pod.x * dim.pod.y;
     const pando::NodeIndex node = pando::NodeIndex(idx / pods);
@@ -93,7 +93,7 @@ public:
     return pando::Place(node, pod, pando::anyCore);
   }
 
-  std::uint64_t size() {
+  static constexpr std::uint64_t size() noexcept {
     return getNumPods();
   }
 
@@ -110,7 +110,22 @@ public:
     return *m_items.getPointer();
   }
 
-  pando::GlobalRef<T> get(std::uint64_t i) noexcept {
+  pando::GlobalPtr<T> get(std::uint64_t i) noexcept {
+    auto place = getPlaceFromPodIdx(i);
+    return *m_items.getPointerAt(place.node, place.pod);
+  }
+
+  pando::GlobalPtr<const T> get(std::uint64_t i) const noexcept {
+    auto place = getPlaceFromPodIdx(i);
+    return m_items.getPointerAt(place.node, place.pod);
+  }
+
+  pando::GlobalRef<T> operator[](std::uint64_t i) noexcept {
+    auto place = getPlaceFromPodIdx(i);
+    return *m_items.getPointerAt(place.node, place.pod);
+  }
+
+  pando::GlobalRef<const T> operator[](std::uint64_t i) const noexcept {
     auto place = getPlaceFromPodIdx(i);
     return *m_items.getPointerAt(place.node, place.pod);
   }
@@ -199,15 +214,15 @@ public:
   constexpr PodLocalStorageIt& operator=(PodLocalStorageIt&&) noexcept = default;
 
   reference operator*() const noexcept {
-    return m_curr.get(m_loc);
+    return m_curr[m_loc];
   }
 
   reference operator*() noexcept {
-    return m_curr.get(m_loc);
+    return m_curr[m_loc];
   }
 
   pointer operator->() {
-    return &m_curr.get(m_loc);
+    return m_curr.get(m_loc);
   }
 
   PodLocalStorageIt& operator++() {
@@ -288,7 +303,7 @@ template <typename T>
         const std::uint64_t size = cont.size();
         PANDO_CHECK(copy.initialize(size));
         for (std::uint64_t i = 0; i < cont.size(); i++) {
-          copy.get(i) = cont.get(i);
+          copy[i] = cont[i];
         }
         refcopy = copy;
       }));

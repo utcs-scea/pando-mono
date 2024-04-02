@@ -29,7 +29,7 @@ TEST(ThreadLocalStorage, Init) {
   }
   auto f = +[](galois::ThreadLocalStorage<std::uint64_t> tls, std::uint64_t i,
                pando::NotificationHandle done) {
-    EXPECT_EQ(pando::localityOf(&tls.getLocal()), pando::localityOf(&tls.get(i)));
+    EXPECT_EQ(pando::localityOf(tls.getLocal()), pando::localityOf(tls.get(i)));
     done.notify();
   };
 
@@ -73,7 +73,7 @@ TEST(ThreadLocalStorage, DoAll) {
   EXPECT_FALSE(tls != tls);
 
   for (std::uint64_t i = 0; i < tls.getNumThreads(); i++) {
-    tls.get(i) = 0xDEADBEEF;
+    tls[i] = 0xDEADBEEF;
   }
 
   auto g = +[](galois::ThreadLocalStorage<std::uint64_t> tls, pando::GlobalRef<std::uint64_t> val) {
@@ -91,7 +91,7 @@ TEST(ThreadLocalStorage, DoAll) {
     auto place =
         pando::Place(pando::getCurrentPlace().node, pando::PodIndex{0, 0}, pando::CoreIndex{0, 0});
     const std::uint64_t threadIdx = tls.getThreadIdxFromPlace(place, pando::ThreadIndex(0));
-    EXPECT_EQ(tls.getLocal(), threadIdx);
+    EXPECT_EQ(tls.getLocalRef(), threadIdx);
     done.notify();
   };
   pando::NotificationArray dones;

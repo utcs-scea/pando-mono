@@ -31,15 +31,15 @@ public:
   using iterator = HostIndexedMapIt<T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
 
-  [[nodiscard]] constexpr std::uint64_t getNumHosts() const noexcept {
+  [[nodiscard]] static constexpr std::uint64_t getNumHosts() noexcept {
     return static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
   }
 
-  [[nodiscard]] constexpr std::uint64_t getCurrentNode() const noexcept {
+  [[nodiscard]] constexpr std::uint64_t getCurrentHost() const noexcept {
     return static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
   }
 
-  std::uint64_t size() {
+  static constexpr std::uint64_t size() noexcept {
     return getNumHosts();
   }
 
@@ -57,18 +57,47 @@ public:
     deallocateMemory(m_items, getNumHosts());
   }
 
-  pando::GlobalRef<T> getLocal() noexcept {
-    return m_items[getCurrentNode()];
+  pando::GlobalPtr<T> get(std::uint64_t i) noexcept {
+    return &m_items[i];
   }
 
-  pando::GlobalRef<T> get(std::uint64_t i) noexcept {
-    return m_items[i];
+  pando::GlobalPtr<const T> get(std::uint64_t i) const noexcept {
+    return &m_items[i];
+  }
+
+  pando::GlobalPtr<T> getLocal() noexcept {
+    return &m_items[getCurrentHost()];
+  }
+
+  pando::GlobalPtr<const T> getLocal() const noexcept {
+    return &m_items[getCurrentHost()];
+  }
+
+  pando::GlobalRef<T> getLocalRef() noexcept {
+    return m_items[getCurrentHost()];
+  }
+
+  pando::GlobalRef<const T> getLocalRef() const noexcept {
+    return m_items[getCurrentHost()];
+  }
+
+  pando::GlobalRef<T> operator[](std::uint64_t i) noexcept {
+    return *this->get(i);
+  }
+
+  pando::GlobalRef<const T> operator[](std::uint64_t i) const noexcept {
+    return *this->get(i);
   }
 
   template <typename Y>
-  pando::GlobalRef<T> getFromPtr(pando::GlobalPtr<Y> ptr) {
+  pando::GlobalPtr<T> getFromPtr(pando::GlobalPtr<Y> ptr) {
     std::uint64_t i = static_cast<std::uint64_t>(pando::localityOf(ptr).node.id);
     return this->get(i);
+  }
+
+  template <typename Y>
+  pando::GlobalRef<T> getRefFromPtr(pando::GlobalPtr<Y> ptr) {
+    return *getFromPtr(ptr);
   }
 
   iterator begin() noexcept {

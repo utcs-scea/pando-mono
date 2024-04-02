@@ -41,7 +41,7 @@ galois::internal::buildVirtualToPhysicalMapping(
     vTPH[virtualPair.second] = physicalPair.second;
     // Update the count
     physicalPair.first += virtualPair.first;
-    numEdges.get(physicalPair.second) = physicalPair.first;
+    numEdges[physicalPair.second] = physicalPair.first;
     // Store back
     intermediateSort[0] = physicalPair;
   }
