@@ -523,3 +523,29 @@ TEST(Vector, Inequality) {
   vec0.deinitialize();
   vec1.deinitialize();
 }
+
+TEST(Vector, DeinitializeWgh) {
+  const std::uint64_t size = 10;
+
+  pando::Vector<std::uint64_t> vector;
+  EXPECT_EQ(vector.initialize(size), pando::Status::Success);
+  EXPECT_FALSE(vector.empty());
+  EXPECT_EQ(vector.size(), size);
+  EXPECT_EQ(vector.capacity(), size);
+
+  for (std::uint64_t i = 0; i < size; i++) {
+    vector[i] = i;
+  }
+
+  for (std::uint64_t i = 0; i < size; i++) {
+    EXPECT_EQ(vector[i], i);
+  }
+
+  pando::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+  vector.deinitialize(wg.getHandle());
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  wg.deinitialize();
+  EXPECT_EQ(vector.capacity(), 0);
+  EXPECT_EQ(vector.size(), 0);
+}
