@@ -12,7 +12,8 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
 
   int32_t flag = 0;
   int32_t num_vertices = 0;
-  while ((flag = getopt(argc, argv, "v:i:lb")) != -1) {
+  int32_t rt_algo = BASIC;
+  while ((flag = getopt(argc, argv, "v:i:a:l")) != -1) {
     switch (flag) {
       case 'v':
         sscanf(optarg, "%d", &num_vertices);
@@ -24,11 +25,27 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
       case 'l':
         opts_ptr->load_balanced_graph = true;
         break;
-      case 'b':
-        opts_ptr->bsp = true;
+      case 'a':
+        sscanf(optarg, "%d", &rt_algo);
+        switch (rt_algo) {
+          case 0:
+            opts_ptr->rt_algo = BASIC;
+            break;
+          case 1:
+            opts_ptr->rt_algo = BASP;
+            break;
+          case 2:
+            opts_ptr->rt_algo = BSP;
+            break;
+          default:
+            printUsageExit(argv[0]);
+        }
         break;
+      case 'h':
+        printUsage(argv[0]);
+        std::exit(0);
       case '?':
-        if (optopt == 'v' || optopt == 'i')
+        if (optopt == 'v' || optopt == 'i' || optopt == 'a')
           fprintf(stderr, "Option -%c requires an argument.\n", optopt);
         else if (isprint(optopt))
           fprintf(stderr, "Unknown option `-%c'.\n", optopt);
@@ -44,7 +61,13 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
   return opts_ptr;
 }
 
-void printUsageExit(char* argv0) {
+void printUsage(char* argv0) {
   std::cerr << "Usage: " << argv0 << " -i filepath -v numVertices" << std::endl;
+  std::cerr
+      << "\n Can specify runtime algorithm with -a. Valid options: [0 (ASP), 1 (BASP), 2 (BSP)]\n";
+}
+
+void printUsageExit(char* argv0) {
+  printUsage(argv0);
   std::exit(EXIT_FAILURE);
 }

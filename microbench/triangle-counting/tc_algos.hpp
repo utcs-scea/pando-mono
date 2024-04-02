@@ -4,8 +4,9 @@
 #define PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_TC_ALGOS_HPP_
 
 #include "utils.hpp"
+
 void HBMainDFS(pando::Notification::HandleType hb_done, pando::Array<char> filename,
-               int64_t num_vertices, bool load_balanced_graph,
+               int64_t num_vertices, bool load_balanced_graph, RT_TC_ALGO rt_algo,
                galois::DAccumulator<uint64_t> final_tri_count);
 
 #endif // PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_TC_ALGOS_HPP_

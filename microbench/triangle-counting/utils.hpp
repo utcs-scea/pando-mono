@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/containers/pod_local_storage.hpp>
@@ -33,26 +34,30 @@ using VT = galois::ELVertex;
 using GraphDL = galois::DistLocalCSR<VT, ET>;
 using GraphDA = galois::DistArrayCSR<VT, ET>;
 
+enum RT_TC_ALGO { BASIC = 0, BASP = 1, BSP = 2 };
+
 struct CommandLineOptions {
   std::string elFile;
   int64_t num_vertices = 0;
   bool load_balanced_graph = false;
-  bool bsp = false;
+  RT_TC_ALGO rt_algo = RT_TC_ALGO::BASIC;
 
   void print() {
     printf("******** CommandLineOptions ******** \n");
     std::cout << "elFile = " << elFile << '\n';
     std::cout << "num_vertices = " << num_vertices << '\n';
     std::cout << "load_balanced_graph = " << load_balanced_graph << '\n';
-    std::cout << "bsp = " << bsp << '\n';
+    std::cout << "rt_algo = " << rt_algo << '\n';
     printf("******** END CommandLineOptions ******** \n");
   }
 
-  CommandLineOptions() : elFile(""), num_vertices(0), load_balanced_graph(false), bsp(false) {}
+  CommandLineOptions()
+      : elFile(""), num_vertices(0), load_balanced_graph(false), rt_algo(RT_TC_ALGO::BASIC) {}
 };
 
 std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv);
 void printUsageExit(char* argv0);
+void printUsage(char* argv0);
 // #####################################################################
 //                        CONNECTION KERNELS
 // #####################################################################

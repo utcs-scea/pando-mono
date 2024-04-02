@@ -3,8 +3,6 @@
 
 #include "tc_algos.hpp"
 
-#define CHUNKY 1
-
 // #####################################################################
 //                        TC IMPLEMENTATIONS
 // #####################################################################
@@ -127,7 +125,7 @@ void TC_Algo(pando::GlobalPtr<GraphType> graph_ptr,
 }
 
 void HBGraphDL(pando::Place thisPlace, pando::Array<char> filename, int64_t num_vertices,
-               galois::DAccumulator<uint64_t> final_tri_count) {
+               RT_TC_ALGO rt_algo, galois::DAccumulator<uint64_t> final_tri_count) {
 #if BENCHMARK
   auto time_graph_import_st = std::chrono::high_resolution_clock().now();
 #endif
@@ -153,11 +151,15 @@ void HBGraphDL(pando::Place thisPlace, pando::Array<char> filename, int64_t num_
   auto time_tc_algo_st = std::chrono::high_resolution_clock().now();
 #endif
   PANDO_MEM_STAT_NEW_KERNEL("TC_DFS_Algo Start");
-#if CHUNKY
-  TC_Algo_Chunked(graph_ptr, final_tri_count);
-#else
-  TC_Algo<GraphDL>(graph_ptr, final_tri_count);
-#endif
+
+  switch (rt_algo) {
+    case RT_TC_ALGO::BASP:
+      TC_Algo_Chunked(graph_ptr, final_tri_count);
+      break;
+    default:
+      TC_Algo<GraphDL>(graph_ptr, final_tri_count);
+  }
+
 #if BENCHMARK
   auto time_tc_algo_end = std::chrono::high_resolution_clock().now();
   if (thisPlace.node.id == COORDINATOR_ID)
@@ -215,12 +217,12 @@ void HBGraphDA(pando::Place thisPlace, pando::Array<char> filename, int64_t num_
 }
 
 void HBMainDFS(pando::Notification::HandleType hb_done, pando::Array<char> filename,
-               int64_t num_vertices, bool load_balanced_graph,
+               int64_t num_vertices, bool load_balanced_graph, RT_TC_ALGO rt_algo,
                galois::DAccumulator<uint64_t> final_tri_count) {
   auto thisPlace = pando::getCurrentPlace();
 
   if (load_balanced_graph)
-    HBGraphDL(thisPlace, filename, num_vertices, final_tri_count);
+    HBGraphDL(thisPlace, filename, num_vertices, rt_algo, final_tri_count);
   else
     HBGraphDA(thisPlace, filename, num_vertices, final_tri_count);
 
