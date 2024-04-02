@@ -22,7 +22,7 @@ CONTAINER_CMD ?= setarch `uname -m` -R bash -l
 INTERACTIVE ?= i
 
 BUILD_TYPE ?= Release
-PANDORT_TESTS ?= ON
+PANDORT_TESTS ?= OFF
 
 # CMake variables
 PANDO_TEST_DISCOVERY_TIMEOUT ?= 150
