@@ -49,3 +49,4 @@ endfunction()
 
 
 tc_add_executable(tc ${CMAKE_CURRENT_SOURCE_DIR}/tc.cpp)
+tc_add_executable(graph-compare ${CMAKE_CURRENT_SOURCE_DIR}/graph_compare.cpp)
