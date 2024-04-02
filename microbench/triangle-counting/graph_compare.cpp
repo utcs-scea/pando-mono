@@ -153,6 +153,9 @@ int pandoMain(int argc, char** argv) {
   std::shared_ptr<CommandLineOptions> opts = read_cmd_line_args(argc, argv);
 
   if (thisPlace.node.id == COORDINATOR_ID) {
+    galois::HostLocalStorageHeap::HeapInit();
+    galois::PodLocalStorageHeap::HeapInit();
+
     pando::Array<char> filename;
     PANDO_CHECK(filename.initialize(opts->elFile.size()));
     for (uint64_t i = 0; i < opts->elFile.size(); i++)

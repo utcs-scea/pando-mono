@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 
+#include <pando-lib-galois/containers/host_local_storage.hpp>
+#include <pando-lib-galois/containers/pod_local_storage.hpp>
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
