@@ -9,7 +9,9 @@
 
 #include "../memory/allocate_memory.hpp"
 #include "../memory/global_ptr.hpp"
+#include "../memory/deallocate_memory_wait.hpp"
 #include "../utility/math.hpp"
+#include "../sync/wait_group.hpp"
 
 namespace pando {
 
@@ -106,6 +108,20 @@ public:
                   "Array only supports trivially destructible types");
 
     deallocateMemory(m_data, m_size);
+    m_data = nullptr;
+    m_size = 0;
+    m_memoryType = MemoryType::Unknown;
+  }
+
+  /**
+   * @brief Deinitializes the array.
+   */
+  void deinitialize(pando::WaitGroup::HandleType wgh) {
+    // TODO(ypapadop-amd) Only trivially destructible objects are supported, since deinitialize()
+    // does not call their destructor.
+    static_assert(std::is_trivially_destructible_v<T>,
+                  "Array only supports trivially destructible types");
+    deallocateMemory(m_data, m_size, wgh);
     m_data = nullptr;
     m_size = 0;
     m_memoryType = MemoryType::Unknown;

@@ -3,6 +3,7 @@
 /* Copyright (c) 2023. University of Texas at Austin. All rights reserved. */
 
 #include "pando-rt/memory/allocate_memory.hpp"
+#include "pando-rt/memory/deallocate_memory_wait.hpp"
 
 #include "pando-rt/stdlib.hpp"
 
@@ -33,6 +34,11 @@ void deallocateMemoryImpl(GlobalPtr<void> p, std::uint64_t size) {
       PANDO_ABORT("Cannot deallocate memory");
       break;
   }
+}
+
+void deallocateMemoryWaitImpl(GlobalPtr<void> p, std::uint64_t size, pando::WaitGroup::HandleType wgh) {
+  deallocateMemoryImpl(p, size);
+  wgh.done();
 }
 
 } // namespace detail
