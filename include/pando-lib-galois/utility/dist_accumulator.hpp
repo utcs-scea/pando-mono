@@ -124,7 +124,7 @@ public:
    * @brief add adds the given delta to the local accumulator
    */
   void add(T delta) {
-    pando::atomicFetchAdd(&localCounters.get(pando::getCurrentPlace().node.id), delta,
+    pando::atomicFetchAdd(&localCounters[pando::getCurrentPlace().node.id], delta,
                           std::memory_order_release);
   }
   /**
@@ -137,7 +137,7 @@ public:
    * @brief subtract subtracts the given delta from the local accumulator
    */
   void subtract(T delta) {
-    pando::atomicFetchSub(&localCounters.get(pando::getCurrentPlace().node.id), delta,
+    pando::atomicFetchSub(&localCounters[pando::getCurrentPlace().node.id], delta,
                           std::memory_order_release);
   }
   /**

@@ -306,7 +306,7 @@ public:
     // Initialize the per host vectors
     for (std::int16_t i = 0; i < static_cast<std::int16_t>(lift(flat, getNumHosts)); i++) {
       auto place = pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore};
-      auto ref = fmap(flat, get, i);
+      auto ref = fmap(flat, operator[], i);
       std::uint64_t start =
           (i == 0) ? 0 : m_indices[static_cast<std::uint64_t>(i) * cores * threads - 1];
       std::uint64_t end = m_indices[static_cast<std::uint64_t>(i + 1) * cores * threads - 1];
@@ -322,10 +322,10 @@ public:
       std::uint64_t start = (host == 0) ? 0 : assign.data.m_indices[index];
       std::uint64_t curr = (i == 0) ? 0 : assign.data.m_indices[i - 1];
 
-      auto ref = assign.to.get(host);
+      auto ref = assign.to[host];
       pando::Vector<T> localVec = assign.data[i];
       for (T elt : localVec) {
-        fmap(ref, get, curr - start) = elt;
+        fmap(ref, operator[], curr - start) = elt;
         curr++;
       }
     };
@@ -343,7 +343,7 @@ public:
     // TODO(AdityaAtulTewari) Make this properly parallel.
     // Initialize the per host vectors
     for (std::int16_t i = 0; i < static_cast<std::int16_t>(flat.getNumHosts()); i++) {
-      auto ref = flat.get(i);
+      auto ref = flat[i];
       std::uint64_t start =
           (i == 0) ? 0 : m_indices[static_cast<std::uint64_t>(i) * cores * threads - 1];
       std::uint64_t end = m_indices[static_cast<std::uint64_t>(i + 1) * cores * threads - 1];
@@ -364,7 +364,7 @@ public:
       std::uint64_t end =
           assign.data.m_indices[(host + 1) * assign.data.cores * assign.data.threads - 1];
 
-      auto ref = assign.to.get(host);
+      auto ref = assign.to[host];
       pando::Vector<T> localVec = assign.data[i];
       std::uint64_t size = lift(ref, size) - (end - start);
       for (T elt : localVec) {
@@ -459,6 +459,7 @@ public:
   using value_type = pando::Vector<T>;
   using pointer = pando::GlobalPtr<pando::Vector<T>>;
   using reference = pando::GlobalRef<pando::Vector<T>>;
+  using const_reference = pando::GlobalRef<const pando::Vector<T>>;
 
   PTVectorIterator(PerThreadVector<T> arr, std::uint64_t pos) : m_arr(arr), m_pos(pos) {}
 
@@ -520,7 +521,7 @@ public:
     return m_arr.get(m_pos + n);
   }
 
-  reference operator[](std::uint64_t n) const noexcept {
+  const_reference operator[](std::uint64_t n) const noexcept {
     return m_arr.get(m_pos + n);
   }
 

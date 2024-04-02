@@ -20,8 +20,8 @@ TEST(HostIndexedMap, Init) {
   }
   auto f = +[](galois::HostIndexedMap<std::uint64_t> ph, std::uint64_t i,
                pando::NotificationHandle done) {
-    EXPECT_EQ(&ph.getLocal(), &ph.get(i));
-    EXPECT_EQ(ph.getLocal(), ph.getCurrentNode());
+    EXPECT_EQ(ph.getLocal(), ph.get(i));
+    EXPECT_EQ(ph.getLocalRef(), ph.getCurrentHost());
     done.notify();
   };
 
@@ -67,7 +67,7 @@ TEST(HostIndexedMap, DoAll) {
   EXPECT_FALSE(ph != ph);
 
   for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
-    ph.get(i) = 0xDEADBEEF;
+    ph[i] = 0xDEADBEEF;
   }
 
   auto g = +[](pando::GlobalRef<std::uint64_t> val) {
@@ -80,8 +80,8 @@ TEST(HostIndexedMap, DoAll) {
 
   auto f = +[](galois::HostIndexedMap<std::uint64_t> ph, std::uint64_t i,
                pando::NotificationHandle done) {
-    EXPECT_EQ(&ph.getLocal(), &ph.get(i));
-    EXPECT_EQ(ph.getLocal(), ph.getCurrentNode());
+    EXPECT_EQ(ph.getLocal(), ph.get(i));
+    EXPECT_EQ(*ph.getLocal(), ph.getCurrentHost());
     done.notify();
   };
   pando::NotificationArray dones;

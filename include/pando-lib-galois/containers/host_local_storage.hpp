@@ -69,15 +69,15 @@ public:
   using iterator = HostLocalStorageIt<T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
 
-  [[nodiscard]] constexpr std::uint64_t getNumHosts() const noexcept {
+  [[nodiscard]] static constexpr std::uint64_t getNumHosts() noexcept {
     return static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
   }
 
-  [[nodiscard]] constexpr std::uint64_t getCurrentNode() const noexcept {
+  [[nodiscard]] static constexpr std::uint64_t getCurrentHost() noexcept {
     return static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
   }
 
-  std::uint64_t size() {
+  static constexpr std::uint64_t size() noexcept {
     return getNumHosts();
   }
 
@@ -90,12 +90,36 @@ public:
     HostLocalStorageHeap::deallocate(m_items);
   }
 
-  pando::GlobalRef<T> getLocal() noexcept {
+  pando::GlobalPtr<T> getLocal() noexcept {
+    return m_items.getPointer();
+  }
+
+  pando::GlobalPtr<const T> getLocal() const noexcept {
+    return m_items.getPointer();
+  }
+
+  pando::GlobalRef<T> getLocalRef() noexcept {
     return *m_items.getPointer();
   }
 
-  pando::GlobalRef<T> get(std::uint64_t i) noexcept {
-    return *m_items.getPointerAt(pando::NodeIndex(static_cast<std::int16_t>(i)));
+  pando::GlobalRef<const T> getLocalRef() const noexcept {
+    return *m_items.getPointer();
+  }
+
+  pando::GlobalPtr<T> get(std::uint64_t i) noexcept {
+    return m_items.getPointerAt(pando::NodeIndex(static_cast<std::int16_t>(i)));
+  }
+
+  pando::GlobalPtr<const T> get(std::uint64_t i) const noexcept {
+    return m_items.getPointerAt(pando::NodeIndex(static_cast<std::int16_t>(i)));
+  }
+
+  pando::GlobalRef<T> operator[](std::uint64_t i) noexcept {
+    return *this->get(i);
+  }
+
+  pando::GlobalRef<const T> operator[](std::uint64_t i) const noexcept {
+    return *this->get(i);
   }
 
   template <typename Y>
@@ -180,15 +204,15 @@ public:
   constexpr HostLocalStorageIt& operator=(HostLocalStorageIt&&) noexcept = default;
 
   reference operator*() const noexcept {
-    return m_curr.get(m_loc);
+    return m_curr[m_loc];
   }
 
   reference operator*() noexcept {
-    return m_curr.get(m_loc);
+    return m_curr[m_loc];
   }
 
   pointer operator->() {
-    return &m_curr.get(m_loc);
+    return m_curr.get(m_loc);
   }
 
   HostLocalStorageIt& operator++() {

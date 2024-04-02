@@ -37,7 +37,7 @@ public:
   using iterator = ThreadLocalStorageIt<T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
 
-  [[nodiscard]] constexpr std::uint64_t getNumThreads() const noexcept {
+  [[nodiscard]] static constexpr std::uint64_t getNumThreads() noexcept {
     const auto place = pando::getPlaceDims();
     std::uint64_t nodes = static_cast<std::uint64_t>(place.node.id);
     std::uint64_t pods = static_cast<std::uint64_t>(place.pod.x * place.pod.y);
@@ -50,8 +50,8 @@ public:
     return getThreadIdxFromPlace(pando::getCurrentPlace(), pando::getCurrentThread());
   }
 
-  [[nodiscard]] constexpr std::uint64_t getThreadIdxFromPlace(
-      pando::Place place, pando::ThreadIndex thread) const noexcept {
+  [[nodiscard]] static constexpr std::uint64_t getThreadIdxFromPlace(
+      pando::Place place, pando::ThreadIndex thread) noexcept {
     const auto placeDims = pando::getPlaceDims();
     const auto threadDims = pando::getThreadDims();
     const std::uint64_t threadsPerCore = static_cast<std::uint64_t>(threadDims.id);
@@ -68,8 +68,8 @@ public:
     return hostIdx * threadsPerHost + podIdx * threadsPerPod + coreIdx * threadsPerCore + threadIdx;
   }
 
-  [[nodiscard]] constexpr galois::Tuple2<pando::Place, pando::ThreadIndex> getPlaceFromThreadIdx(
-      std::uint64_t idx) const noexcept {
+  [[nodiscard]] static constexpr galois::Tuple2<pando::Place, pando::ThreadIndex>
+  getPlaceFromThreadIdx(std::uint64_t idx) noexcept {
     const auto placeDims = pando::getPlaceDims();
     const auto threadDims = pando::getThreadDims();
     const std::uint64_t threadsPerCore = static_cast<std::uint64_t>(threadDims.id);
@@ -91,7 +91,7 @@ public:
     return galois::make_tpl(pando::Place{node, pod, core}, thread);
   }
 
-  std::uint64_t size() {
+  static constexpr std::uint64_t size() noexcept {
     return getNumThreads();
   }
 
@@ -126,7 +126,7 @@ public:
     m_items.deinitialize();
   }
 
-  pando::GlobalRef<T> get(std::uint64_t i) noexcept {
+  pando::GlobalPtr<T> get(std::uint64_t i) noexcept {
     const auto placeDims = pando::getPlaceDims();
     const auto threadDims = pando::getThreadDims();
     const std::uint64_t threadsPerCore = static_cast<std::uint64_t>(threadDims.id);
@@ -135,12 +135,37 @@ public:
                                         static_cast<std::uint64_t>(placeDims.core.y);
     const std::uint64_t podIdx = i / threadsPerPod;
     const std::uint64_t threadPerPodIdx = i % threadsPerPod;
-    pando::GlobalPtr<T> arr = m_items.get(podIdx);
-    return *(arr + threadPerPodIdx);
+    pando::GlobalPtr<T> arr = m_items[podIdx];
+    return (arr + threadPerPodIdx);
   }
 
-  pando::GlobalRef<T> getLocal() noexcept {
+  pando::GlobalPtr<const T> get(std::uint64_t i) const noexcept {
+    const auto placeDims = pando::getPlaceDims();
+    const auto threadDims = pando::getThreadDims();
+    const std::uint64_t threadsPerCore = static_cast<std::uint64_t>(threadDims.id);
+    const std::uint64_t threadsPerPod = threadsPerCore *
+                                        static_cast<std::uint64_t>(placeDims.core.x) *
+                                        static_cast<std::uint64_t>(placeDims.core.y);
+    const std::uint64_t podIdx = i / threadsPerPod;
+    const std::uint64_t threadPerPodIdx = i % threadsPerPod;
+    pando::GlobalPtr<T> arr = m_items[podIdx];
+    return (arr + threadPerPodIdx);
+  }
+
+  pando::GlobalRef<T> operator[](std::uint64_t i) noexcept {
+    return *this->get(i);
+  }
+
+  pando::GlobalRef<const T> operator[](std::uint64_t i) const noexcept {
+    return *this->get(i);
+  }
+
+  pando::GlobalPtr<T> getLocal() noexcept {
     return this->get(this->getCurrentThreadIdx());
+  }
+
+  pando::GlobalRef<T> getLocalRef() noexcept {
+    return *this->get(this->getCurrentThreadIdx());
   }
 
   iterator begin() noexcept {
@@ -219,15 +244,15 @@ public:
   constexpr ThreadLocalStorageIt& operator=(ThreadLocalStorageIt&&) noexcept = default;
 
   reference operator*() const noexcept {
-    return m_curr.get(m_loc);
+    return m_curr[m_loc];
   }
 
   reference operator*() noexcept {
-    return m_curr.get(m_loc);
+    return m_curr[m_loc];
   }
 
   pointer operator->() {
-    return &m_curr.get(m_loc);
+    return m_curr.get(m_loc);
   }
 
   ThreadLocalStorageIt& operator++() {
