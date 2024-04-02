@@ -304,7 +304,7 @@ TEST(PerThreadVector, Clear) {
             });
       });
 
-  galois::DAccumulator<std::uint64_t> accum;
+  galois::DAccumulator<std::uint64_t> accum{};
   err = lift(accum, initialize);
   EXPECT_EQ(err, pando::Status::Success);
 
