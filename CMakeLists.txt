@@ -102,6 +102,7 @@ set_target_properties(pando-lib-galois
 
 # sources
 add_subdirectory(src)
+add_subdirectory(microbench)
 
 # tests
 option(BUILD_TESTING "Build tests." ON)
