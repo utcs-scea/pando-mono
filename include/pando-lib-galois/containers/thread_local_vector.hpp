@@ -342,22 +342,16 @@ public:
     auto f = +[](decltype(tpl) assign, std::uint64_t i, uint64_t) {
       auto [data, flat] = assign;
       std::uint64_t host = i / ThreadLocalStorage<T>::getThreadsPerHost();
-      std::uint64_t hostIndex =
-          static_cast<std::uint64_t>(host) * ThreadLocalStorage<T>::getThreadsPerHost() - 1;
       std::uint64_t start = PANDO_EXPECT_RETURN(data.hostIndexOffset(host));
       std::uint64_t curr = (i == 0) ? 0 : data.m_indices[i - 1];
       std::uint64_t end = PANDO_EXPECT_RETURN(data.hostIndexOffset(host + 1));
-
-      pando::GlobalPtr<T> ptr = flat.getSpecific(host, i);
-      pando::Vector<T> localVec = data[i];
-      std::uint64_t size = lift(ref, size) - (end - start);
       for (T elt : localVec) {
-        fmap(ref, get, size + curr - start) = elt;
+        fmap(flat, getSpecificRef, host, curr - start) = elt;
         curr++;
       }
     };
     galois::onEach(tpl, f);
-    return hls;
+    return hla;
   }
 
   iterator begin() noexcept {
