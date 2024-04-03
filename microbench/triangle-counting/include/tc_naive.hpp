@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_MONO_MICROBENCH_INCLUDE_TC_NAIVE_HPP_
-#define PANDO_MONO_MICROBENCH_INCLUDE_TC_NAIVE_HPP_
+#ifndef PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_NAIVE_HPP_
+#define PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_NAIVE_HPP_
 
 #include <pando-rt/export.h>
 
@@ -116,4 +116,4 @@ pando::Status DirOptNaiveTC(pando::GlobalPtr<G> g_ptr, pando::GlobalPtr<std::uin
 }
 
 } // namespace galois
-#endif // PANDO_MONO_MICROBENCH_INCLUDE_TC_NAIVE_HPP_
+#endif // PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_NAIVE_HPP_

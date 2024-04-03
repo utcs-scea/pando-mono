@@ -9,7 +9,7 @@
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
-#include <pando-tc-galois/tc_naive.hpp>
+#include <tc_naive.hpp>
 
 TEST(NaiveTC, OneTriangle) {
   pando::Notification necessary;
