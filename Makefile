@@ -200,6 +200,10 @@ run-tests-drv:
 
 run-tests: run-tests-mpi
 
+smoke-tests:
+	@bash scripts/run.sh
+	@bash workflows/influence_maximization/scripts/run.sh
+
 # this command is slow since hooks are not stored in the container image
 # this is mostly for CI use
 docker-pre-commit:

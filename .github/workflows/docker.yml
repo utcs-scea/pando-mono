@@ -99,7 +99,7 @@ jobs:
         PANDO_PREP_LOG_LEVEL: warning
       run: |
         mkdir -p data
-        CONTAINER_CMD="setarch `uname -m` -R bash -c 'export HOST_THREADS=8 && . ~/.profile && scripts/run.sh'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -c 'export HOST_THREADS=8 && . ~/.profile && make smoke-tests'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           make docker
