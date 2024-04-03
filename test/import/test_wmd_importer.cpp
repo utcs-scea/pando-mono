@@ -403,4 +403,4 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple("/pando/graphs/rmat_571919_seed1_scale11_nV2048_nE22601.el", 2048),
         std::make_tuple("/pando/graphs/rmat_571919_seed1_scale12_nV4096_nE48335.el", 4096),
         std::make_tuple("/pando/graphs/rmat_571919_seed1_scale13_nV8192_nE102016.el", 8192),
-        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale14_nV16384_nE213350.el", 16384),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale14_nV16384_nE213350.el", 16384)));
