@@ -120,11 +120,11 @@ public:
     VertexIt& operator--() {
       auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos - 1;
-      CSR csrCurr = arrayOfCSRs.get(currNode);
+      CSR csrCurr = arrayOfCSRs[currNode];
       if (csrCurr.vertexEdgeOffsets.begin() <= ptr || currNode == 0) {
         m_pos = ptr;
       } else {
-        csrCurr = arrayOfCSRs.get(currNode - 1);
+        csrCurr = arrayOfCSRs[currNode - 1];
         m_pos = csrCurr.vertexEdgeOffsets.end() - 2;
       }
       return *this;
@@ -203,12 +203,12 @@ public:
     VertexDataIt& operator++() {
       auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos + 1;
-      CSR csrCurr = arrayOfCSRs.get(currNode);
+      CSR csrCurr = arrayOfCSRs[currNode];
       if (csrCurr.vertexData.end() > ptr ||
           currNode == static_cast<std::uint64_t>(pando::getPlaceDims().node.id - 1)) {
         m_pos = ptr;
       } else {
-        csrCurr = arrayOfCSRs.get(currNode + 1);
+        csrCurr = arrayOfCSRs[currNode + 1];
         m_pos = csrCurr.vertexData.begin();
       }
       return *this;
@@ -223,11 +223,11 @@ public:
     VertexDataIt& operator--() {
       auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos - 1;
-      CSR csrCurr = arrayOfCSRs.get(currNode);
+      CSR csrCurr = arrayOfCSRs[currNode];
       if (csrCurr.vertexData.begin() <= ptr || currNode == 0) {
         m_pos = *ptr;
       } else {
-        csrCurr = arrayOfCSRs.get(currNode - 1);
+        csrCurr = arrayOfCSRs[currNode - 1];
         m_pos = *csrCurr.vertexData.end() - 1;
       }
       return *this;
@@ -413,8 +413,8 @@ public:
   }
   VertexTopologyID getGlobalTopologyID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
-    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocal(), get, virtualHostID);
-    return fmap(arrayOfCSRs.get(physicalHost), getTopologyID, tid);
+    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
+    return fmap(arrayOfCSRs[physicalHost], getTopologyID, tid);
   }
 
   VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
@@ -476,8 +476,7 @@ public:
   }
   VertexDataRange vertexDataRange() noexcept {
     return VertexDataRange{arrayOfCSRs, lift(arrayOfCSRs[0], vertexData.begin),
-                           lift(arrayOfCSRs.get(arrayOfCSRs.size() - 1), vertexData.end),
-                           numVertices};
+                           lift(arrayOfCSRs[arrayOfCSRs.size() - 1], vertexData.end), numVertices};
   }
   EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
     return fmap(getCSR(vertex), edgeDataRange, vertex);
@@ -669,7 +668,7 @@ public:
     std::uint64_t numVertices = 0;
     if constexpr (isEdgeList) {
       for (uint64_t h = 0; h < numHosts; h++) {
-        PANDO_CHECK(fmap(pHV.get(h), initialize, 0));
+        PANDO_CHECK(fmap(pHV[h], initialize, 0));
       }
       struct PHPV {
         HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges;
@@ -678,8 +677,8 @@ public:
       PHPV phpv{partEdges, pHV};
       galois::doAllEvenlyPartition(
           phpv, numHosts, +[](PHPV phpv, uint64_t host_id, uint64_t) {
-            pando::Vector<pando::Vector<EdgeType>> edgeVec = phpv.partEdges.get(host_id);
-            pando::GlobalRef<pando::Vector<VertexType>> vertexVec = phpv.pHV.get(host_id);
+            pando::Vector<pando::Vector<EdgeType>> edgeVec = phpv.partEdges[host_id];
+            pando::GlobalRef<pando::Vector<VertexType>> vertexVec = phpv.pHV[host_id];
             for (pando::Vector<EdgeType> vec : edgeVec) {
               EdgeType e = vec[0];
               VertexType v = VertexType(e.src, agile::TYPES::NONE);
@@ -688,7 +687,7 @@ public:
           });
 
       for (uint64_t h = 0; h < numHosts; h++) {
-        numVertices += lift(pHV.get(h), size);
+        numVertices += lift(pHV[h], size);
       }
     } else {
       numVertices = numVerticesRead;
@@ -739,9 +738,9 @@ public:
 
           // Populating the mirror list in a set to avoid duplicates
           std::unordered_set<uint64_t> mirrorMap;
-          pando::Array<uint64_t> localV2PM = V2PM.getLocal();
-          for (std::uint64_t k = 0; k < lift(partEdges.getLocal(), size); k++) {
-            pando::Vector<ReadEdgeType> currentEdge = fmap(partEdges.getLocal(), get, k);
+          pando::Array<uint64_t> localV2PM = V2PM.getLocalRef();
+          for (std::uint64_t k = 0; k < lift(partEdges.getLocalRef(), size); k++) {
+            pando::Vector<ReadEdgeType> currentEdge = fmap(partEdges.getLocalRef(), get, k);
             for (ReadEdgeType tmp : currentEdge) {
               std::uint64_t dstVHost = tmp.dst % localV2PM.size();
               std::uint64_t dstPHost = fmap(localV2PM, get, dstVHost);
@@ -759,7 +758,7 @@ public:
             idx++;
           }
 
-          mirrorList.getLocal() = mirrors;
+          mirrorList.getLocalRef() = mirrors;
           wgh.done();
         };
 
@@ -897,7 +896,7 @@ public:
       }
       currentCSR.vertexEdgeOffsets[vertex] = Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
 
-      arrayOfCSRs.get(host) = currentCSR;
+      arrayOfCSRs[host] = currentCSR;
       edgesStart = edgesEnd;
     }
     edgeCounts.deinitialize();
@@ -905,7 +904,7 @@ public:
 
     edgesStart = 0;
     for (uint64_t host = 0; host < hosts; host++) {
-      CSR currentCSR = arrayOfCSRs.get(host);
+      CSR currentCSR = arrayOfCSRs[host];
 
       uint64_t lastLocalVertexIndex = verticesPerHost * (host + 1) - 1;
       if (lastLocalVertexIndex >= numVertices) {
@@ -927,7 +926,7 @@ public:
           currEdge = edges[edgesStart + currLocalEdge + 1];
         }
       }
-      arrayOfCSRs.get(host) = currentCSR;
+      arrayOfCSRs[host] = currentCSR;
 
       edgesStart += currLocalEdge;
     }
@@ -1006,7 +1005,7 @@ public:
     galois::onEach(
         state2, +[](InitializeEdgeState& state, uint64_t thread, uint64_t) {
           uint64_t host = static_cast<std::uint64_t>(pando::getCurrentNode().id);
-          CSR currentCSR = state.dlcsr.arrayOfCSRs.get(host);
+          CSR currentCSR = state.dlcsr.arrayOfCSRs[host];
 
           uint64_t hostOffset;
           PANDO_CHECK(state.edges.currentHostIndexOffset(hostOffset));
@@ -1103,7 +1102,7 @@ public:
    */
   std::uint64_t getVertexLocalIndex(VertexTopologyID vertex) {
     std::uint64_t hostNum = static_cast<std::uint64_t>(galois::localityOf(vertex).node.id);
-    return fmap(arrayOfCSRs.get(hostNum), getVertexIndex, vertex);
+    return fmap(arrayOfCSRs[hostNum], getVertexIndex, vertex);
   }
 
   /**
@@ -1111,7 +1110,7 @@ public:
    */
 
   std::uint64_t localSize(std::uint32_t host) noexcept {
-    return lift(arrayOfCSRs.get(host), size);
+    return lift(arrayOfCSRs[host], size);
   }
 
   /**

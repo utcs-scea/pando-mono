@@ -198,18 +198,18 @@ public:
 
   /** Size **/
   std::uint64_t getMasterSize() noexcept {
-    return lift(masterRange.getLocal(), size);
+    return lift(masterRange.getLocalRef(), size);
   }
   std::uint64_t getMirrorSize() noexcept {
-    return lift(mirrorRange.getLocal(), size);
+    return lift(mirrorRange.getLocalRef(), size);
   }
 
   /** Range **/
   LocalVertexRange getMasterRange() {
-    return masterRange.getLocal();
+    return masterRange.getLocalRef();
   }
   LocalVertexRange getMirrorRange() {
-    return mirrorRange.getLocal();
+    return mirrorRange.getLocalRef();
   }
 
   /** Host Information **/
@@ -311,13 +311,13 @@ public:
     auto mirrorAttach = +[](galois::HostIndexedMap<pando::Vector<ReadVertexType>> vertexData,
                             HostLocalStorage<pando::Array<VertexTokenID>> mirrorList,
                             std::uint64_t i, galois::WaitGroup::HandleType wgh) {
-      pando::Vector<ReadVertexType> curVertexData = vertexData.get(i);
-      pando::Array<VertexTokenID> curMirrorList = mirrorList.get(i);
+      pando::Vector<ReadVertexType> curVertexData = vertexData[i];
+      pando::Array<VertexTokenID> curMirrorList = mirrorList[i];
       for (uint64_t j = 0; j < lift(curMirrorList, size); j++) {
         ReadVertexType v = ReadVertexType{curMirrorList[j]};
         PANDO_CHECK(fmap(curVertexData, pushBack, v));
       }
-      vertexData.get(i) = curVertexData;
+      vertexData[i] = curVertexData;
       wgh.done();
     };
     uint64_t local_mirror_size = 0;
@@ -325,7 +325,7 @@ public:
       pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
                                         pando::anyPod, pando::anyCore};
       PANDO_CHECK(pando::executeOn(place, mirrorAttach, vertexData, mirrorList, i, wgh));
-      local_mirror_size = lift(mirrorList.get(i), size);
+      local_mirror_size = lift(mirrorList[i], size);
       numVertices += local_mirror_size;
       _mirror_size += local_mirror_size;
     }
@@ -340,21 +340,21 @@ public:
                                 DistLocalCSR<VertexType, EdgeType> dlcsr,
                                 HostLocalStorage<pando::Array<std::uint64_t>> mirrorList,
                                 std::uint64_t i, galois::WaitGroup::HandleType wgh) {
-      pando::Array<std::uint64_t> localMirrorList = mirrorList.get(i);
+      pando::Array<std::uint64_t> localMirrorList = mirrorList[i];
       uint64_t mirror_size = lift(localMirrorList, size);
-      CSR csrCurr = dlcsr.arrayOfCSRs.get(i);
+      CSR csrCurr = dlcsr.arrayOfCSRs[i];
 
-      LocalVertexRange _masterRange = mdlcsr.masterRange.get(i);
+      LocalVertexRange _masterRange = mdlcsr.masterRange[i];
       _masterRange = LocalVertexRange(lift(csrCurr, vertexEdgeOffsets.begin),
                                       lift(csrCurr, size) - 1 - mirror_size);
 
-      LocalVertexRange _mirrorRange = mdlcsr.mirrorRange.get(i);
+      LocalVertexRange _mirrorRange = mdlcsr.mirrorRange[i];
       _mirrorRange = LocalVertexRange(
           lift(csrCurr, vertexEdgeOffsets.begin) + lift(csrCurr, size) - mirror_size - 1,
           mirror_size - 1);
 
       pando::Array<MirrorToMasterMap> _localMirrorToRemoteMasterOrderedTable =
-          mdlcsr.localMirrorToRemoteMasterOrderedTable.get(i);
+          mdlcsr.localMirrorToRemoteMasterOrderedTable[i];
       fmap(_localMirrorToRemoteMasterOrderedTable, initialize, mirror_size);
       for (uint64_t j = 0; j < mirror_size; j++) {
         _localMirrorToRemoteMasterOrderedTable[j] =
@@ -374,7 +374,7 @@ public:
                                         pando::anyPod, pando::anyCore};
       PANDO_CHECK(
           pando::executeOn(place, generateMetadata, *this, this->dlcsr, mirrorList, i, wgh));
-      numVertices += lift(mirrorList.get(i), size);
+      numVertices += lift(mirrorList[i], size);
     }
     PANDO_CHECK(wg.wait());
     return pando::Status::Success;
@@ -389,7 +389,7 @@ public:
    * @brief Get the local mutex
    */
   pando::GlobalRef<pando::Mutex> getLocalMutex(std::uint64_t host_id) {
-    return hostMutex.get(host_id);
+    return hostMutex[host_id];
   }
 
   pando::Status setupCommunication() {
