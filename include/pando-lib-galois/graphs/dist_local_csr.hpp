@@ -100,12 +100,12 @@ public:
     VertexIt& operator++() {
       auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos + 1;
-      CSR csrCurr = arrayOfCSRs.get(currNode);
+      CSR csrCurr = arrayOfCSRs[currNode];
       if (csrCurr.vertexEdgeOffsets.end() - 1 > ptr ||
           (int16_t)currNode == pando::getPlaceDims().node.id - 1) {
         m_pos = ptr;
       } else {
-        csrCurr = arrayOfCSRs.get(currNode + 1);
+        csrCurr = arrayOfCSRs[currNode + 1];
         this->m_pos = csrCurr.vertexEdgeOffsets.begin();
       }
       return *this;
@@ -403,7 +403,7 @@ public:
     std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
     auto [ret, found] = fmap(getLocalCSR(), relaxedgetTopologyID, tid);
     if (!found) {
-      return fmap(arrayOfCSRs.get(physicalHost), getTopologyID, tid);
+      return fmap(arrayOfCSRs[physicalHost], getTopologyID, tid);
     } else {
       return ret;
     }
@@ -1148,7 +1148,7 @@ public:
    */
   pando::GlobalRef<CSR> getLocalCSR() {
     std::uint64_t nodeIdx = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-    return arrayOfCSRs.get(nodeIdx);
+    return arrayOfCSRs[nodeIdx];
   }
 
 private:
