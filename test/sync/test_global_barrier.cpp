@@ -7,6 +7,7 @@
 #include <cstdint>
 
 #include <pando-lib-galois/sync/global_barrier.hpp>
+#include <pando-rt/containers/array.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
@@ -82,23 +83,24 @@ TEST(GlobalBarrier, SingleWait) {
   auto dims = pando::getPlaceDims();
   constexpr std::uint64_t goodVal = 0xDEADBEEF;
   galois::GlobalBarrier gb;
-  pando::GlobalPtr<std::uint64_t> ptr;
-  pando::LocalStorageGuard ptrGuard(ptr, dims.node.id);
   EXPECT_EQ(gb.initialize(dims.node.id), pando::Status::Success);
+  pando::Array<uint64_t> array;
+  EXPECT_EQ(array.initialize(dims.node.id), pando::Status::Success);
+  array.fill(0ul);
   auto func =
-      +[](galois::GlobalBarrier gb, pando::GlobalPtr<std::uint64_t> ptr, std::uint64_t goodVal) {
-        ptr[pando::getCurrentPlace().node.id] = goodVal;
+      +[](galois::GlobalBarrier gb, pando::Array<std::uint64_t> array, std::uint64_t goodVal) {
+        array[pando::getCurrentPlace().node.id] = goodVal;
         gb.done();
       };
   for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(
         pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
-                         func, gb, ptr, goodVal),
+                         func, gb, array, goodVal),
         pando::Status::Success);
   }
   EXPECT_EQ(gb.wait(), pando::Status::Success);
   for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
-    EXPECT_EQ(*ptr, goodVal);
+    EXPECT_EQ(array[nodeId], goodVal);
   }
   gb.deinitialize();
 }
@@ -106,24 +108,42 @@ TEST(GlobalBarrier, SingleWait) {
 TEST(GlobalBarrier, MultipleWait) {
   auto dims = pando::getPlaceDims();
   constexpr std::uint64_t goodVal = 0xDEADBEEF;
-  galois::GlobalBarrier gb;
-  pando::GlobalPtr<std::uint64_t> ptr;
-  pando::LocalStorageGuard ptrGuard(ptr, dims.node.id);
-  EXPECT_EQ(gb.initialize(dims.node.id), pando::Status::Success);
-  auto func =
-      +[](galois::GlobalBarrier gb, pando::GlobalPtr<std::uint64_t> ptr, std::uint64_t goodVal) {
-        ptr[pando::getCurrentPlace().node.id] = goodVal;
-        gb.done();
-        EXPECT_EQ(gb.wait(), pando::Status::Success);
-      };
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  galois::GlobalBarrier gb1, gb2;
+  EXPECT_EQ(gb1.initialize(1), pando::Status::Success);
+  EXPECT_EQ(gb2.initialize(dims.node.id), pando::Status::Success);
+  pando::Array<uint64_t> array;
+  EXPECT_EQ(array.initialize(dims.node.id), pando::Status::Success);
+  array.fill(0ul);
+
+  // host 0
+  array[pando::getCurrentPlace().node.id] = goodVal;
+
+  auto func = +[](galois::GlobalBarrier gb1, galois::GlobalBarrier gb2,
+                  pando::Array<std::uint64_t> array, std::uint64_t goodVal) {
+    EXPECT_EQ(gb1.wait(), pando::Status::Success);
+    array[pando::getCurrentPlace().node.id] = goodVal;
+    gb2.done();
+  };
+  for (std::int16_t nodeId = 1; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(
         pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
-                         func, gb, ptr, goodVal),
+                         func, gb1, gb2, array, goodVal),
         pando::Status::Success);
   }
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
-    EXPECT_EQ(*ptr, goodVal);
+
+  EXPECT_EQ(array[0], goodVal);
+  for (std::int16_t nodeId = 1; nodeId < dims.node.id; nodeId++) {
+    EXPECT_EQ(array[nodeId], 0ul);
   }
-  gb.deinitialize();
+
+  gb1.done();
+  gb2.done();
+  EXPECT_EQ(gb2.wait(), pando::Status::Success);
+
+  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    EXPECT_EQ(array[nodeId], goodVal);
+  }
+
+  gb1.deinitialize();
+  gb2.deinitialize();
 }
