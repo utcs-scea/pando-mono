@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "pando-rt/export.h"
-#include <pando-lib-galois/containers/host_local_storage.hpp>
+#include <pando-lib-galois/containers/host_local_array.hpp>
 #include <pando-lib-galois/containers/thread_local_storage.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
@@ -92,9 +92,12 @@ public:
   /**
    * @brief Returns the total number of elements in the PerThreadVector
    */
-  size_t sizeAll() const {
-    size_t size = 0;
-    for (uint64_t i = 0; i < m_data.size(); i++) {
+  std::uint64_t sizeAll() const {
+    if (indicesComputed) {
+      return *m_indices.rbegin()
+    }
+    std::uint64_t size = 0;
+    for (std::uint64_t i = 0; i < m_data.size(); i++) {
       pando::Vector<T> vec = m_data[i];
       size += vec.size();
     }
@@ -156,16 +159,14 @@ public:
    * @param host passing in `hosts + 1` is legal
    * @param index passed by reference will hold the global index
    */
-  [[nodiscard]] pando::Expected<std::uint64_t> hostIndexOffset(uint64_t host) {
-    if (!indicesComputed) {
-      return pando::Status::NotInit;
-    }
+  [[nodiscard]] static pando::Expected<std::uint64_t> hostIndexOffset(
+      galois::ThreadLocalStorage<std::uint64_t> indices, uint64_t host) noexcept {
     if (host == 0)
       return 0;
     const auto place =
         pando::Place(pando::NodeIndex(host), pando::PodIndex(0, 0), pando::CoreIndex(0, 0));
-    const auto idx = m_data.getThreadIdxFromPlace(place, pando::ThreadIndex(0));
-    return m_indices[idx - 1];
+    const auto idx = indices.getThreadIdxFromPlace(place, pando::ThreadIndex(0));
+    return indices[idx - 1];
   }
 
   [[nodiscard]] pando::Status hostFlattenAppend(galois::HostLocalStorage<pando::Vector<T>> flat) {
@@ -211,23 +212,132 @@ public:
     return pando::Status::Success;
   }
 
-  [[nodiscard]] pando::Expected<galois::HostLocalStorage<pando::Array<T>>> assign() {
-    galois::HostLocalStorage<pando::Array<T>> hls{};
-    PANDO_CHECK_RETURN(hls.initialize());
+private:
+  class SizeIt {
+  public:
+    SizeIt() noexcept = default;
+    SizeIt(const SizeIt&) = default;
+    SizeIt(SizeIt&&) = default;
+    ~SizeIt() = default;
+    SizeIt& operator=(const SizeIt&) = default;
+    SizeIt& operator=(SizeIt&&) = default;
+    SizeIt(ThreadLocalStorage<std::uint64_t> indices, std::uint64_t host)
+        : m_indices(indices), m_host(host) {}
+    using output_type = std::int64_t;
+    using difference_type = std::int64_t;
 
+    output_type operator*() const noexcept {
+      const std::uint64_t start = ThreadLocalVector<std::uint64_t>::hostIndexOffset(m_host);
+      const std::uint64_t end = ThreadLocalVector<std::uint64_t>::hostIndexOffset(m_host + 1);
+      return end - start;
+    }
+
+    SizeIt& operator++() {
+      m_host++;
+      return *this;
+    }
+
+    SizeIt operator++(int) {
+      SizeIt tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+
+    SizeIt& operator--() {
+      m_host--;
+      return *this;
+    }
+
+    SizeIt operator--(int) {
+      SizeIt tmp = *this;
+      --(*this);
+      return tmp;
+    }
+
+    constexpr SizeIt operator+(std::uint64_t n) const noexcept {
+      return SizeIt(m_indicies, m_host + n);
+    }
+
+    constexpr SizeIt& operator+=(std::uint64_t n) noexcept {
+      m_host += n;
+      return *this;
+    }
+
+    constexpr SizeIt operator-(std::uint64_t n) const noexcept {
+      return SizeIt(m_indicies, m_host - n);
+    }
+
+    constexpr difference_type operator-(SizeIt b) const noexcept {
+      return m_host - b.host;
+    }
+
+    friend bool operator==(const SizeIt& a, const SizeIt& b) {
+      return a.m_host == b.m_host && a.m_indices == b.m_indices;
+    }
+
+    friend bool operator!=(const SizeIt& a, const SizeIt& b) {
+      return !(a == b);
+    }
+
+    friend bool operator<(const SizeIt& a, const SizeIt& b) {
+      return a.m_host < b.m_host;
+    }
+
+    friend bool operator<=(const SizeIt& a, const SizeIt& b) {
+      return a.m_host <= b.m_host;
+    }
+
+    friend bool operator>(const SizeIt& a, const SizeIt& b) {
+      return a.m_host > b.m_host;
+    }
+
+    friend bool operator>=(const SizeIt& a, const SizeIt& b) {
+      return a.m_host >= b.m_host;
+    }
+
+    friend pando::Place localityOf(SizeIt& a) {
+      return pando::Place{NodeIndex(a.m_host), pando::anyPod, pando::anyCore};
+    }
+
+  private:
+    galois::ThreadLocalStorage<std::uint64_t> m_indices;
+    std::uint64_t m_host;
+  };
+
+  struct SizeRange {
+    using iterator = SizeIt;
+    galois::ThreadLocalStorage<std::uint64_t> m_indices;
+    SizeRange() noexcept = default;
+    SizeRange(const SizeRange&) = default;
+    SizeRange(SizeRange&&) = default;
+    ~SizeRange() = default;
+    SizeRange& operator=(const SizeRange&) = default;
+    SizeRange& operator=(SizeRange&&) = default;
+    SizeRange(ThreadLocalStorage<std::uint64_t> indices, std::uint64_t host)
+        : m_indices(indices), m_host(host) {}
+    iterator begin() const noexcept {
+      return iterator(m_indices, 0);
+    }
+
+    iterator end() const noexcept {
+      std::uint64_t numHosts = pando::getPlaceDims().node.id;
+      return iterator(m_indices, numHosts);
+    }
+
+    galois::ThreadLocalStorage<std::uint64_t> m_indices;
+  };
+
+public:
+  [[nodiscard]] pando::Expected<galois::HostLocalArray<T>> assign() {
     if (!indicesComputed) {
       PANDO_CHECK_RETURN(computeIndices());
     }
 
+    galois::HostLocalArray<T> hla;
     // TODO(AdityaAtulTewari) Make this properly parallel.
     // Initialize the per host vectors
-    for (std::uint64_t i = 0; i < hls.getNumHosts(); i++) {
-      auto ref = hls[i];
-      std::uint64_t start = PANDO_EXPECT_RETURN(hostIndexOffset(i));
-      std::uint64_t end = PANDO_EXPECT_RETURN(hostIndexOffset(i + 1));
-      PANDO_CHECK_RETURN(fmap(ref, initialize, lift(ref, size) + end - start));
-    }
-    auto tpl = galois::make_tpl(static_cast<ThreadLocalVector>(*this), hls);
+    PANDO_CHECK_RETURN(hla.initialize(SizeRange(indices)));
+    auto tpl = galois::make_tpl(static_cast<ThreadLocalVector>(*this), hla);
     // Reduce into the per host vectors
     auto f = +[](decltype(tpl) assign, std::uint64_t i, uint64_t) {
       auto [data, flat] = assign;
@@ -238,7 +348,7 @@ public:
       std::uint64_t curr = (i == 0) ? 0 : data.m_indices[i - 1];
       std::uint64_t end = PANDO_EXPECT_RETURN(data.hostIndexOffset(host + 1));
 
-      auto ref = flat[host];
+      pando::GlobalPtr<T> ptr = flat.getSpecific(host, i);
       pando::Vector<T> localVec = data[i];
       std::uint64_t size = lift(ref, size) - (end - start);
       for (T elt : localVec) {

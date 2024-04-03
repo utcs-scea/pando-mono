@@ -45,7 +45,6 @@ struct State {
 
 } // namespace
 
-/**
 TEST(ThreadLocalVector, Init) {
   pando::GlobalPtr<galois::ThreadLocalVector<uint64_t>> perThreadVecPtr =
       getGlobalObject<galois::ThreadLocalVector<uint64_t>>();
@@ -80,7 +79,6 @@ TEST(ThreadLocalVector, Init) {
   work.deinitialize();
   perThreadVec.deinitialize();
 }
-*/
 
 /**
 TEST(ThreadLocalVector, Parallel) {
