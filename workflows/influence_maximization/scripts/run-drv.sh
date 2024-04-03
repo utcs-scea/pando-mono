@@ -29,21 +29,21 @@ DISABLE_K3="${DISABLE_K3:-1}"
 DISABLE_K4="${DISABLE_K4:-1}"
 
 sst -n ${HOST_THREADS} \
-	"${LAUNCH_SCRIPT}" -- \
-	--with-command-processor="${EXE}" \
-	--num-pxn=${PROCS} \
-	--pod-cores=${CORES} \
-	--core-threads=${HARTS} \
-	--drvx-stack-in-l1sp \
-	--pxn-dram-size=${MAIN_MEMORY_SIZE} \
-	"${EXE}" \
-	-k ${K} \
-	-r ${RRR_SETS} \
-	-s ${SEED} \
-	-c "${COMMERCIAL_FILE}" \
-	-y "${CYBER_FILE}" \
-	-o "${SOCIAL_FILE}" \
-	-u "${USES_FILE}" \
-	-2 "${DISABLE_K2}" \
-	-3 "${DISABLE_K3}" \
-	-4 "${DISABLE_K4}"
+    "${LAUNCH_SCRIPT}" -- \
+    --with-command-processor="${EXE}" \
+    --num-pxn=${PROCS} \
+    --pod-cores=${CORES} \
+    --core-threads=${HARTS} \
+    --drvx-stack-in-l1sp \
+    --pxn-dram-size=${MAIN_MEMORY_SIZE} \
+    "${EXE}" \
+    -k ${K} \
+    -r ${RRR_SETS} \
+    -s ${SEED} \
+    -c "${COMMERCIAL_FILE}" \
+    -y "${CYBER_FILE}" \
+    -o "${SOCIAL_FILE}" \
+    -u "${USES_FILE}" \
+    -2 "${DISABLE_K2}" \
+    -3 "${DISABLE_K3}" \
+    -4 "${DISABLE_K4}"

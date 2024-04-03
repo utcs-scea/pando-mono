@@ -39,18 +39,18 @@ export PANDO_PREP_MAIN_NODE=$MAIN_MEMORY_SIZE
 export MPIRUN_CMD="mpirun -np %N -host localhost:${HOST_THREADS} --map-by slot:PE=${THREADS} %P %A"
 # TODO(Patrick) add in `-N ${HOSTS}`
 ${LAUNCH_SCRIPT} \
-	-n ${PROCS} \
-	-v \
-	-E PANDO_PREP_NUM_CORES,PANDO_PREP_NUM_HARTS,PANDO_PREP_L1SP_HART,PANDO_PREP_L2SP,PANDO_PREP_MAINMEMORY \
-	"${EXE}" \
-	-k ${K} \
-	-r ${RRR_SETS} \
-	-s ${SEED} \
-	-c "${COMMERCIAL_FILE}" \
-	-y "${CYBER_FILE}" \
-	-o "${SOCIAL_FILE}" \
-	-u "${USES_FILE}" \
-	-2 "${DISABLE_K2}" \
-	-3 "${DISABLE_K3}" \
-	-- \
-	2>&1 | tee "${LOGFILE}"
+    -n ${PROCS} \
+    -v \
+    -E PANDO_PREP_NUM_CORES,PANDO_PREP_NUM_HARTS,PANDO_PREP_L1SP_HART,PANDO_PREP_L2SP,PANDO_PREP_MAINMEMORY \
+    "${EXE}" \
+    -k ${K} \
+    -r ${RRR_SETS} \
+    -s ${SEED} \
+    -c "${COMMERCIAL_FILE}" \
+    -y "${CYBER_FILE}" \
+    -o "${SOCIAL_FILE}" \
+    -u "${USES_FILE}" \
+    -2 "${DISABLE_K2}" \
+    -3 "${DISABLE_K3}" \
+    -- \
+    2>&1 | tee "${LOGFILE}"
