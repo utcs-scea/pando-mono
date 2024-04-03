@@ -164,8 +164,8 @@ add_subdirectory(src)
 
 # tests
 option(BUILD_TESTING "Build tests." ON)
+include(cmake/PANDOTesting.cmake)
 if (BUILD_TESTING)
-    include(cmake/PANDOTesting.cmake)
     enable_testing()
     add_subdirectory(test)
 endif ()
@@ -181,3 +181,6 @@ option(BUILD_DOCS "Build documentation" ON)
 if (BUILD_DOCS)
     add_subdirectory(docs)
 endif ()
+
+# workflows
+add_subdirectory(workflows)

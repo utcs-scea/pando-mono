@@ -324,9 +324,8 @@ template <typename EdgeType>
     pando::Vector<EdgeType> threadLocalEdges = *localEdges.get(i);
     for (EdgeType edge : threadLocalEdges) {
       auto tgtHost = getPhysical(edge.src, virtualToPhysicalMapping);
-      pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> edges =
-          partitionedEdges.get(tgtHost);
-      PANDO_CHECK_RETURN(insertLocalEdgesPerThread(renamePerHost.get(tgtHost), edges, edge));
+      pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> edges = partitionedEdges[tgtHost];
+      PANDO_CHECK_RETURN(insertLocalEdgesPerThread(renamePerHost[tgtHost], edges, edge));
     }
   }
   return pando::Status::Success;
