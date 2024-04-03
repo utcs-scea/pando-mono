@@ -7,7 +7,7 @@
 
 target_include_directories(pando-triangle-counting
     PUBLIC
-        "$<BUILD_INTERFACE:${pando-tc-galois_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${pando-triangle-counting_SOURCE_DIR}/include>"
         "$<BUILD_INTERFACE:${pando-lib-galois_SOURCE_DIR}/include>"
         "$<BUILD_INTERFACE:${pando-lib-galois_BINARY_DIR}/include/pando-lib-galois>"
         ${pando-rt_BINARY_DIR}/include

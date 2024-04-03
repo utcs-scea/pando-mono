@@ -16,7 +16,7 @@
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
-#include <tc_naive.hpp>
+#include <tc/tc_naive.hpp>
 
 template <typename T>
 using G = pando::GlobalPtr<T>;

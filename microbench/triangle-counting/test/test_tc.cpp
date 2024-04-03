@@ -2,7 +2,7 @@
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
 #include <gtest/gtest.h>
-#include <pando-tc-galois/tc_algos.hpp>
+#include <tc/tc_algos.hpp>
 
 uint64_t get_expected_TC(const std::string okFile) {
   std::ifstream f(okFile);

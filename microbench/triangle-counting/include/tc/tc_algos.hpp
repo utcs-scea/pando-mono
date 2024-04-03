@@ -3,7 +3,7 @@
 #ifndef PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_ALGOS_HPP_
 #define PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_ALGOS_HPP_
 
-#include "utils.hpp"
+#include "tc/utils.hpp"
 
 void HBMainDFS(pando::Notification::HandleType hb_done, pando::Array<char> filename,
                int64_t num_vertices, bool load_balanced_graph, RT_TC_ALGO rt_algo,

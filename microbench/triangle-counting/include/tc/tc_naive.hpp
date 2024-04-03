@@ -9,7 +9,7 @@
 #include <cmath>
 #include <utility>
 
-#include "utils.hpp"
+#include "tc/utils.hpp"
 
 #include <pando-lib-galois/graphs/graph_traits.hpp>
 #include <pando-lib-galois/utility/search.hpp>

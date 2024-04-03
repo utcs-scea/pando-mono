@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#include <utils.hpp>
+#include <tc/utils.hpp>
 
 template <typename GraphType>
 void show_graph(pando::GlobalPtr<GraphType> graph_ptr) {

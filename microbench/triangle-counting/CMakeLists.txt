@@ -86,7 +86,7 @@ add_subdirectory(src)
 
 # tests
 option(MICROBENCH_TESTING "Testing for microbenchmarks" ON)
-if (OFF)
+if (MICROBENCH_TESTING)
     include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOTesting.cmake)
     enable_testing()
     add_subdirectory(test)

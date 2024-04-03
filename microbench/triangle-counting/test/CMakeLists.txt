@@ -3,6 +3,9 @@
 
 pando_add_driver_test(test_tc_naive test_tc_naive.cpp)
 pando_add_driver_test(test_tc test_tc.cpp)
+# TODO(Patrick) add argument to `pando_add_driver_test` for library like in scea/gls
+target_link_libraries(test_tc_naive PRIVATE pando-triangle-counting::pando-triangle-counting)
+target_link_libraries(test_tc PRIVATE pando-triangle-counting::pando-triangle-counting)
 
 ## binary tests
 pando_add_bin_test(../src/tc_naive "-n 10 -f" ${PROJECT_SOURCE_DIR}/graphs/simple.el ${PROJECT_SOURCE_DIR}/ok/simple.el-10.ok)
