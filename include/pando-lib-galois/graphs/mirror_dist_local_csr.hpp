@@ -360,11 +360,6 @@ public:
         _localMirrorToRemoteMasterOrderedTable[j] =
             MirrorToMasterMap(dlcsr.getLocalTopologyID(localMirrorList[j]),
                               dlcsr.getGlobalTopologyID(localMirrorList[j]));
-        std::cout << pando::getCurrentPlace().node.id << ", " << localMirrorList[j] << " / "
-                  << uint64_t(lift(_localMirrorToRemoteMasterOrderedTable[j], getMirror).address)
-                  << ", "
-                  << uint64_t(lift(_localMirrorToRemoteMasterOrderedTable[j], getMaster).address)
-                  << std::endl;
       }
       wgh.done();
     };

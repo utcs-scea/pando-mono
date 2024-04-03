@@ -198,7 +198,8 @@ TEST_P(DLCSRInitEdgeList, initializeEL) {
   for (uint64_t i = 0; i < elFile.size(); i++)
     filename[i] = elFile[i];
 
-  Graph graph = galois::initializeELDLCSR<galois::ELVertex, galois::ELEdge>(filename, numVertices);
+  Graph graph =
+      galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
 
   // Validate
   std::unordered_map<std::uint64_t, std::vector<std::uint64_t>> goldenTable;
@@ -261,6 +262,93 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     DISABLED_BigFiles, DLCSRInitEdgeList,
+    ::testing::Values(
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale11_nV2048_nE22601.el", 2048),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale12_nV4096_nE48335.el", 4096),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale13_nV8192_nE102016.el", 8192),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale14_nV16384_nE213350.el", 16384),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale15_nV32768_nE441929.el", 32768),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale16_nV65536_nE909846.el", 65536),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale17_nV131072_nE1864704.el", 131072),
+        std::make_tuple("/pando/graphs/rmat_571919_seed1_scale18_nV262144_nE3806162.el", 262144)));
+
+class MirrorDLCSRInitEdgeList
+    : public ::testing::TestWithParam<std::tuple<const char*, std::uint64_t>> {};
+TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
+  using ET = galois::ELEdge;
+  using VT = galois::ELVertex;
+  using Graph = galois::MirrorDistLocalCSR<VT, ET>;
+  galois::HostLocalStorageHeap::HeapInit();
+
+  const std::string elFile = std::get<0>(GetParam());
+  const std::uint64_t numVertices = std::get<1>(GetParam());
+
+  pando::Array<char> filename;
+  EXPECT_EQ(pando::Status::Success, filename.initialize(elFile.size()));
+  for (uint64_t i = 0; i < elFile.size(); i++)
+    filename[i] = elFile[i];
+
+  Graph graph =
+      galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
+
+  // Validate
+  std::unordered_map<std::uint64_t, std::vector<std::uint64_t>> goldenTable;
+  getVerticesAndEdgesEL(elFile, numVertices, goldenTable);
+  EXPECT_EQ(goldenTable.size(), graph.size());
+
+  // Iterate over vertices
+  std::uint64_t vid = 0;
+
+  for (typename Graph::VertexTopologyID vert : graph.vertices()) {
+    EXPECT_EQ(vid, graph.getVertexIndex(vert));
+    vid++;
+    typename Graph::VertexTokenID srcTok = graph.getTokenID(vert);
+
+    EXPECT_LT(srcTok, numVertices);
+
+    typename Graph::VertexData vertexData = graph.getData(vert);
+    EXPECT_EQ(srcTok, vertexData.id);
+
+    VT dumbVertex = VT{numVertices};
+    graph.setData(vert, dumbVertex);
+    vertexData = graph.getData(vert);
+    EXPECT_EQ(vertexData.id, numVertices);
+
+    // Iterate over edges
+    EXPECT_NE(goldenTable.find(srcTok), goldenTable.end())
+        << "Failed to find edges with tok_id:" << srcTok << "\t with index: " << (vid - 1);
+    std::vector<std::uint64_t> goldenEdges = goldenTable[srcTok];
+
+    for (typename Graph::EdgeHandle eh : graph.edges(vert)) {
+      typename Graph::EdgeData eData = graph.getEdgeData(eh);
+
+      EXPECT_EQ(eData.src, srcTok);
+
+      typename Graph::VertexTokenID dstTok = graph.getTokenID(graph.getEdgeDst(eh));
+      EXPECT_EQ(eData.dst, dstTok);
+
+      auto goldenEdgeIt = std::find(goldenEdges.begin(), goldenEdges.end(), dstTok);
+      EXPECT_NE(goldenEdgeIt, goldenEdges.end())
+          << "Unable to find edge with src_tok: " << srcTok << "\tand dst_tok: " << dstTok
+          << "\tat vertex: " << (vid - 1);
+      ET dumbEdge = ET{numVertices, numVertices};
+      graph.setEdgeData(eh, dumbEdge);
+      eData = graph.getEdgeData(eh);
+      EXPECT_EQ(eData.src, numVertices);
+      EXPECT_EQ(eData.dst, numVertices);
+    }
+  }
+  graph.deinitialize();
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SmallFiles, MirrorDLCSRInitEdgeList,
+    ::testing::Values(std::make_tuple("/pando/graphs/simple.el", 10),
+                      std::make_tuple("/pando/graphs/rmat_571919_seed1_scale10_nV1024_nE10447.el",
+                                      1024)));
+
+INSTANTIATE_TEST_SUITE_P(
+    DISABLED_BigFiles, MirrorDLCSRInitEdgeList,
     ::testing::Values(
         std::make_tuple("/pando/graphs/rmat_571919_seed1_scale11_nV2048_nE22601.el", 2048),
         std::make_tuple("/pando/graphs/rmat_571919_seed1_scale12_nV4096_nE48335.el", 4096),
