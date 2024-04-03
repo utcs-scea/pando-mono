@@ -84,7 +84,7 @@ function(pando_add_driver_test_lib TARGET SOURCEFILE LIBRARY)
   if (PANDO_RT_BACKEND STREQUAL "DRVX")
     target_link_libraries(${TARGET} PRIVATE
       "$<LINK_LIBRARY:WHOLE_ARCHIVE,GTest::gtest>"
-      ${LIBRARY})
+      "$<LINK_LIBRARY:WHOLE_ARCHIVE,${LIBRARY}>")
     set_target_properties(gtest PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
     # create a dummy executable as a different target but with the same name for ctest to discover the right test programs
