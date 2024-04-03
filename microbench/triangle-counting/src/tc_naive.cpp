@@ -7,7 +7,6 @@
 #include <chrono>
 #include <memory>
 
-#include "tc_naive.hpp"
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
@@ -17,6 +16,7 @@
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
+#include <tc_naive.hpp>
 
 template <typename T>
 using G = pando::GlobalPtr<T>;
