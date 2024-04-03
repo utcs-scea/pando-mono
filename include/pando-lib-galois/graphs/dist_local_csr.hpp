@@ -408,6 +408,10 @@ public:
       return ret;
     }
   }
+
+private:
+  // This function is for mirrored dist local csr, or classes which will directly use it. Don't use
+  // it externally. getLocalTopologyID with non-existing tokenID will return failure.
   VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
     return fmap(getLocalCSR(), getTopologyID, tid);
   }
@@ -417,6 +421,7 @@ public:
     return fmap(arrayOfCSRs[physicalHost], getTopologyID, tid);
   }
 
+public:
   VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
     std::uint64_t hostNum = 0;
     std::uint64_t hostSize;

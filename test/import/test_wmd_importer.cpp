@@ -327,6 +327,56 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
       typename Graph::VertexTokenID dstTok = graph.getTokenID(graph.getEdgeDst(eh));
       EXPECT_EQ(eData.dst, dstTok);
 
+      auto mirrorTopology = graph.getTopologyID(dstTok);
+      auto masterTopology = graph.getGlobalTopologyID(dstTok);
+      if (mirrorTopology != masterTopology) {
+        // If global, and local have different value.
+        // It means current one have mirror. Mirror is local, but master is not.
+        ASSERT_TRUE(graph.isLocal(mirrorTopology));
+        ASSERT_TRUE(!graph.isLocal(masterTopology));
+        bool found = false;
+        // Mirror must exist in mirror range.
+        auto it = graph.getMirrorRange();
+        for (auto v = it.begin(); v != it.end(); v++) {
+          if (*v == mirrorTopology) {
+            found = true;
+          }
+        }
+        ASSERT_TRUE(found);
+        found = false;
+        auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
+        for (auto elem : mirror_master_array) {
+          if ((lift(elem, getMirror) == mirrorTopology) &&
+              (lift(elem, getMaster) == masterTopology)) {
+            found = true;
+          }
+        }
+        ASSERT_TRUE(found);
+      } else {
+        // If I don't have mirror, that could be because it is in local, or never be a destination
+        // from me.
+        if (graph.isLocal(mirrorTopology)) {
+          // If it is from me, it is in my master range.
+          bool found = false;
+          auto it = graph.getMasterRange();
+          for (auto v = it.begin(); v != it.end(); v++) {
+            if (*v == mirrorTopology) {
+              found = true;
+            }
+          }
+          ASSERT_TRUE(found);
+          found = false;
+          // In mirror to master, this should never exist
+          auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
+          for (auto elem : mirror_master_array) {
+            if ((lift(elem, getMirror) == mirrorTopology) ||
+                (lift(elem, getMaster) == masterTopology)) {
+              ASSERT_TRUE(false);
+            }
+          }
+        }
+      }
+
       auto goldenEdgeIt = std::find(goldenEdges.begin(), goldenEdges.end(), dstTok);
       EXPECT_NE(goldenEdgeIt, goldenEdges.end())
           << "Unable to find edge with src_tok: " << srcTok << "\tand dst_tok: " << dstTok

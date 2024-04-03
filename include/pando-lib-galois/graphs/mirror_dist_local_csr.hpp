@@ -62,8 +62,8 @@ public:
   using DLCSR = DistLocalCSR<VertexType, EdgeType>;
   using VertexRange = typename DLCSR::VertexRange;
   using VertexDataRange = typename DLCSR::VertexDataRange;
-  using LocalVertexRange = RefSpan<Vertex>;
-  using LocalVertexDataRange = pando::Span<VertexData>;
+  using LocalVertexRange = typename CSR::VertexRange;
+  using LocalVertexDataRange = typename CSR::VertexDataRange;
 
 private:
   template <typename T>
@@ -120,9 +120,35 @@ public:
     return _mirror_size;
   }
 
+  struct MirrorToMasterMap {
+    MirrorToMasterMap() = default;
+    MirrorToMasterMap(VertexTopologyID _mirror, VertexTopologyID _master)
+        : mirror(_mirror), master(_master) {}
+    VertexTopologyID mirror;
+    VertexTopologyID master;
+    VertexTopologyID getMirror() {
+      return mirror;
+    }
+    VertexTopologyID getMaster() {
+      return master;
+    }
+  };
+
   /** Vertex Manipulation **/
   VertexTopologyID getTopologyID(VertexTokenID tid) {
     return dlcsr.getTopologyID(tid);
+  }
+
+  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
+    return dlcsr.getLocalTopologyID(tid);
+  }
+
+  VertexTopologyID getGlobalTopologyID(VertexTokenID tid) {
+    return dlcsr.getGlobalTopologyID(tid);
+  }
+
+  pando::Array<MirrorToMasterMap> getLocalMirrorToRemoteMasterOrderedTable() {
+    return localMirrorToRemoteMasterOrderedTable.getLocalRef();
   }
 
   VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
@@ -277,20 +303,6 @@ public:
     return dlcsr.getLocalCSR();
   }
 
-  struct MirrorToMasterMap {
-    MirrorToMasterMap() = default;
-    MirrorToMasterMap(VertexTopologyID _mirror, VertexTopologyID _master)
-        : mirror(_mirror), master(_master) {}
-    VertexTopologyID mirror;
-    VertexTopologyID master;
-    VertexTopologyID getMirror() {
-      return mirror;
-    }
-    VertexTopologyID getMaster() {
-      return master;
-    }
-  };
-
   // TODO(Jeageun):
   // write a initialize function that calls initializeAfterGather function of DistLocalCSR dlcsr
   template <typename ReadVertexType, typename ReadEdgeType>
@@ -307,6 +319,9 @@ public:
     _mirror_size = 0;
     HostLocalStorage<pando::Array<VertexTokenID>> mirrorList;
     mirrorList = this->dlcsr.getMirrorList(edgeData, virtualToPhysical);
+    PANDO_CHECK(masterRange.initialize());
+    PANDO_CHECK(mirrorRange.initialize());
+    PANDO_CHECK(localMirrorToRemoteMasterOrderedTable.initialize());
 
     auto mirrorAttach = +[](galois::HostIndexedMap<pando::Vector<ReadVertexType>> vertexData,
                             HostLocalStorage<pando::Array<VertexTokenID>> mirrorList,
@@ -344,23 +359,26 @@ public:
       uint64_t mirror_size = lift(localMirrorList, size);
       CSR csrCurr = dlcsr.arrayOfCSRs[i];
 
-      LocalVertexRange _masterRange = mdlcsr.masterRange[i];
+      LocalVertexRange _masterRange = mdlcsr.masterRange.getLocalRef();
       _masterRange = LocalVertexRange(lift(csrCurr, vertexEdgeOffsets.begin),
-                                      lift(csrCurr, size) - 1 - mirror_size);
+                                      lift(csrCurr, size) - mirror_size);
 
-      LocalVertexRange _mirrorRange = mdlcsr.mirrorRange[i];
+      LocalVertexRange _mirrorRange = mdlcsr.mirrorRange.getLocalRef();
       _mirrorRange = LocalVertexRange(
-          lift(csrCurr, vertexEdgeOffsets.begin) + lift(csrCurr, size) - mirror_size - 1,
-          mirror_size - 1);
+          lift(csrCurr, vertexEdgeOffsets.begin) + lift(csrCurr, size) - mirror_size, mirror_size);
 
       pando::Array<MirrorToMasterMap> _localMirrorToRemoteMasterOrderedTable =
-          mdlcsr.localMirrorToRemoteMasterOrderedTable[i];
+          mdlcsr.localMirrorToRemoteMasterOrderedTable.getLocalRef();
       fmap(_localMirrorToRemoteMasterOrderedTable, initialize, mirror_size);
       for (uint64_t j = 0; j < mirror_size; j++) {
         _localMirrorToRemoteMasterOrderedTable[j] =
-            MirrorToMasterMap(dlcsr.getLocalTopologyID(localMirrorList[j]),
-                              dlcsr.getGlobalTopologyID(localMirrorList[j]));
+            MirrorToMasterMap(fmap(dlcsr, getLocalTopologyID, localMirrorList[j]),
+                              fmap(dlcsr, getGlobalTopologyID, localMirrorList[j]));
       }
+      mdlcsr.masterRange.getLocalRef() = _masterRange;
+      mdlcsr.mirrorRange.getLocalRef() = _mirrorRange;
+      mdlcsr.localMirrorToRemoteMasterOrderedTable.getLocalRef() =
+          _localMirrorToRemoteMasterOrderedTable;
       wgh.done();
     };
 
