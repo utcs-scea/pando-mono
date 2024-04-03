@@ -14,9 +14,6 @@
 #include <pando-rt/tracing.hpp>
 
 namespace galois {
-/**
- * @brief This is a termination detection mechanism that is used for detecting nested parallelism
- */
 class GlobalBarrier {
   ///@brief This is a pointer to the counter used by everyone
   pando::GlobalPtr<std::int64_t> m_count = nullptr;
@@ -41,10 +38,8 @@ public:
    */
   [[nodiscard]] pando::Status initialize(std::uint32_t initialCount, pando::Place place,
                                          pando::MemoryType memoryType) {
-    const auto expected = pando::allocateMemory<std::int64_t>(1, place, memoryType);
-    if (!expected.hasValue()) {
-      return expected.error();
-    }
+    const auto expected =
+        PANDO_EXPECT_RETURN(pando::allocateMemory<std::int64_t>(1, place, memoryType));
     m_count = expected.value();
     *m_count = static_cast<std::int64_t>(initialCount);
     pando::atomicThreadFence(std::memory_order_release);
