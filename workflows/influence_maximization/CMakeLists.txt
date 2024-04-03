@@ -42,8 +42,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif ()
 
 # target
-add_library(pando-wf4-galois STATIC)
-add_library(pando-wf4-galois::pando-wf4-galois ALIAS pando-wf4-galois)
+pando_add_library(pando-wf4-galois)
 
 # headers
 include(GenerateExportHeader)

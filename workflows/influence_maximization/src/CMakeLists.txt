@@ -15,26 +15,13 @@ target_sources(pando-wf4-galois
         ${CMAKE_CURRENT_SOURCE_DIR}/influence_maximization.cpp
 )
 
-pando_compiler_options(pando-wf4-galois)
-pando_compiler_warnings(pando-wf4-galois)
-
-# link pando-lib-galois
 target_include_directories(pando-wf4-galois
     PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}/../Galois/pando-rt/include
         ${CMAKE_CURRENT_BINARY_DIR}/../Galois/include
 )
 
-target_link_libraries(pando-wf4-galois
-    PUBLIC
-        pando-lib-galois::pando-lib-galois
-)
-
-if (PANDO_RT_BACKEND STREQUAL "DRVX")
-    add_library(wf4 SHARED ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-else()
-    add_executable(wf4 ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-endif()
+pando_add_executable(wf4 ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 
 target_include_directories(wf4
     PUBLIC
