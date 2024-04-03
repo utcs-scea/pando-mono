@@ -40,7 +40,7 @@ public:
                                          pando::MemoryType memoryType) {
     const auto expected =
         PANDO_EXPECT_RETURN(pando::allocateMemory<std::int64_t>(1, place, memoryType));
-    m_count = expected.value();
+    m_count = expected;
     *m_count = static_cast<std::int64_t>(initialCount);
     pando::atomicThreadFence(std::memory_order_release);
     return pando::Status::Success;
