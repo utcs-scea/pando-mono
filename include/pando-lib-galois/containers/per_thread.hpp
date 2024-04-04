@@ -389,7 +389,7 @@ public:
 
     galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute, scan_op, combiner, galois::DistArray>
         prefixSum(m_data, m_indices);
-    PANDO_CHECK_RETURN(prefixSum.initialize());
+    PANDO_CHECK_RETURN(prefixSum.initialize(pando::getPlaceDims().node.id));
 
     prefixSum.computePrefixSum(m_indices.size());
     indices_computed = true;

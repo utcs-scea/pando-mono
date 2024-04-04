@@ -7,43 +7,50 @@
 /**
  * @brief lifts a function with no arguments to work on references
  */
-#define lift(ref, func)                                                   \
-  __extension__({                                                         \
-    typename std::pointer_traits<decltype(&ref)>::element_type tmp = ref; \
-    auto ret = tmp.func();                                                \
-    ref = tmp;                                                            \
-    ret;                                                                  \
+#define lift(ref, func)                                                                \
+  __extension__({                                                                      \
+    auto refComputed##__LINE__ = (ref);                                                \
+    typename std::pointer_traits<decltype(&refComputed##__LINE__)>::element_type tmp = \
+        refComputed##__LINE__;                                                         \
+    auto ret = tmp.func();                                                             \
+    refComputed##__LINE__ = tmp;                                                       \
+    ret;                                                                               \
   })
 
 /**
  * @brief lifts a function with no arguments to work on a void return type
  */
-#define liftVoid(ref, func)                                               \
-  do {                                                                    \
-    typename std::pointer_traits<decltype(&ref)>::element_type tmp = ref; \
-    tmp.func();                                                           \
-    ref = tmp;                                                            \
+#define liftVoid(ref, func)                                                            \
+  do {                                                                                 \
+    auto refComputed##__LINE__ = (ref);                                                \
+    typename std::pointer_traits<decltype(&refComputed##__LINE__)>::element_type tmp = \
+        refComputed##__LINE__;                                                         \
+    tmp.func();                                                                        \
+    refComputed##__LINE__ = tmp;                                                       \
   } while (0)
 
 /**
  * @brief maps a function over its arguments up to work on references
  */
-#define fmap(ref, func, ...)                                              \
-  __extension__({                                                         \
-    typename std::pointer_traits<decltype(&ref)>::element_type tmp = ref; \
-    auto ret = tmp.func(__VA_ARGS__);                                     \
-    ref = tmp;                                                            \
-    ret;                                                                  \
+#define fmap(ref, func, ...)                                                           \
+  __extension__({                                                                      \
+    auto refComputed##__LINE__ = (ref);                                                \
+    typename std::pointer_traits<decltype(&refComputed##__LINE__)>::element_type tmp = \
+        refComputed##__LINE__;                                                         \
+    auto ret = tmp.func(__VA_ARGS__);                                                  \
+    refComputed##__LINE__ = tmp;                                                       \
+    ret;                                                                               \
   })
 
 /**
  * @brief maps a function over it's arguments to work on references and return void
  */
-#define fmapVoid(ref, func, ...)                                          \
-  do {                                                                    \
-    typename std::pointer_traits<decltype(&ref)>::element_type tmp = ref; \
-    tmp.func(__VA_ARGS__);                                                \
-    ref = tmp;                                                            \
+#define fmapVoid(ref, func, ...)                                                            \
+  do {                                                                                      \
+    auto refComputed##__LINE__ = (ref);                                                     \
+    typename std::pointer_traits<decltype(&refComputed##__LINE__)>::element_type tmp = ref; \
+    tmp.func(__VA_ARGS__);                                                                  \
+    ref = tmp;                                                                              \
   } while (0)
 
 #endif // PANDO_LIB_GALOIS_UTILITY_GPTR_MONAD_HPP_

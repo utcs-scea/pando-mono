@@ -256,7 +256,7 @@ partitionEdgesParallely(HostIndexedMap<pando::Vector<VertexType>> partitionedVer
                       galois::internal::scan_op<SRC_Val, DST_Val>,
                       galois::internal::combiner<DST_Val>, galois::Array>
         prefixSum(arr, prefixArr);
-    PANDO_CHECK(prefixSum.initialize());
+    PANDO_CHECK(prefixSum.initialize(pando::getPlaceDims().core.x * pando::getPlaceDims().core.y));
     prefixSum.computePrefixSum(lift(localEdges, size));
   }
   HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> pHVEdge{};
@@ -422,7 +422,7 @@ template <typename VertexType>
                       galois::internal::scan_op<SRC_Val, DST_Val>,
                       galois::internal::combiner<DST_Val>, galois::Array>
         prefixSum(arr, prefixArr);
-    PANDO_CHECK(prefixSum.initialize());
+    PANDO_CHECK(prefixSum.initialize(pando::getPlaceDims().core.x * pando::getPlaceDims().core.y));
     prefixSum.computePrefixSum(lift(localVertices, size));
   }
 

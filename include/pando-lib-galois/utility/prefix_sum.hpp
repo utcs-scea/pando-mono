@@ -99,8 +99,7 @@ public:
   A src;
   B dst;
 
-public:
-  uint64_t numThreads;
+private:
   using PArr = Conduit<B_Val>;
   Conduit<B_Val> paste;
   using WFLType = galois::WaterFallLock<Conduit<unsigned>>;
@@ -149,7 +148,7 @@ public:
     (void)ns;
     if (!wfl_id) {
       lock.template done<2>(wfl_id);
-      serial_pfxsum<B, B, B_Val, B_Val, equalizer, combiner, WFLType&, before<WFLType&>,
+      serial_pfxsum<PArr, PArr, B_Val, B_Val, equalizer, combiner, WFLType&, before<WFLType&>,
                     after<WFLType&>>(paste, paste, 0, 0, ns, lock);
     } else {
       lock.template wait<2>(wfl_id - 1);
@@ -157,7 +156,8 @@ public:
   }
 
   /** Does the final prefix sums with the last part of the array being handled
-   * by tid = 0 */
+   *  by tid = 0
+   */
   inline void parallel_pfxsum_phase_2(uint64_t src_offset, uint64_t dst_offset, uint64_t ns,
                                       B_Val phase1_val, bool pfxsum) {
     if (pfxsum) {
@@ -185,27 +185,18 @@ public:
 
 public:
   PrefixSum() = default;
-  PrefixSum(A src_, B dst_) : src(src_), dst(dst_), paste(B()), lock() {
-    uint64_t coreY = pando::getPlaceDims().core.y;
-    uint64_t cores = pando::getPlaceDims().core.x * coreY;
-    uint64_t threads = pando::getThreadDims().id;
-    uint64_t hosts = pando::getPlaceDims().node.id;
-    numThreads = hosts * cores * threads;
-  }
+  PrefixSum(A src_, B dst_) : src(src_), dst(dst_), paste(), lock() {}
 
-  [[nodiscard]] pando::Status initialize(std::uint64_t size) {
-    pando::Status err = lock.initialize(size);
+  [[nodiscard]] pando::Status initialize(std::uint64_t numWorkers) {
+    pando::Status err = lock.initialize(numWorkers);
     if (err != pando::Status::Success) {
       return err;
     }
-    err = paste.initialize(size);
+    err = paste.initialize(numWorkers);
     if (err != pando::Status::Success) {
       return err;
     }
     return pando::Status::Success;
-  }
-  [[nodiscard]] pando::Status initialize() {
-    return initialize(numThreads);
   }
 
   void deinitialize() {
@@ -218,7 +209,7 @@ public:
    * @warning we expect ns to be less than equal to the length of source and destination
    */
   void computePrefixSum(uint64_t ns) {
-    uint64_t workers = numThreads;
+    std::uint64_t workers = paste.size();
     uint64_t workPerThread = ns / (workers + 1);
     if (workPerThread <= 10) {
       workers /= pando::getThreadDims().id;
