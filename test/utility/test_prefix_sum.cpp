@@ -50,7 +50,7 @@ TEST(PrefixSum, Init) {
   galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute<uint64_t>, scan_op<SRC_Val, DST_Val>,
                     combiner<DST_Val>, galois::DistArray>
       prefixSum(arr, prefixArr);
-  EXPECT_EQ(prefixSum.initialize(), pando::Status::Success);
+  EXPECT_EQ(prefixSum.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
   prefixSum.computePrefixSum(elts);
 
   uint64_t expected = 0;
@@ -76,7 +76,7 @@ TEST(PrefixSum, PerThread) {
   galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmuteV, scan_opV, combiner<DST_Val>,
                     galois::DistArray>
       prefixSum(arr.m_data, prefixArr);
-  EXPECT_EQ(prefixSum.initialize(), pando::Status::Success);
+  EXPECT_EQ(prefixSum.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
   prefixSum.computePrefixSum(prefixArr.size());
   EXPECT_EQ(prefixArr[prefixArr.size() - 1], arr.sizeAll());
 }
@@ -97,7 +97,7 @@ TEST(PrefixSum, Array) {
                                    scan_op<SRC_VAL, DST_VAL>, combiner<DST_VAL>, galois::Array>;
   PFXSUM pfxsum(arr, arr);
 
-  PANDO_CHECK(pfxsum.initialize());
+  PANDO_CHECK(pfxsum.initialize(pando::getPlaceDims().core.x * pando::getPlaceDims().core.y));
 
   pfxsum.computePrefixSum(size);
 

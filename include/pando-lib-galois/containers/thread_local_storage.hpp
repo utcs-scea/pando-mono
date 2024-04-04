@@ -37,13 +37,29 @@ public:
   using iterator = ThreadLocalStorageIt<T>;
   using reverse_iterator = std::reverse_iterator<iterator>;
 
+  [[nodiscard]] static constexpr std::uint64_t getThreadsPerCore() noexcept {
+    std::uint64_t threads = static_cast<std::uint64_t>(pando::getThreadDims().id);
+    return threads;
+  }
+
+  [[nodiscard]] static constexpr std::uint64_t getThreadsPerPod() noexcept {
+    const auto place = pando::getPlaceDims();
+    const std::uint64_t cores =
+        static_cast<std::uint64_t>(place.core.x) * static_cast<std::uint64_t>(place.core.y);
+    return cores * getThreadsPerCore();
+  }
+
+  [[nodiscard]] static constexpr std::uint64_t getThreadsPerHost() noexcept {
+    const auto place = pando::getPlaceDims();
+    const std::uint64_t pods =
+        static_cast<std::uint64_t>(place.pod.x) * static_cast<std::uint64_t>(place.pod.y);
+    return pods * getThreadsPerPod();
+  }
+
   [[nodiscard]] static constexpr std::uint64_t getNumThreads() noexcept {
     const auto place = pando::getPlaceDims();
     std::uint64_t nodes = static_cast<std::uint64_t>(place.node.id);
-    std::uint64_t pods = static_cast<std::uint64_t>(place.pod.x * place.pod.y);
-    std::uint64_t cores = static_cast<std::uint64_t>(place.core.x * place.core.y);
-    std::uint64_t threads = static_cast<std::uint64_t>(pando::getThreadDims().id);
-    return nodes * pods * cores * threads;
+    return nodes * getThreadsPerHost();
   }
 
   [[nodiscard]] constexpr std::uint64_t getCurrentThreadIdx() const noexcept {
