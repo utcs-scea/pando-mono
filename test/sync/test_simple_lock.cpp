@@ -70,10 +70,6 @@ TEST(SimpleLock, ActualLockUnlock) {
         array[i] = i - 9 + pando::getCurrentPlace().node.id;
       }
     }
-    // for (int i = 0; i < 10; i++) {
-    //   std::cout << array[i] << " ";
-    // }
-    // std::cout << std::endl;
     mutex.unlock();
     gb.done();
   };
