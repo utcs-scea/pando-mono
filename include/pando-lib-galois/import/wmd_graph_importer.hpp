@@ -125,6 +125,7 @@ void buildEdgeCountToSend(
       }));
   PANDO_CHECK(wg.wait());
   labeledEdgeCounts = sumArray;
+  wg.deinitialize();
 }
 
 [[nodiscard]] pando::Expected<

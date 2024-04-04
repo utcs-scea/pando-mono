@@ -390,6 +390,7 @@ public:
       numVertices += lift(mirrorList[i], size);
     }
     PANDO_CHECK(wg.wait());
+    wg.deinitialize();
     return pando::Status::Success;
   }
 

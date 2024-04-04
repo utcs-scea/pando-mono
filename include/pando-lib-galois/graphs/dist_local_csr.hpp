@@ -777,6 +777,7 @@ public:
       PANDO_CHECK(pando::executeOn(place, createMirrors, partEdges, mirrorList, V2PM, i, wgh));
     }
     PANDO_CHECK(wg.wait());
+    wg.deinitialize();
     return mirrorList;
   }
 
