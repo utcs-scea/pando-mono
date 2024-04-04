@@ -3,16 +3,10 @@
 
 function(pando_add_exec TARGET SOURCEFILE)
   if (PANDO_RT_BACKEND STREQUAL "DRVX")
-    add_library(${TARGET} SHARED ${SOURCEFILE})
+    pando_add_library(${TARGET} SHARED ${SOURCEFILE})
   else()
-    add_executable(${TARGET} ${SOURCEFILE})
+    pando_add_executable(${TARGET} ${SOURCEFILE})
   endif()
-  target_link_libraries(${TARGET}
-    PRIVATE
-      pando-lib-galois::pando-lib-galois
-  )
-  pando_compiler_options(${TARGET})
-  pando_compiler_warnings(${TARGET})
 endfunction()
 
 pando_add_driver_test(fail_tests fail_tests.cpp)

@@ -118,7 +118,7 @@ function(pando_add_driver_test_lib TARGET SOURCEFILE LIBRARY)
 endfunction()
 
 function(pando_add_driver_test TARGET SOURCEFILE)
-  pando_add_driver_test_lib(${TARGET} ${SOURCEFILE} pando-lib-galois::pando-lib-galois)
+  pando_add_driver_test_lib(${TARGET} ${SOURCEFILE} "")
 endfunction()
 
 function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
