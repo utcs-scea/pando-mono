@@ -178,7 +178,7 @@ public:
     // TODO(AdityaAtulTewari) Make this properly parallel.
     // Initialize the per host vectors
     for (std::uint64_t i = 0; i < flat.getNumHosts(); i++) {
-      auto ref = flat.get(i);
+      auto ref = flat[i];
       std::uint64_t start = PANDO_EXPECT_RETURN(hostIndexOffset(m_indices, i));
       std::uint64_t end = PANDO_EXPECT_RETURN(hostIndexOffset(m_indices, i + 1));
       err = fmap(ref, reserve, lift(ref, size) + end - start);
@@ -193,11 +193,9 @@ public:
     auto f = +[](decltype(tpl) assign, std::uint64_t i, uint64_t) {
       auto [data, flat] = assign;
       std::uint64_t host = i / ThreadLocalStorage<T>::getThreadsPerHost();
-      std::uint64_t hostIndex =
-          static_cast<std::uint64_t>(host) * ThreadLocalStorage<T>::getThreadsPerHost() - 1;
-      std::uint64_t start = PANDO_EXPECT_RETURN(data.hostIndexOffset(host));
+      std::uint64_t start = PANDO_EXPECT_CHECK(data.hostIndexOffset(data.m_indices, host));
       std::uint64_t curr = (i == 0) ? 0 : data.m_indices[i - 1];
-      std::uint64_t end = PANDO_EXPECT_RETURN(data.hostIndexOffset(host + 1));
+      std::uint64_t end = PANDO_EXPECT_CHECK(data.hostIndexOffset(data.m_indices, host + 1));
 
       auto ref = flat[host];
       pando::Vector<T> localVec = data[i];
