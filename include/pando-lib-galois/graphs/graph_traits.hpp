@@ -196,26 +196,5 @@ struct graph_checker {
       sizeof(addEdgesTopologyOnly(0)) == sizeof(Yes) && sizeof(addEdges(0)) == sizeof(Yes) &&
       sizeof(deleteEdges(0)) == sizeof(Yes);
 };
-
-/**
- * @brief this is the graph interface, methods from here should mostly be used
- */
-template <typename G, typename VertexTokenID, typename VertexTopologyID, typename EdgeHandle,
-          typename VertexData, typename EdgeData, typename VertexRange, typename EdgeRange,
-          typename VertexDataRange, typename EdgeDataRange>
-struct gluon_graph {
-  /** Size **/
-  std::uint64_t getMasterSize();
-  std::uint64_t getMasterSize() const noexcept;
-  std::uint64_t getMirrorSize();
-  std::uint64_t getMirrorSize() const noexcept;
-
-  /** Range **/
-  VertexRange getMasterRange();
-  VertexRange getMirrorRange();
-
-  /** Sync **/
-  // template <typename Func> pando::Array<bool> sync(Func func, pando::Array<bool>);
-};
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_GRAPHS_GRAPH_TRAITS_HPP_

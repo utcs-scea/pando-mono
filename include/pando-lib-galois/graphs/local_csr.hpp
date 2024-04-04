@@ -9,8 +9,6 @@
 #include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-lib-galois/graphs/graph_traits.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
-#include <pando-lib-galois/utility/pair.hpp>
-#include <pando-lib-galois/utility/tuple.hpp>
 #include <pando-rt/containers/array.hpp>
 #include <pando-rt/pando-rt.hpp>
 
@@ -236,13 +234,9 @@ template <typename VertexType, typename EdgeType>
 class DistLocalCSR;
 
 template <typename VertexType, typename EdgeType>
-class MirrorDistLocalCSR;
-
-template <typename VertexType, typename EdgeType>
 class LCSR {
 public:
   friend DistLocalCSR<VertexType, EdgeType>;
-  friend MirrorDistLocalCSR<VertexType, EdgeType>;
   using VertexTokenID = std::uint64_t;
   using VertexTopologyID = pando::GlobalPtr<Vertex>;
   using EdgeHandle = pando::GlobalPtr<HalfEdge>;
@@ -415,21 +409,9 @@ public:
   }
 
   /** Vertex Manipulation **/
-private:
-  // Use with your own risk.
-  // It is reasonable only when you could handle the non-existing value outside of this function.
-  galois::Pair<VertexTopologyID, bool> relaxedgetTopologyID(VertexTokenID token) {
-    pando::GlobalPtr<Vertex> ret;
-    bool found = tokenToTopology.get(token, ret);
-    return galois::make_tpl(ret, found);
-  }
-
-public:
   VertexTopologyID getTopologyID(VertexTokenID token) {
     pando::GlobalPtr<Vertex> ret;
     if (!tokenToTopology.get(token, ret)) {
-      std::cout << "In the host " << pando::getCurrentPlace().node.id
-                << "can't find token:" << token << std::endl;
       PANDO_ABORT("FAILURE TO FIND TOKENID");
     }
     return ret;
