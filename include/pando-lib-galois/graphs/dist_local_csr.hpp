@@ -816,7 +816,7 @@ public:
       }
       currentCSR.vertexEdgeOffsets[vertex] = Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
 
-      arrayOfCSRs.get(host) = currentCSR;
+      arrayOfCSRs[host] = currentCSR;
       edgesStart = edgesEnd;
     }
     edgeCounts.deinitialize();
@@ -824,7 +824,7 @@ public:
 
     edgesStart = 0;
     for (uint64_t host = 0; host < hosts; host++) {
-      CSR currentCSR = arrayOfCSRs.get(host);
+      CSR currentCSR = arrayOfCSRs[host];
 
       uint64_t lastLocalVertexIndex = verticesPerHost * (host + 1) - 1;
       if (lastLocalVertexIndex >= numVertices) {
@@ -846,7 +846,7 @@ public:
           currEdge = edges[edgesStart + currLocalEdge + 1];
         }
       }
-      arrayOfCSRs.get(host) = currentCSR;
+      arrayOfCSRs[host] = currentCSR;
 
       edgesStart += currLocalEdge;
     }
@@ -925,7 +925,7 @@ public:
     galois::onEach(
         state2, +[](InitializeEdgeState& state, uint64_t thread, uint64_t) {
           uint64_t host = static_cast<std::uint64_t>(pando::getCurrentNode().id);
-          CSR currentCSR = state.dlcsr.arrayOfCSRs.get(host);
+          CSR currentCSR = state.dlcsr.arrayOfCSRs[host];
 
           uint64_t hostOffset;
           PANDO_CHECK(state.edges.currentHostIndexOffset(hostOffset));
@@ -1068,7 +1068,7 @@ public:
    */
   pando::GlobalRef<CSR> getLocalCSR() {
     std::uint64_t nodeIdx = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-    return arrayOfCSRs.get(nodeIdx);
+    return arrayOfCSRs[nodeIdx];
   }
 
 private:
