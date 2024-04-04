@@ -306,3 +306,27 @@ TEST(HashTable, PutGet900LoadOne) {
   checkCorrectness(table);
   table.deinitialize();
 }
+
+TEST(HashTable, DeinitializeWgh) {
+  galois::HashTable<int, int> table{};
+
+  EXPECT_EQ(table.initialize(8), pando::Status::Success);
+  table.put(1, 1);
+  table.put(2, 2);
+  table.put(3, 3);
+  table.put(4, 4);
+  checkCorrectness(table);
+  table.put(5, 5);
+  table.put(6, 6);
+  table.put(7, 7);
+  table.put(8, 8);
+  table.put(9, 9);
+  checkCorrectness(table);
+
+  EXPECT_GT(table.capacity(), 8);
+  pando::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+  table.deinitialize(wg.getHandle());
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  wg.deinitialize();
+}

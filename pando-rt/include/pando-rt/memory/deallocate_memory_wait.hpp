@@ -76,8 +76,8 @@ void deallocateMemory(GlobalPtr<T> p, std::uint64_t n, pando::WaitGroup::HandleT
       if (!isOnCP() && (thisPlace.node == place.node) && (thisPlace.pod == place.pod)) {
         detail::deallocateMemoryImpl(p, numBytes);
       } else {
-        if (executeOn(place, &detail::deallocateMemoryImpl, static_cast<GlobalPtr<void>>(p),
-                      numBytes) != Status::Success) {
+        if (executeOn(place, &detail::deallocateMemoryWaitImpl, static_cast<GlobalPtr<void>>(p),
+                      numBytes, wgh) != Status::Success) {
           PANDO_ABORT("Deallocation failed");
         }
       }

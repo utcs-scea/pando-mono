@@ -106,6 +106,14 @@ public:
     m_size = 0;
   }
 
+  /**
+   * @brief Deinitializes the container.
+   */
+  void deinitialize(pando::WaitGroup::HandleType wgh) {
+    m_buf.deinitialize(wgh);
+    m_size = 0;
+  }
+
   bool empty() const {
     return size() == 0;
   }

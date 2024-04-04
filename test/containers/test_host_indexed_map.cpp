@@ -97,3 +97,57 @@ TEST(HostIndexedMap, DoAll) {
 
   ph.deinitialize();
 }
+
+TEST(HostIndexedMap, DeinitializeWgh) {
+  galois::HostIndexedMap<std::uint64_t> ph;
+  pando::Status err;
+
+  EXPECT_EQ(ph.initialize(), pando::Status::Success);
+  std::uint64_t i = 0;
+  for (pando::GlobalRef<std::uint64_t> val : ph) {
+    val = i;
+    i++;
+  }
+  auto f = +[](galois::HostIndexedMap<std::uint64_t> ph, std::uint64_t i,
+               pando::NotificationHandle done) {
+    EXPECT_EQ(&ph.getLocal(), &ph.get(i));
+    EXPECT_EQ(ph.getLocal(), ph.getCurrentNode());
+    done.notify();
+  };
+
+  pando::NotificationArray dones;
+  err = dones.init(ph.getNumHosts());
+  EXPECT_EQ(err, pando::Status::Success);
+  for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
+    auto place =
+        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
+    err = pando::executeOn(place, f, ph, i, dones.getHandle(i));
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+  dones.wait();
+
+  pando::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+  ph.deinitialize(wg.getHandle());
+
+  EXPECT_EQ(ph.initialize(), pando::Status::Success);
+  i = 0;
+  for (pando::GlobalRef<std::uint64_t> val : ph) {
+    val = i;
+    i++;
+  }
+
+  dones.reset();
+  EXPECT_EQ(err, pando::Status::Success);
+  for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
+    auto place =
+        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
+    err = pando::executeOn(place, f, ph, i, dones.getHandle(i));
+    EXPECT_EQ(err, pando::Status::Success);
+  }
+  dones.wait();
+
+  ph.deinitialize(wg.getHandle());
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  wg.deinitialize();
+}

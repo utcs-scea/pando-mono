@@ -136,6 +136,12 @@ public:
     m_size = 0;
   }
 
+  // @brief Deinitialize the hashtable
+  void deinitialize(pando::WaitGroup::HandleType wgh) {
+    m_buffer.deinitialize(wgh);
+    m_size = 0;
+  }
+
   // @brief Resizes the backing array to `capacity`.
   pando::Status resize(std::size_t capacity) {
     if (capacity <= m_buffer.size()) {

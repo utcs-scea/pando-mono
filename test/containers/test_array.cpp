@@ -323,3 +323,26 @@ TEST(Array, Equivalence) {
   arr0.deinitialize();
   arr1.deinitialize();
 }
+
+TEST(Array, DeinitializeWgh) {
+  const std::uint64_t size = 10;
+
+  galois::Array<std::uint64_t> array;
+  EXPECT_EQ(array.initialize(size), pando::Status::Success);
+  EXPECT_EQ(array.size(), size);
+  EXPECT_NE(array.data(), nullptr);
+
+  for (std::uint64_t i = 0; i < size; i++) {
+    array[i] = i;
+  }
+
+  for (std::uint64_t i = 0; i < size; i++) {
+    EXPECT_EQ(array[i], i);
+  }
+
+  pando::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+  array.deinitialize(wgh);
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  wg.deinitialize();
+}

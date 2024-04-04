@@ -52,6 +52,9 @@ TEST(Stack, Init) {
   EXPECT_EQ(val, canary);
   EXPECT_EQ(s2.size(), 0);
   EXPECT_EQ(s2.capacity(), 10);
+
+  s1.deinitialize();
+  s2.deinitialize();
 }
 
 TEST(Stack, Grow) {
@@ -76,4 +79,51 @@ TEST(Stack, Grow) {
   }
   EXPECT_EQ(s.size(), 0);
   EXPECT_EQ(s.pop(check), pando::Status::OutOfBounds);
+}
+
+TEST(Stack, DeinitWgh) {
+  uint64_t val = canary;
+  galois::Stack<uint64_t> s1;
+  EXPECT_EQ(s1.initialize(0), pando::Status::Success);
+  EXPECT_EQ(s1.size(), 0);
+  EXPECT_EQ(s1.capacity(), 1);
+  EXPECT_EQ(s1.pop(val), pando::Status::OutOfBounds);
+  EXPECT_EQ(val, canary);
+  EXPECT_EQ(s1.emplace(val), pando::Status::Success);
+  EXPECT_EQ(s1.size(), 1);
+  EXPECT_GT(s1.capacity(), 0);
+  val = 73;
+  EXPECT_EQ(s1.pop(val), pando::Status::Success);
+  EXPECT_EQ(val, canary);
+  EXPECT_EQ(s1.size(), 0);
+  EXPECT_GT(s1.capacity(), 0);
+  EXPECT_EQ(s1.pop(val), pando::Status::OutOfBounds);
+  EXPECT_EQ(val, canary);
+  EXPECT_EQ(s1.size(), 0);
+  EXPECT_GT(s1.capacity(), 0);
+
+  galois::Stack<uint64_t> s2;
+  EXPECT_EQ(s2.initialize(10), pando::Status::Success);
+  EXPECT_EQ(s2.size(), 0);
+  EXPECT_EQ(s2.capacity(), 10);
+  EXPECT_EQ(s2.pop(val), pando::Status::OutOfBounds);
+  EXPECT_EQ(val, canary);
+  EXPECT_EQ(s2.emplace(val), pando::Status::Success);
+  EXPECT_EQ(s2.size(), 1);
+  EXPECT_EQ(s2.capacity(), 10);
+  val = 73;
+  EXPECT_EQ(s2.pop(val), pando::Status::Success);
+  EXPECT_EQ(val, canary);
+  EXPECT_EQ(s2.size(), 0);
+  EXPECT_EQ(s2.capacity(), 10);
+  EXPECT_EQ(s2.pop(val), pando::Status::OutOfBounds);
+  EXPECT_EQ(val, canary);
+  EXPECT_EQ(s2.size(), 0);
+  EXPECT_EQ(s2.capacity(), 10);
+  pando::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+  s1.deinitialize(wg.getHandle());
+  s2.deinitialize(wg.getHandle());
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  wg.deinitialize();
 }

@@ -57,6 +57,10 @@ public:
     deallocateMemory(m_items, getNumHosts());
   }
 
+  void deinitialize(pando::WaitGroup::HandleType wgh) {
+    deallocateMemory(m_items, getNumHosts(), wgh);
+  }
+
   pando::GlobalRef<T> getLocal() noexcept {
     return m_items[getCurrentNode()];
   }

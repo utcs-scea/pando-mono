@@ -615,3 +615,43 @@ TEST(Vector, EdgelistVectorOfVectors) {
   table.deinitialize();
   vec.deinitialize();
 }
+
+TEST(PerThreadVector, DeinitializeWgh) {
+  pando::GlobalPtr<galois::PerThreadVector<uint64_t>> perThreadVecPtr =
+      getGlobalObject<galois::PerThreadVector<uint64_t>>();
+  galois::PerThreadVector<uint64_t> perThreadVec = *perThreadVecPtr;
+  EXPECT_EQ(16, pando::getThreadDims().id);
+  EXPECT_EQ(perThreadVec.initialize(), pando::Status::Success);
+  pando::Vector<uint64_t> work;
+  EXPECT_EQ(work.initialize(1), pando::Status::Success);
+  work[0] = 9801;
+  galois::doAll(
+      perThreadVec, work, +[](galois::PerThreadVector<uint64_t> perThreadVec, uint64_t x) {
+        EXPECT_GE(pando::getCurrentThread().id, 0);
+        EXPECT_EQ(perThreadVec.pushBack(x), pando::Status::Success);
+        pando::Vector<uint64_t> localVec = perThreadVec.getThreadVector();
+        EXPECT_EQ(localVec.size(), 1);
+      });
+  EXPECT_EQ(perThreadVec.sizeAll(), 1);
+
+  uint64_t elts = 0;
+  for (pando::Vector<uint64_t> vec : perThreadVec) {
+    elts += vec.size();
+  }
+  EXPECT_EQ(elts, 1);
+
+  *perThreadVecPtr = perThreadVec;
+  galois::DistArray<uint64_t> copy;
+  EXPECT_EQ(perThreadVec.assign(copy), pando::Status::Success);
+  EXPECT_EQ(copy.size(), 1);
+  uint64_t val = copy[0];
+  EXPECT_EQ(val, 9801);
+
+  pando::WaitGroup wg;
+  EXPECT_EQ(wg.initialize(0), pando::Status::Success);
+  copy.deinitialize();
+  work.deinitialize();
+  perThreadVec.deinitialize();
+  EXPECT_EQ(wg.wait(), pando::Status::Success);
+  wg.deinitialize();
+}

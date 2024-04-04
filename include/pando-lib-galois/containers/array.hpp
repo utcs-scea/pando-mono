@@ -15,6 +15,7 @@
 #include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
+#include <pando-rt/sync/wait_group.hpp>
 #include <pando-rt/utility/math.hpp>
 
 namespace galois {
@@ -101,6 +102,18 @@ public:
                   "Array only supports trivially destructible types");
 
     pando::deallocateMemory(m_data, m_size);
+    m_data = nullptr;
+    m_size = 0;
+  }
+
+  /**
+   * @brief Deinitializes the array.
+   */
+  void deinitialize(pando::WaitGroup::HandleType wgh) {
+    static_assert(std::is_trivially_destructible_v<T>,
+                  "Array only supports trivially destructible types");
+
+    pando::deallocateMemory(m_data, m_size, wgh);
     m_data = nullptr;
     m_size = 0;
   }

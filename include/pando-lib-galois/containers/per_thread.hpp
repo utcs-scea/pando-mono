@@ -119,6 +119,22 @@ public:
   }
 
   /**
+   * @brief Deinitializes the PerThreadVector array.
+   */
+  void deinitialize(pando::WaitGroup::HandleType wgh) {
+    if (m_indices.m_data.data() != nullptr) {
+      m_indices.deinitialize(wgh);
+    }
+    if (m_data.m_data.data() == nullptr) {
+      return;
+    }
+    for (pando::Vector<T> vec : m_data) {
+      vec.deinitialize(wgh);
+    }
+    m_data.deinitialize(wgh);
+  }
+
+  /**
    * @brief Returns the current hardware thread's vector.
    */
   pando::GlobalRef<pando::Vector<T>> getThreadVector() {

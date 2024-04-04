@@ -281,6 +281,22 @@ public:
     m_data.deinitialize();
   }
 
+  /**
+   * @brief Deinitializes the array.
+   */
+  void deinitialize(pando::WaitGroup::HandleType wgh) {
+    static_assert(std::is_trivially_destructible_v<T>,
+                  "Array only supports trivially destructible types");
+
+    if (m_data.data() == nullptr) {
+      return;
+    }
+    for (pando::Array<T> array : m_data) {
+      array.deinitialize(wgh);
+    }
+    m_data.deinitialize(wgh);
+  }
+
   constexpr pando::GlobalRef<T> operator[](std::uint64_t pos) noexcept {
     return *get(pos);
   }
