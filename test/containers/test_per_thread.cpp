@@ -305,7 +305,7 @@ TEST(PerThreadVector, Clear) {
       });
 
   galois::DAccumulator<std::uint64_t> accum{};
-  err = lift(accum, initialize);
+  err = accum.initialize();
   EXPECT_EQ(err, pando::Status::Success);
 
   err = galois::doAll(
@@ -481,7 +481,7 @@ TEST(Vector, IntVectorOfVectorsUniform) {
   // Pushes back i+i to each vector
   for (uint64_t i = 0; i < size; i++) {
     EXPECT_TRUE(table.get(i, result));
-    pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
+    pando::GlobalRef<pando::Vector<uint64_t>> vec1 = vec.get(result);
     pando::Vector<uint64_t> vec2 = vec1;
     EXPECT_EQ(vec2.get(0), i);
     EXPECT_EQ(fmap(vec1, pushBack, (i + i)), pando::Status::Success);
@@ -526,7 +526,7 @@ TEST(Vector, IntVectorOfVectorsRandom) {
       map[src].push_back(dst);
     }
     if (table.get(src, result)) {
-      pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
+      pando::GlobalRef<pando::Vector<uint64_t>> vec1 = vec.get(result);
       pando::Vector<uint64_t> vec2 = vec1;
       EXPECT_EQ(fmap(vec1, pushBack, dst), pando::Status::Success);
     } else {
@@ -541,7 +541,7 @@ TEST(Vector, IntVectorOfVectorsRandom) {
   // Validates the vectors
   for (auto it = map.begin(); it != map.end(); ++it) {
     EXPECT_TRUE(table.get(it->first, result));
-    pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
+    pando::GlobalRef<pando::Vector<uint64_t>> vec1 = vec.get(result);
     pando::Vector<uint64_t> vec2 = vec1;
     std::sort(vec2.begin(), vec2.end());
     std::vector<uint64_t> v = it->second;
