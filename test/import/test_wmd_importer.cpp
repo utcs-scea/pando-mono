@@ -5,6 +5,7 @@
 #include <pando-rt/export.h>
 
 #include <numeric>
+#include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
@@ -282,7 +283,6 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
 
   const std::string elFile = std::get<0>(GetParam());
   const std::uint64_t numVertices = std::get<1>(GetParam());
-
   pando::Array<char> filename;
   EXPECT_EQ(pando::Status::Success, filename.initialize(elFile.size()));
   for (uint64_t i = 0; i < elFile.size(); i++)
@@ -298,6 +298,39 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
 
   // Iterate over vertices
   std::uint64_t vid = 0;
+
+  // Populate mirror_master_dictionary for faster lookup
+  std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+  galois::WaitGroup wg;
+  PANDO_CHECK(wg.initialize(numHosts));
+  auto wgh = wg.getHandle();
+
+  galois::HostLocalStorage<
+      galois::HashTable<pando::GlobalPtr<galois::Vertex>, pando::GlobalPtr<galois::Vertex>>>
+      mirror_master_table;
+
+  auto genMirrorMasterDict =
+      +[](Graph graph,
+          galois::HostLocalStorage<
+              galois::HashTable<pando::GlobalPtr<galois::Vertex>, pando::GlobalPtr<galois::Vertex>>>
+              mirror_master_table,
+          galois::WaitGroup::HandleType wgh) {
+        auto _mirror_master_table = mirror_master_table.getLocalRef();
+        auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
+        PANDO_CHECK(fmap(_mirror_master_table, initialize, lift(mirror_master_array, size)));
+        for (auto elem : mirror_master_array) {
+          fmap(_mirror_master_table, put, lift(elem, getMirror), lift(elem, getMaster));
+        }
+        mirror_master_table.getLocalRef() = _mirror_master_table;
+        wgh.done();
+      };
+
+  for (std::uint64_t i = 0; i < numHosts; i++) {
+    pando::Place place =
+        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
+    PANDO_CHECK(pando::executeOn(place, genMirrorMasterDict, graph, mirror_master_table, wgh));
+  }
+  PANDO_CHECK(wg.wait());
 
   for (typename Graph::VertexTopologyID vert : graph.vertices()) {
     EXPECT_EQ(vid, graph.getVertexIndex(vert));
@@ -345,12 +378,10 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
         }
         ASSERT_TRUE(found);
         found = false;
-        auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
-        for (auto elem : mirror_master_array) {
-          if ((lift(elem, getMirror) == mirrorTopology) &&
-              (lift(elem, getMaster) == masterTopology)) {
+        pando::GlobalPtr<galois::Vertex> val;
+        if (fmap(mirror_master_table.getLocalRef(), get, mirrorTopology, val)) {
+          if (val == masterTopology) {
             found = true;
-            break;
           }
         }
         ASSERT_TRUE(found);
@@ -370,10 +401,9 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
           ASSERT_TRUE(found);
           found = false;
           // In mirror to master, this should never exist
-          auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
-          for (auto elem : mirror_master_array) {
-            if ((lift(elem, getMirror) == mirrorTopology) ||
-                (lift(elem, getMaster) == masterTopology)) {
+          pando::GlobalPtr<galois::Vertex> val;
+          if (fmap(mirror_master_table.getLocalRef(), get, mirrorTopology, val)) {
+            if (val == masterTopology) {
               ASSERT_TRUE(false);
             }
           }
