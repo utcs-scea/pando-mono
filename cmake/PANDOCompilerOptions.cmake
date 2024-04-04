@@ -54,4 +54,3 @@ function(pando_add_library TARGET)
     pando_compiler_warnings(${TARGET})
     pando_compiler_options(${TARGET})
 endfunction()
-
