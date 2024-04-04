@@ -340,6 +340,7 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
         for (auto v = it.begin(); v != it.end(); v++) {
           if (*v == mirrorTopology) {
             found = true;
+            break;
           }
         }
         ASSERT_TRUE(found);
@@ -349,6 +350,7 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
           if ((lift(elem, getMirror) == mirrorTopology) &&
               (lift(elem, getMaster) == masterTopology)) {
             found = true;
+            break;
           }
         }
         ASSERT_TRUE(found);
@@ -362,6 +364,7 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
           for (auto v = it.begin(); v != it.end(); v++) {
             if (*v == mirrorTopology) {
               found = true;
+              break;
             }
           }
           ASSERT_TRUE(found);
