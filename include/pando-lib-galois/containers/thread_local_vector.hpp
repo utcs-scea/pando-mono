@@ -319,6 +319,9 @@ private:
       std::uint64_t numHosts = pando::getPlaceDims().node.id;
       return iterator(m_indices, numHosts);
     }
+    std::uint64_t size() const noexcept {
+      return pando::getPlaceDims().node.id;
+    }
   };
 
 public:

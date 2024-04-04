@@ -463,15 +463,15 @@ TEST(PerThreadVector, ClearCompute) {
 TEST(Vector, IntVectorOfVectorsUniform) {
   pando::Vector<pando::Vector<std::uint64_t>> vec;
   EXPECT_EQ(vec.initialize(0), pando::Status::Success);
-  uint64_t size = 2000;
-  galois::HashTable<uint64_t, uint64_t> table;
+  uint64_t size = 10;
+  galois::HashTable<uint64_t, uint64_t> table{};
   PANDO_CHECK(table.initialize(8));
   uint64_t result = 0;
 
   // Creates a vector of vectors of size [i,1]
   for (uint64_t i = 0; i < size; i++) {
-    EXPECT_FALSE(fmap(table, get, i, result));
-    PANDO_CHECK(fmap(table, put, i, lift(vec, size)));
+    EXPECT_FALSE(table.get(i, result));
+    PANDO_CHECK(table.put(i, lift(vec, size)));
     pando::Vector<std::uint64_t> v;
     EXPECT_EQ(v.initialize(1), pando::Status::Success);
     v[0] = i;
@@ -480,7 +480,7 @@ TEST(Vector, IntVectorOfVectorsUniform) {
 
   // Pushes back i+i to each vector
   for (uint64_t i = 0; i < size; i++) {
-    EXPECT_TRUE(fmap(table, get, i, result));
+    EXPECT_TRUE(table.get(i, result));
     pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
     pando::Vector<uint64_t> vec2 = vec1;
     EXPECT_EQ(vec2.get(0), i);
@@ -494,8 +494,9 @@ TEST(Vector, IntVectorOfVectorsUniform) {
     EXPECT_EQ(vec2[1], i + i);
     EXPECT_EQ(vec2[0], i);
     EXPECT_EQ(vec2.size(), 2);
-    EXPECT_TRUE(fmap(table, get, i, result));
+    EXPECT_TRUE(table.get(i, result));
     EXPECT_EQ(result, i);
+    vec2.deinitialize();
   }
   EXPECT_EQ(vec.size(), size);
   vec.deinitialize();
@@ -504,8 +505,8 @@ TEST(Vector, IntVectorOfVectorsUniform) {
 TEST(Vector, IntVectorOfVectorsRandom) {
   pando::Vector<pando::Vector<std::uint64_t>> vec;
   EXPECT_EQ(vec.initialize(0), pando::Status::Success);
-  uint64_t size = 2000;
-  galois::HashTable<uint64_t, uint64_t> table;
+  uint64_t size = 10;
+  galois::HashTable<uint64_t, uint64_t> table{};
   PANDO_CHECK(table.initialize(8));
   uint64_t result = 0;
   std::random_device rd;
@@ -524,12 +525,12 @@ TEST(Vector, IntVectorOfVectorsRandom) {
     } else {
       map[src].push_back(dst);
     }
-    if (fmap(table, get, src, result)) {
+    if (table.get(src, result)) {
       pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
       pando::Vector<uint64_t> vec2 = vec1;
       EXPECT_EQ(fmap(vec1, pushBack, dst), pando::Status::Success);
     } else {
-      PANDO_CHECK(fmap(table, put, src, lift(vec, size)));
+      PANDO_CHECK(table.put(src, lift(vec, size)));
       pando::Vector<std::uint64_t> v;
       EXPECT_EQ(v.initialize(1), pando::Status::Success);
       v[0] = dst;
@@ -539,7 +540,7 @@ TEST(Vector, IntVectorOfVectorsRandom) {
 
   // Validates the vectors
   for (auto it = map.begin(); it != map.end(); ++it) {
-    EXPECT_TRUE(fmap(table, get, it->first, result));
+    EXPECT_TRUE(table.get(it->first, result));
     pando::GlobalRef<pando::Vector<uint64_t>> vec1 = fmap(vec, get, result);
     pando::Vector<uint64_t> vec2 = vec1;
     std::sort(vec2.begin(), vec2.end());
@@ -557,8 +558,8 @@ TEST(Vector, IntVectorOfVectorsRandom) {
 TEST(Vector, EdgelistVectorOfVectors) {
   pando::Vector<pando::Vector<galois::WMDEdge>> vec;
   EXPECT_EQ(vec.initialize(0), pando::Status::Success);
-  uint64_t size = 2000;
-  galois::HashTable<uint64_t, uint64_t> table;
+  uint64_t size = 10;
+  galois::HashTable<uint64_t, uint64_t> table{};
   PANDO_CHECK(table.initialize(8));
   uint64_t result = 0;
   std::random_device rd;
@@ -578,13 +579,13 @@ TEST(Vector, EdgelistVectorOfVectors) {
       map[src].push_back(dst);
     }
 
-    if (fmap(table, get, src, result)) {
-      pando::GlobalRef<pando::Vector<galois::WMDEdge>> vec1 = fmap(vec, get, result);
+    if (table.get(src, result)) {
+      pando::GlobalRef<pando::Vector<galois::WMDEdge>> vec1 = vec.get(result);
       pando::Vector<galois::WMDEdge> vec2 = vec1;
       galois::WMDEdge edge(src, dst, agile::TYPES::NONE, agile::TYPES::NONE, agile::TYPES::NONE);
       EXPECT_EQ(fmap(vec1, pushBack, edge), pando::Status::Success);
     } else {
-      PANDO_CHECK(fmap(table, put, src, lift(vec, size)));
+      PANDO_CHECK(table.put(src, lift(vec, size)));
       pando::Vector<galois::WMDEdge> v;
       EXPECT_EQ(v.initialize(1), pando::Status::Success);
       galois::WMDEdge edge(src, dst, agile::TYPES::NONE, agile::TYPES::NONE, agile::TYPES::NONE);
@@ -595,11 +596,11 @@ TEST(Vector, EdgelistVectorOfVectors) {
 
   // Validates the vectors
   for (auto it = map.begin(); it != map.end(); ++it) {
-    EXPECT_TRUE(fmap(table, get, it->first, result));
-    pando::GlobalRef<pando::Vector<galois::WMDEdge>> vec1 = fmap(vec, get, result);
+    EXPECT_TRUE(table.get(it->first, result));
+    pando::GlobalRef<pando::Vector<galois::WMDEdge>> vec1 = vec.get(result);
     pando::Vector<galois::WMDEdge> vec2 = vec1;
     std::vector<uint64_t> v = it->second;
-    EXPECT_EQ(lift(vec2, size), v.size());
+    EXPECT_EQ(vec2.size(), v.size());
     for (uint64_t k = 0; k < lift(vec2, size); k++) {
       galois::WMDEdge edge = vec2[k];
       bool found = false;
