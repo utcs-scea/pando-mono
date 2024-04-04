@@ -334,21 +334,9 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
         // It means current one have mirror. Mirror is local, but master is not.
         ASSERT_TRUE(graph.isLocal(mirrorTopology));
         ASSERT_TRUE(!graph.isLocal(masterTopology));
-        // bool found = false;
-        //  Mirror must exist in mirror range.
+        // Mirror must exist in mirror range.
         auto it = graph.getMirrorRange();
         ASSERT_TRUE(*it.begin() <= mirrorTopology && mirrorTopology < *it.end());
-        /*
-        auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
-        for (auto elem : mirror_master_array) {
-          if ((lift(elem, getMirror) == mirrorTopology) &&
-              (lift(elem, getMaster) == masterTopology)) {
-            found = true;
-            break;
-          }
-        }
-        ASSERT_TRUE(found);
-        */
       } else {
         // If I don't have mirror, that could be because it is in local, or never be a destination
         // from me.
@@ -357,16 +345,6 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
           auto it = graph.getMasterRange();
           ASSERT_TRUE(*it.begin() <= masterTopology && masterTopology < *it.end());
           // In mirror to master, this should never exist
-          // TODO(Jeageun): This part will be done by output file scan...
-          /*
-          auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
-          for (auto elem : mirror_master_array) {
-            if ((lift(elem, getMirror) == mirrorTopology) ||
-                (lift(elem, getMaster) == masterTopology)) {
-              ASSERT_TRUE(false);
-            }
-          }
-          */
         }
       }
 
@@ -382,8 +360,6 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
     }
   }
   graph.deinitialize();
-
-  // wg.deinitialize();
 }
 
 INSTANTIATE_TEST_SUITE_P(
