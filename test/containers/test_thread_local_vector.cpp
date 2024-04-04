@@ -249,7 +249,7 @@ TEST(ThreadLocalVector, Clear) {
       });
 
   galois::DAccumulator<std::uint64_t> accum{};
-  EXPECT_EQ(lift(accum, initialize), pando::Status::Success);
+  EXPECT_EQ(accum.initialize(), pando::Status::Success);
 
   err = galois::doAll(
       accum, ptv,

@@ -329,11 +329,8 @@ TEST(PerThreadVector, Clear) {
 }
 
 TEST(PerThreadVector, ClearCompute) {
-  pando::GlobalPtr<galois::PerThreadVector<uint64_t>> perThreadVecPtr =
-      getGlobalObject<galois::PerThreadVector<uint64_t>>();
   galois::PerThreadVector<uint64_t> perThreadVec;
   EXPECT_EQ(perThreadVec.initialize(), pando::Status::Success);
-  *perThreadVecPtr = perThreadVec;
 
   static uint64_t workItems = 1000;
   galois::DistArray<uint64_t> work;
