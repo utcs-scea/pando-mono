@@ -95,7 +95,7 @@ public:
    */
   pando::GlobalPtr<T> getSpecific(std::uint64_t host, std::uint64_t localIdx) noexcept {
     HostIndexedMap<pando::Array<T>> cache = m_data.getLocalRef();
-    return fmap(cache[host], get, localIdx);
+    return &fmap(cache[host], get, localIdx);
   }
 
   /**

@@ -7,7 +7,8 @@
 #include <utility>
 
 #include "pando-rt/export.h"
-#include <pando-lib-galois/containers/host_local_array.hpp>
+#include <pando-lib-galois/containers/array.hpp>
+#include <pando-lib-galois/containers/host_cached_array.hpp>
 #include <pando-lib-galois/containers/thread_local_storage.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
@@ -29,9 +30,8 @@ public:
   ThreadLocalVector& operator=(const ThreadLocalVector&) = default;
   ThreadLocalVector& operator=(ThreadLocalVector&&) = default;
 
-  using iterator = ThreadLocalStorageIt<T>;
+  using iterator = ThreadLocalStorageIt<pando::Vector<T>>;
   using reverse_iterator = std::reverse_iterator<iterator>;
-  using pointer = pando::GlobalPtr<pando::Vector<T>>;
 
   [[nodiscard]] pando::Status initialize() {
     pando::Vector<T> vec;
@@ -94,7 +94,7 @@ public:
    */
   std::uint64_t sizeAll() const {
     if (indicesComputed) {
-      return *m_indices.rbegin()
+      return *m_indices.rbegin();
     }
     std::uint64_t size = 0;
     for (std::uint64_t i = 0; i < m_data.size(); i++) {
@@ -141,10 +141,9 @@ public:
     using SRC_Val = pando::Vector<T>;
     using DST_Val = uint64_t;
 
-    galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute, scan_op, combiner,
-                      galois::ThreadLocalStorage>
+    galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute, scan_op, combiner, galois::Array>
         prefixSum(m_data, m_indices);
-    PANDO_CHECK_RETURN(prefixSum.initialize());
+    PANDO_CHECK_RETURN(prefixSum.initialize(pando::getPlaceDims().node.id));
 
     prefixSum.computePrefixSum(m_indices.size());
     indicesComputed = true;
@@ -162,7 +161,7 @@ public:
   [[nodiscard]] static pando::Expected<std::uint64_t> hostIndexOffset(
       galois::ThreadLocalStorage<std::uint64_t> indices, uint64_t host) noexcept {
     if (host == 0)
-      return 0;
+      return static_cast<std::uint64_t>(0);
     const auto place =
         pando::Place(pando::NodeIndex(host), pando::PodIndex(0, 0), pando::CoreIndex(0, 0));
     const auto idx = indices.getThreadIdxFromPlace(place, pando::ThreadIndex(0));
@@ -180,8 +179,8 @@ public:
     // Initialize the per host vectors
     for (std::uint64_t i = 0; i < flat.getNumHosts(); i++) {
       auto ref = flat.get(i);
-      std::uint64_t start = PANDO_EXPECT_RETURN(hostIndexOffset(i));
-      std::uint64_t end = PANDO_EXPECT_RETURN(hostIndexOffset(i + 1));
+      std::uint64_t start = PANDO_EXPECT_RETURN(hostIndexOffset(m_indices, i));
+      std::uint64_t end = PANDO_EXPECT_RETURN(hostIndexOffset(m_indices, i + 1));
       err = fmap(ref, reserve, lift(ref, size) + end - start);
       PANDO_CHECK_RETURN(err);
       for (std::uint64_t j = 0; j < end - start; j++) {
@@ -227,8 +226,8 @@ private:
     using difference_type = std::int64_t;
 
     output_type operator*() const noexcept {
-      const std::uint64_t start = ThreadLocalVector<std::uint64_t>::hostIndexOffset(m_host);
-      const std::uint64_t end = ThreadLocalVector<std::uint64_t>::hostIndexOffset(m_host + 1);
+      const std::uint64_t start = PANDO_EXPECT_CHECK(hostIndexOffset(m_indices, m_host));
+      const std::uint64_t end = PANDO_EXPECT_CHECK(hostIndexOffset(m_indices, m_host + 1));
       return end - start;
     }
 
@@ -255,7 +254,7 @@ private:
     }
 
     constexpr SizeIt operator+(std::uint64_t n) const noexcept {
-      return SizeIt(m_indicies, m_host + n);
+      return SizeIt(m_indices, m_host + n);
     }
 
     constexpr SizeIt& operator+=(std::uint64_t n) noexcept {
@@ -264,7 +263,7 @@ private:
     }
 
     constexpr SizeIt operator-(std::uint64_t n) const noexcept {
-      return SizeIt(m_indicies, m_host - n);
+      return SizeIt(m_indices, m_host - n);
     }
 
     constexpr difference_type operator-(SizeIt b) const noexcept {
@@ -296,7 +295,7 @@ private:
     }
 
     friend pando::Place localityOf(SizeIt& a) {
-      return pando::Place{NodeIndex(a.m_host), pando::anyPod, pando::anyCore};
+      return pando::Place{pando::NodeIndex(a.m_host), pando::anyPod, pando::anyCore};
     }
 
   private:
@@ -313,8 +312,7 @@ private:
     ~SizeRange() = default;
     SizeRange& operator=(const SizeRange&) = default;
     SizeRange& operator=(SizeRange&&) = default;
-    SizeRange(ThreadLocalStorage<std::uint64_t> indices, std::uint64_t host)
-        : m_indices(indices), m_host(host) {}
+    explicit SizeRange(ThreadLocalStorage<std::uint64_t> indices) : m_indices(indices) {}
     iterator begin() const noexcept {
       return iterator(m_indices, 0);
     }
@@ -323,30 +321,28 @@ private:
       std::uint64_t numHosts = pando::getPlaceDims().node.id;
       return iterator(m_indices, numHosts);
     }
-
-    galois::ThreadLocalStorage<std::uint64_t> m_indices;
   };
 
 public:
-  [[nodiscard]] pando::Expected<galois::HostLocalArray<T>> assign() {
+  [[nodiscard]] pando::Expected<galois::HostCachedArray<T>> hostCachedFlatten() {
     if (!indicesComputed) {
       PANDO_CHECK_RETURN(computeIndices());
     }
 
-    galois::HostLocalArray<T> hla;
+    galois::HostCachedArray<T> hla;
     // TODO(AdityaAtulTewari) Make this properly parallel.
     // Initialize the per host vectors
-    PANDO_CHECK_RETURN(hla.initialize(SizeRange(indices)));
+    PANDO_CHECK_RETURN(hla.initialize(SizeRange(m_indices)));
     auto tpl = galois::make_tpl(static_cast<ThreadLocalVector>(*this), hla);
     // Reduce into the per host vectors
     auto f = +[](decltype(tpl) assign, std::uint64_t i, uint64_t) {
       auto [data, flat] = assign;
       std::uint64_t host = i / ThreadLocalStorage<T>::getThreadsPerHost();
-      std::uint64_t start = PANDO_EXPECT_RETURN(data.hostIndexOffset(host));
+      std::uint64_t start = PANDO_EXPECT_CHECK(hostIndexOffset(data.m_indices, host));
       std::uint64_t curr = (i == 0) ? 0 : data.m_indices[i - 1];
-      std::uint64_t end = PANDO_EXPECT_RETURN(data.hostIndexOffset(host + 1));
+      pando::Vector<std::uint64_t> localVec = data[i];
       for (T elt : localVec) {
-        fmap(flat, getSpecificRef, host, curr - start) = elt;
+        flat.getSpecificRef(host, curr - start) = elt;
         curr++;
       }
     };
@@ -355,19 +351,19 @@ public:
   }
 
   iterator begin() noexcept {
-    return iterator(*this, 0);
+    return iterator(this->m_data, 0);
   }
 
   iterator begin() const noexcept {
-    return iterator(*this, 0);
+    return iterator(this->m_data, 0);
   }
 
   iterator end() noexcept {
-    return iterator(*this, size());
+    return iterator(this->m_data, size());
   }
 
   iterator end() const noexcept {
-    return iterator(*this, size());
+    return iterator(this->m_data, size());
   }
 
   /**

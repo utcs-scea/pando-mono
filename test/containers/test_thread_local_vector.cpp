@@ -46,10 +46,7 @@ struct State {
 } // namespace
 
 TEST(ThreadLocalVector, Init) {
-  pando::GlobalPtr<galois::ThreadLocalVector<uint64_t>> perThreadVecPtr =
-      getGlobalObject<galois::ThreadLocalVector<uint64_t>>();
-  galois::ThreadLocalVector<uint64_t> perThreadVec = *perThreadVecPtr;
-  EXPECT_EQ(16, pando::getThreadDims().id);
+  galois::ThreadLocalVector<uint64_t> perThreadVec{};
   EXPECT_EQ(perThreadVec.initialize(), pando::Status::Success);
   pando::Vector<uint64_t> work;
   EXPECT_EQ(work.initialize(1), pando::Status::Success);
@@ -63,19 +60,18 @@ TEST(ThreadLocalVector, Init) {
       });
   EXPECT_EQ(perThreadVec.sizeAll(), 1);
 
-  uint64_t elts = 0;
+  std::uint64_t elts = 0;
   for (pando::Vector<uint64_t> vec : perThreadVec) {
     elts += vec.size();
   }
   EXPECT_EQ(elts, 1);
 
-  *perThreadVecPtr = perThreadVec;
-  auto hlsv = PANDO_EXPECT_CHECK(perThreadVec.assign(copy));
-  EXPECT_EQ(copy.size(), 1);
-  uint64_t val = copy[0];
+  auto hca = PANDO_EXPECT_CHECK(perThreadVec.hostCachedFlatten());
+  EXPECT_EQ(hca.size(), 1);
+  uint64_t val = hca[0];
   EXPECT_EQ(val, 9801);
 
-  copy.deinitialize();
+  hca.deinitialize();
   work.deinitialize();
   perThreadVec.deinitialize();
 }
