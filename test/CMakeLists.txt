@@ -3,9 +3,11 @@
 
 function(pando_add_exec TARGET SOURCEFILE)
   if (PANDO_RT_BACKEND STREQUAL "DRVX")
-    pando_add_library(${TARGET} SHARED ${SOURCEFILE})
+    pando_add_executable(${TARGET} ${SOURCEFILE})
+    target_link_libraries(${TARGET} PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-lib-galois::pando-lib-galois>")
   else()
     pando_add_executable(${TARGET} ${SOURCEFILE})
+    target_link_libraries(${TARGET} PUBLIC pando-lib-galois::pando-lib-galois)
   endif()
 endfunction()
 

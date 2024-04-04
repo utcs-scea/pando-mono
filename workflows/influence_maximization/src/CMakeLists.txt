@@ -11,8 +11,8 @@ include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOCompilerOptions.cmake)
 
 target_sources(pando-wf4-galois
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/import.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/influence_maximization.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/import.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/influence_maximization.cpp
 )
 
 target_include_directories(pando-wf4-galois
@@ -21,14 +21,21 @@ target_include_directories(pando-wf4-galois
         ${CMAKE_CURRENT_BINARY_DIR}/../Galois/include
 )
 
-pando_add_executable(wf4 ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+pando_add_executable(wf4 ${CMAKE_CURRENT_LIST_DIR}/main.cpp)
 
 target_include_directories(wf4
     PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}/../include
 )
 
-target_link_libraries(wf4
-    PUBLIC
-        pando-wf4-galois::pando-wf4-galois
-)
+if (PANDO_RT_BACKEND STREQUAL "DRVX")
+    target_link_libraries(wf4
+        PUBLIC
+            "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-wf4-galois::pando-wf4-galois>"
+    )
+else()
+    target_link_libraries(wf4
+        PUBLIC
+            pando-wf4-galois::pando-wf4-galois
+    )
+endif()

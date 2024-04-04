@@ -12,21 +12,20 @@ THREADD=$((${HOST_THREADS} * ${HOSTS} / ${PROCS}))
 THREADS="${THREADS:-${THREADD}}"
 # 8GB Main memory size by default
 MAIN_MEMORY_SIZE="${MAIN_MEMORY_SIZE-8589934592}"
-LAUNCH_SCRIPT="${LAUNCH_SCRIPT:-Galois/pando-drv/tests/PANDOHammerDrvX.py}"
-EXE="${EXE:-dockerbuild-drv/src/libwf4.so}"
+LAUNCH_SCRIPT="${LAUNCH_SCRIPT:-pando-drv/tests/PANDOHammerDrvX.py}"
+EXE="${EXE:-dockerbuild-drv/workflows/influence_maximization/src/libwf4.so}"
 
 K="${K:-10}"
 RRR_SETS="${RRR_SETS:-1000}"
 SEED="${SEED:-9801}"
-COMMERCIAL_FILE="${COMMERCIAL_FILE:-graphs/scale-2/commercial.csv}"
-CYBER_FILE="${CYBER_FILE:-graphs/scale-2/cyber.csv}"
-SOCIAL_FILE="${SOCIAL_FILE:-graphs/scale-2/social.csv}"
-USES_FILE="${USES_FILE:-graphs/scale-2/uses.csv}"
-LOGFILE="${LOGFILE:-data/drv_scale-2.txt}"
+COMMERCIAL_FILE="${COMMERCIAL_FILE:-graphs/influence_maximization/scale-2/commercial.csv}"
+CYBER_FILE="${CYBER_FILE:-graphs/influence_maximization/scale-2/cyber.csv}"
+SOCIAL_FILE="${SOCIAL_FILE:-graphs/influence_maximization/scale-2/social.csv}"
+USES_FILE="${USES_FILE:-graphs/influence_maximization/scale-2/uses.csv}"
+LOGFILE="${LOGFILE:-data/wf4_drv_scale-2.txt}"
 
 DISABLE_K2="${DISABLE_K2:-1}"
 DISABLE_K3="${DISABLE_K3:-1}"
-DISABLE_K4="${DISABLE_K4:-1}"
 
 sst -n ${HOST_THREADS} \
     "${LAUNCH_SCRIPT}" -- \
@@ -45,5 +44,4 @@ sst -n ${HOST_THREADS} \
     -o "${SOCIAL_FILE}" \
     -u "${USES_FILE}" \
     -2 "${DISABLE_K2}" \
-    -3 "${DISABLE_K3}" \
-    -4 "${DISABLE_K4}"
+    -3 "${DISABLE_K3}"

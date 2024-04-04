@@ -770,6 +770,7 @@ public:
                                          pando::Vector<GenericEdge<EdgeType>> edges) {
     numVertices = vertices.size();
     numEdges = edges.size();
+    PANDO_CHECK_RETURN(arrayOfCSRs.initialize());
     pando::Array<std::uint64_t> v2PM;
     PANDO_CHECK_RETURN(v2PM.initialize(vertices.size()));
     std::uint64_t hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
