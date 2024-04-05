@@ -490,7 +490,7 @@ public:
   /** Host Information **/
   std::uint64_t getPhysicalHostID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
-    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocal(), get, virtualHostID);
+    std::uint64_t physicalHost = virtualToPhysicalMap.getLocal()[virtualHostID];
     return physicalHost;
   }
 
