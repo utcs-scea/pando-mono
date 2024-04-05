@@ -46,10 +46,10 @@ endif()
 
 #create the sanitize build type
 set(CMAKE_CXX_FLAGS_SANITIZE
-  "-O3 -g -fsanitize=address -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C++ compiler during sanitizer builds"
+  "-O2 -g -fsanitize=address -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C++ compiler during sanitizer builds"
   FORCE )
 set(CMAKE_C_FLAGS_SANITIZE
-  "-O3 -g -fsanitize=address -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C compiler during sanitizer builds"
+  "-O2 -g -fsanitize=address -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C compiler during sanitizer builds"
   FORCE )
 set(CMAKE_EXE_LINKER_FLAGS_SANITIZE
   "" CACHE STRING "Flags used for linking binaries during sanitizer builds"
