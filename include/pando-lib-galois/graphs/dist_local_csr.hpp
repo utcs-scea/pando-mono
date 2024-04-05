@@ -449,6 +449,14 @@ public:
                        numVertices};
   }
 
+  VertexRange localVertices() {
+    int16_t local_hostID = pando::getCurrentPlace().node.id;
+    int64_t numLocalVertices = getNumEdges(local_hostID);
+    return VertexRange{arrayOfCSRs, lift(arrayOfCSRs[local_hostID], vertexEdgeOffsets.begin),
+                       lift(arrayOfCSRs[local_hostID], vertexEdgeOffsets.end) - 1,
+                       numLocalVertices};
+  }
+
   EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr) {
     Vertex v = *vPtr;
     Vertex v1 = *(vPtr + 1);
