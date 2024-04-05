@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prep-smp-ubuntu-2204-docker:
-    name: gcc / ${{ matrix.build-type }} / ${{ matrix.sanitizer-type }}
+  prep-mpi-ubuntu-2204-docker:
+    name: gcc / ${{ matrix.build-type }}
     runs-on: self-hosted
     permissions:
       contents: read
@@ -35,13 +35,7 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        build-type: ['Release', 'RelWithDebInfo']
-        sanitizer-type: ['nosan', 'san']
-        exclude:
-          - build-type: 'RelWithDebInfo'
-            sanitizer-type: 'nosan'
-          - build-type: 'Release'
-            sanitizer-type: 'san'
+        build-type: ['Release', 'Sanitize']
 
     steps:
 
@@ -60,12 +54,20 @@ jobs:
         echo "SRC_DIR=$(pwd)" >> $GITHUB_ENV
         echo "PANDO_TEST_DISCOVERY_TIMEOUT=600" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$(git log --pretty="%h" -1 Dockerfile.dev)" >> $GITHUB_ENV
-        if [ ${{ matrix.sanitizer-type }} == 'san' ]; then
+        if [ ${{ matrix.build-type }} == 'Sanitize' ]; then
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -ePANDO_PREP_MAIN_NODE=8589934592 -e=PANDO_EXTRA_CXX_FLAGS='\"-fsanitize=address -fsanitize=undefined\"'" >> $GITHUB_ENV
+          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -ePANDO_PREP_MAIN_NODE=8589934592" >> $GITHUB_ENV
         fi
-        if [ ${{ matrix.sanitizer-type }} == 'nosan' ]; then
+        if [ ${{ matrix.build-type }} == 'Release' ]; then
+          echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
           echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON" >> $GITHUB_ENV
+        fi
+        echo ${{ runner.name }}
+        if [ ${{ runner.name }} == 'zerberus-0' ]; then
+          echo "CONTAINER_CPUSET='--cpuset-cpus=0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30'" >> $GITHUB_ENV
+        fi
+        if [ ${{ runner.name }} == 'zerberus-1' ]; then
+          echo "CONTAINER_CPUSET='--cpuset-cpus=1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31'" >> $GITHUB_ENV
         fi
         cat $GITHUB_ENV
 

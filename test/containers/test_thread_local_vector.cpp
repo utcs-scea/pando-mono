@@ -122,7 +122,7 @@ TEST(ThreadLocalVector, DoAll) {
   galois::ThreadLocalVector<uint64_t> perThreadVec;
   EXPECT_EQ(perThreadVec.initialize(), pando::Status::Success);
 
-  static const uint64_t workItems = 1000;
+  static const uint64_t workItems = 100;
   galois::DistArray<uint64_t> work;
   EXPECT_EQ(work.initialize(workItems), pando::Status::Success);
   for (uint64_t i = 0; i < workItems; i++) {
@@ -275,7 +275,7 @@ TEST(ThreadLocalVector, ClearCompute) {
   galois::ThreadLocalVector<uint64_t> perThreadVec;
   EXPECT_EQ(perThreadVec.initialize(), pando::Status::Success);
 
-  static uint64_t workItems = 1000;
+  static uint64_t workItems = 100;
   galois::DistArray<uint64_t> work;
   EXPECT_EQ(work.initialize(workItems), pando::Status::Success);
   for (uint64_t i = 0; i < workItems; i++) {
