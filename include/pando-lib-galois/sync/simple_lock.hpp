@@ -48,11 +48,6 @@ public:
    * @warning one of the initialize methods must be called before use
    */
   [[nodiscard]] pando::Status initialize(pando::Place place, pando::MemoryType memoryType) {
-    // auto desiredValue = static_cast<LockState>(State::IsUnlocked);
-    // pando::atomicStore(pando::GlobalPtr<LockState>(&m_state), pando::GlobalPtr<const
-    // LockState>(&desiredValue),
-    //             std::memory_order_release);
-
     const auto desiredValue = pando::allocateMemory<LockState>(1, place, memoryType);
     if (!desiredValue.hasValue()) {
       return desiredValue.error();
