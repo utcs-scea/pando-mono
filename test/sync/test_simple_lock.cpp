@@ -6,9 +6,11 @@
 
 #include <cstdint>
 
+#include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/sync/global_barrier.hpp>
 #include <pando-lib-galois/sync/simple_lock.hpp>
+#include <pando-lib-galois/utility/tuple.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
@@ -37,7 +39,7 @@ TEST(SimpleLock, TryLock) {
 
 TEST(SimpleLock, SimpleLockUnlock) {
   auto test = [] {
-    galois::SimpleLock mutex;
+    galois::SimpleLock mutex{};
     EXPECT_EQ(mutex.initialize(), pando::Status::Success);
     mutex.lock();
     mutex.unlock();
@@ -52,45 +54,35 @@ TEST(SimpleLock, SimpleLockUnlock) {
 }
 
 TEST(SimpleLock, ActualLockUnlock) {
-  auto dims = pando::getPlaceDims();
-  galois::GlobalBarrier gb;
-  EXPECT_EQ(gb.initialize(dims.node.id), pando::Status::Success);
   galois::SimpleLock mutex;
   EXPECT_EQ(mutex.initialize(), pando::Status::Success);
   pando::Array<int> array;
   EXPECT_EQ(array.initialize(10), pando::Status::Success);
   array.fill(0);
 
-  auto func = +[](galois::GlobalBarrier gb, galois::SimpleLock mutex, pando::Array<int> array) {
-    mutex.lock();
-    for (int i = 0; i < 10; i++) {
-      if ((i + 1 + pando::getCurrentPlace().node.id) <= 10) {
-        array[i] = i + 1 + pando::getCurrentPlace().node.id;
-      } else {
-        array[i] = i - 9 + pando::getCurrentPlace().node.id;
-      }
-    }
-    mutex.unlock();
-    gb.done();
-  };
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
-    EXPECT_EQ(
-        pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
-                         func, gb, mutex, array),
-        pando::Status::Success);
-  }
+  galois::HostLocalStorage<std::uint64_t> hls{};
+  auto tpl = galois::make_tpl(mutex, array);
+  EXPECT_EQ(galois::doAll(
+                tpl, hls,
+                +[](decltype(tpl) tpl, pando::GlobalRef<std::uint64_t>) {
+                  auto [mutex, array] = tpl;
+                  for (int i = 0; i < 10; i++) {
+                    if ((i + 1 + pando::getCurrentPlace().node.id) <= 10) {
+                      array[i] = i + 1 + pando::getCurrentPlace().node.id;
+                    } else {
+                      array[i] = i - 9 + pando::getCurrentPlace().node.id;
+                    }
+                  }
+                  mutex.unlock();
+                }),
+            pando::Status::Success);
 
-  EXPECT_EQ(gb.wait(), pando::Status::Success);
-  for (int i = 0; i < 10; i++) {
-    std::cout << array[i] << " ";
-  }
-  std::cout << std::endl;
   int sum = 0;
   for (int i = 0; i < 10; i++) {
     sum += array[i];
   }
   EXPECT_EQ(sum, 55);
 
-  gb.deinitialize();
   array.deinitialize();
+  mutex.deinitialize();
 }
