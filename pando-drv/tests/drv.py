@@ -216,8 +216,8 @@ class L2SPRange(object):
             - 1
 
 def MakeMainMemoryRangeClass(banks, size):
-    if (size > 16*1024*1024*1024):
-        raise ValueError("PXN main memory size cannot be more than 16GiB")
+    if (size > 8*1024*1024*1024):
+        raise ValueError("PXN main memory size cannot be more than 8GiB")
 
     class MainMemoryRange(object):
         # specs say upto 8TB

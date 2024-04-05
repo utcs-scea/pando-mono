@@ -32,7 +32,7 @@ usage: preprun -n <n> prog [program args]
 
 harts=""
 # 16GB Main memory size by default
-main_memory_size="${main_memory_size-17179869184}"
+main_memory_size="${main_memory_size-8589934592}"
 
 while getopts "n:c:t:h" option; do
     case ${option} in
