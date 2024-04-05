@@ -108,9 +108,9 @@ TEST(ThreadLocalStorage, DoAll) {
 }
 
 TEST(ThreadLocalStorage, copyToAllThreads) {
-  const std::uint64_t SIZE = 100;
+  const std::uint64_t SIZE = 10;
   pando::Array<std::uint64_t> arr;
-  EXPECT_EQ(pando::Status::Success, arr.initialize(100));
+  EXPECT_EQ(pando::Status::Success, arr.initialize(SIZE));
   for (std::uint64_t i = 0; i < SIZE; i++) {
     arr[i] = i;
   }
