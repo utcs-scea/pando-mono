@@ -62,10 +62,11 @@ jobs:
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
           echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON" >> $GITHUB_ENV
         fi
-        if [ ${{ github.run-name }} == 'zerberus-0' ]; then
+        echo ${{ runner.labels }}
+        if [ ${{ runner.labels }} == 'zerberus-0' ]; then
           echo "CONTAINER_CPUSET='--cpuset-cpus=0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30'" >> $GITHUB_ENV
         fi
-        if [ ${{ github.run-name }} == 'zerberus-1' ]; then
+        if [ ${{ runner.labels }} == 'zerberus-1' ]; then
           echo "CONTAINER_CPUSET='--cpuset-cpus=1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31'" >> $GITHUB_ENV
         fi
         cat $GITHUB_ENV
