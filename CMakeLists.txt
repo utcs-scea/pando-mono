@@ -65,7 +65,7 @@ MARK_AS_ADVANCED(
   CMAKE_SHARED_LINKER_FLAGS_SANITIZE)
 
 # default build type
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "Sanitize")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "Sanitize" "Coverage")
 set(DEFAULT_BUILD_TYPE "Release")
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to default '${DEFAULT_BUILD_TYPE}' as none was specified.")
