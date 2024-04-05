@@ -490,7 +490,7 @@ public:
   /** Host Information **/
   std::uint64_t getPhysicalHostID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
-    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
+    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocal(), get, virtualHostID);
     return physicalHost;
   }
 
@@ -831,7 +831,7 @@ public:
         +[](galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges,
             pando::GlobalRef<pando::Vector<VertexType>> pHV) {
           PANDO_CHECK(fmap(pHV, initialize, 0));
-          pando::Vector<pando::Vector<EdgeType>> localEdges = partEdges.getLocalRef();
+          pando::Vector<pando::Vector<EdgeType>> localEdges = partEdges.getLocal();
           for (pando::Vector<EdgeType> e : localEdges) {
             EdgeType e0 = e[0];
             VertexType v0 = VertexType(e0.src, e0.srcType);
@@ -956,7 +956,7 @@ public:
                                          galois::PerThreadVector<uint64_t> edgeCounts) {
     numVertices = vertices.sizeAll();
     numEdges = edges.sizeAll();
-    pando::Array<std::uint64_t> oldV2PM = oldGraph.virtualToPhysicalMap.getLocalRef();
+    pando::Array<std::uint64_t> oldV2PM = oldGraph.virtualToPhysicalMap.getLocal();
     pando::Array<std::uint64_t> v2PM;
     PANDO_CHECK_RETURN(v2PM.initialize(oldV2PM.size()));
     for (uint64_t i = 0; i < oldV2PM.size(); i++) {
@@ -1003,7 +1003,7 @@ public:
           }
           currentCSR.vertexEdgeOffsets[currLocalVertex] =
               Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
-          state.arrayOfCSRs.getLocalRef() = currentCSR;
+          state.arrayOfCSRs.getLocal() = currentCSR;
         });
     arrayOfCSRs = state.arrayOfCSRs;
 
@@ -1030,7 +1030,7 @@ public:
                                    data);
             currLocalEdge++;
           }
-          state.dlcsr.arrayOfCSRs.getLocalRef() = currentCSR;
+          state.dlcsr.arrayOfCSRs.getLocal() = currentCSR;
         });
     *this = state2.dlcsr;
 
