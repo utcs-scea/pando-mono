@@ -359,7 +359,6 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
       EXPECT_EQ(eData.dst, numVertices);
     }
   }
-  pando::waitAll();
   graph.deinitialize();
 }
 
