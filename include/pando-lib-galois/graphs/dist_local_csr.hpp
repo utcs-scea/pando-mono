@@ -497,7 +497,7 @@ public:
     std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
     PANDO_CHECK_RETURN(arrayOfCSRs.initialize());
 
-    galois::WaitGroup wg;
+    pando::WaitGroup wg;
     PANDO_CHECK_RETURN(wg.initialize(numHosts));
     auto wgh = wg.getHandle();
 
@@ -510,7 +510,7 @@ public:
     auto createCSRFuncs = +[](galois::HostIndexedMap<CSR> arrayOfCSRs,
                               galois::HostIndexedMap<pando::Vector<ReadVertexType>> vertexData,
                               galois::HostIndexedMap<std::uint64_t> numEdges, std::uint64_t i,
-                              galois::WaitGroup::HandleType wgh) {
+                              pando::WaitGroup::HandleType wgh) {
       CSR currentCSR;
       PANDO_CHECK(
           currentCSR.initializeTopologyMemory(lift(vertexData.getLocalRef(), size), numEdges[i]));
@@ -547,7 +547,7 @@ public:
             galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
             galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
             galois::HostIndexedMap<std::uint64_t> numVerticesPerHost, std::uint64_t i,
-            galois::WaitGroup::HandleType wgh) {
+            pando::WaitGroup::HandleType wgh) {
           CSR currentCSR = dlcsr.arrayOfCSRs[i];
           pando::Vector<pando::Vector<ReadEdgeType>> currEdgeData = edgeData[i];
           std::uint64_t numVertices = numVerticesPerHost[i];

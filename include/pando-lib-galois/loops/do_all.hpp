@@ -6,11 +6,11 @@
 
 #include <pando-rt/export.h>
 
-#include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
+#include <pando-rt/sync/wait_group.hpp>
 
 namespace galois {
 
@@ -51,7 +51,7 @@ private:
    */
   template <typename F, typename State>
   static void notifyFuncOnEach(const F& func, State s, galois::IotaRange::iterator curr,
-                               uint64_t totalThreads, WaitGroup::HandleType wgh) {
+                               uint64_t totalThreads, pando::WaitGroup::HandleType wgh) {
     func(s, *curr, totalThreads);
     wgh.done();
   }
@@ -69,7 +69,7 @@ private:
    *
    */
   template <typename F, typename State, typename It>
-  static void notifyFunc(const F& func, State s, It curr, WaitGroup::HandleType wgh) {
+  static void notifyFunc(const F& func, State s, It curr, pando::WaitGroup::HandleType wgh) {
     func(s, *curr);
     wgh.done();
   }
@@ -85,7 +85,7 @@ private:
    *
    */
   template <typename F, typename It>
-  static void notifyFunc(const F& func, It curr, WaitGroup::HandleType wgh) {
+  static void notifyFunc(const F& func, It curr, pando::WaitGroup::HandleType wgh) {
     func(*curr);
     wgh.done();
   }
@@ -107,7 +107,7 @@ public:
    * @param[in] func  the functor to lift
    */
   template <typename State, typename R, typename F, typename L>
-  static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func,
+  static pando::Status doAll(pando::WaitGroup::HandleType wgh, State s, R& range, const F& func,
                              const L& localityFunc) {
     pando::Status err = pando::Status::Success;
 
@@ -147,7 +147,7 @@ public:
    * @param[in] func  the functor to lift
    */
   template <typename State, typename R, typename F>
-  static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func) {
+  static pando::Status doAll(pando::WaitGroup::HandleType wgh, State s, R& range, const F& func) {
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
@@ -186,7 +186,7 @@ public:
    * @param[in] func  the functor to lift
    */
   template <typename R, typename F>
-  static pando::Status doAll(WaitGroup::HandleType wgh, R& range, const F& func) {
+  static pando::Status doAll(pando::WaitGroup::HandleType wgh, R& range, const F& func) {
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
@@ -225,7 +225,7 @@ public:
   template <typename State, typename R, typename F, typename L>
   static pando::Status doAll(State s, R& range, const F& func, const L& localityFunc) {
     pando::Status err;
-    WaitGroup wg;
+    pando::WaitGroup wg;
     err = wg.initialize(0);
     if (err != pando::Status::Success) {
       return err;
@@ -250,7 +250,7 @@ public:
   template <typename State, typename R, typename F>
   static pando::Status doAll(State s, R& range, const F& func) {
     pando::Status err;
-    WaitGroup wg;
+    pando::WaitGroup wg;
     err = wg.initialize(0);
     if (err != pando::Status::Success) {
       return err;
@@ -273,7 +273,7 @@ public:
   template <typename R, typename F>
   static pando::Status doAll(R& range, const F& func) {
     pando::Status err;
-    WaitGroup wg;
+    pando::WaitGroup wg;
     err = wg.initialize(0);
     if (err != pando::Status::Success) {
       return err;
@@ -298,8 +298,8 @@ public:
    * @param[in] func  the functor to lift
    */
   template <typename State, typename F>
-  static pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
-                                            const F& func) {
+  static pando::Status doAllEvenlyPartition(pando::WaitGroup::HandleType wgh, State s,
+                                            uint64_t workItems, const F& func) {
     pando::Status err = pando::Status::Success;
     if (workItems == 0) {
       return err;
@@ -351,7 +351,7 @@ public:
   template <typename State, typename F>
   static pando::Status doAllEvenlyPartition(State s, uint64_t workItems, const F& func) {
     pando::Status err;
-    WaitGroup wg;
+    pando::WaitGroup wg;
     err = wg.initialize(0);
     if (err != pando::Status::Success) {
       return err;
@@ -374,7 +374,7 @@ public:
    * @param[in] func  the functor to lift
    */
   template <typename State, typename F>
-  static pando::Status onEach(WaitGroup::HandleType wgh, State s, const F& func) {
+  static pando::Status onEach(pando::WaitGroup::HandleType wgh, State s, const F& func) {
     return doAllEvenlyPartition<State, F>(wgh, s, getTotalThreads(), func);
   }
 
@@ -390,7 +390,7 @@ public:
   template <typename State, typename F>
   static pando::Status onEach(State s, const F& func) {
     pando::Status err;
-    WaitGroup wg;
+    pando::WaitGroup wg;
     err = wg.initialize(0);
     if (err != pando::Status::Success) {
       return err;
@@ -403,16 +403,16 @@ public:
 };
 
 template <typename State, typename R, typename F, typename L>
-pando::Status doAll(WaitGroup::HandleType wgh, State s, R range, const F& func,
+pando::Status doAll(pando::WaitGroup::HandleType wgh, State s, R range, const F& func,
                     const L& localityFunc) {
   return DoAll::doAll<State, R, F, L>(wgh, s, range, func, localityFunc);
 }
 template <typename State, typename R, typename F>
-pando::Status doAll(WaitGroup::HandleType wgh, State s, R range, const F& func) {
+pando::Status doAll(pando::WaitGroup::HandleType wgh, State s, R range, const F& func) {
   return DoAll::doAll<State, R, F>(wgh, s, range, func);
 }
 template <typename R, typename F>
-pando::Status doAll(WaitGroup::HandleType wgh, R range, const F& func) {
+pando::Status doAll(pando::WaitGroup::HandleType wgh, R range, const F& func) {
   return DoAll::doAll<R, F>(wgh, range, func);
 }
 template <typename State, typename R, typename F, typename L>
@@ -429,7 +429,7 @@ pando::Status doAll(R range, const F& func) {
 }
 
 template <typename State, typename F>
-pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
+pando::Status doAllEvenlyPartition(pando::WaitGroup::HandleType wgh, State s, uint64_t workItems,
                                    const F& func) {
   return DoAll::doAllEvenlyPartition<State, F>(wgh, s, workItems, func);
 }
@@ -439,7 +439,7 @@ pando::Status doAllEvenlyPartition(State s, uint64_t workItems, const F& func) {
 }
 
 template <typename State, typename F>
-pando::Status onEach(WaitGroup::HandleType wgh, State s, const F& func) {
+pando::Status onEach(pando::WaitGroup::HandleType wgh, State s, const F& func) {
   return DoAll::onEach<State, F>(wgh, s, func);
 }
 template <typename State, typename F>

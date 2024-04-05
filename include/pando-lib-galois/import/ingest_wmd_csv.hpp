@@ -13,7 +13,7 @@
 namespace galois {
 
 void loadWMDFilePerThread(
-    galois::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
+    pando::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
     std::uint64_t numThreads, std::uint64_t threadID,
     galois::PerThreadVector<pando::Vector<WMDEdge>> localEdges,
     galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
@@ -72,7 +72,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
   const std::uint64_t hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
   const std::uint64_t numVHosts = hosts * scale_factor;
 
-  galois::WaitGroup wg;
+  pando::WaitGroup wg;
   PANDO_CHECK(wg.initialize(numThreads));
   auto wgh = wg.getHandle();
 

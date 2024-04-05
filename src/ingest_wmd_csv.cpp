@@ -29,7 +29,7 @@ auto generateWMDParser(
 }
 
 void galois::loadWMDFilePerThread(
-    galois::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
+    pando::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
     std::uint64_t numThreads, std::uint64_t threadID,
     galois::PerThreadVector<pando::Vector<WMDEdge>> localEdges,
     galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,

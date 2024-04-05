@@ -696,7 +696,7 @@ TEST(loadGraphFilePerThread, loadGraph) {
   galois::DAccumulator<std::uint64_t> totVerts;
   EXPECT_EQ(totVerts.initialize(), pando::Status::Success);
 
-  galois::WaitGroup wg;
+  pando::WaitGroup wg;
   EXPECT_EQ(pando::Status::Success, wg.initialize(numThreads));
   auto wgh = wg.getHandle();
 
@@ -764,7 +764,7 @@ TEST(loadGraphFilePerThread, loadEdgeList) {
     EXPECT_EQ(err, pando::Status::Success);
   }
 
-  galois::WaitGroup wg;
+  pando::WaitGroup wg;
   EXPECT_EQ(pando::Status::Success, wg.initialize(numThreads));
   auto wgh = wg.getHandle();
   for (uint64_t i = 0; i < numThreads; i++) {

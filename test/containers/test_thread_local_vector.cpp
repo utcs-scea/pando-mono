@@ -37,9 +37,9 @@ uint64_t getHostThreads() {
 
 struct State {
   State() = default;
-  State(galois::WaitGroup::HandleType f, galois::DAccumulator<uint64_t> s) : first(f), second(s) {}
+  State(pando::WaitGroup::HandleType f, galois::DAccumulator<uint64_t> s) : first(f), second(s) {}
 
-  galois::WaitGroup::HandleType first;
+  pando::WaitGroup::HandleType first;
   galois::DAccumulator<uint64_t> second;
 };
 
@@ -154,7 +154,7 @@ TEST(ThreadLocalVector, DoAll) {
   EXPECT_EQ(perThreadVec.computeIndices(), pando::Status::Success);
   EXPECT_EQ(size, perThreadVec.sizeAll());
 
-  galois::WaitGroup wg;
+  pando::WaitGroup wg;
   EXPECT_EQ(wg.initialize(0), pando::Status::Success);
   galois::doAll(
       wg.getHandle(), State(wg.getHandle(), sum), perThreadVec,
@@ -307,7 +307,7 @@ TEST(ThreadLocalVector, ClearCompute) {
   EXPECT_EQ(perThreadVec.computeIndices(), pando::Status::Success);
   EXPECT_EQ(sizeAll0, perThreadVec.sizeAll());
 
-  galois::WaitGroup wg;
+  pando::WaitGroup wg;
   EXPECT_EQ(wg.initialize(0), pando::Status::Success);
   galois::doAll(
       wg.getHandle(), State(wg.getHandle(), sum), perThreadVec,

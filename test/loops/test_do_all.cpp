@@ -61,12 +61,12 @@ TEST(doALL, NestedInit) {
   pando::Array<pando::Array<pando::Array<std::uint64_t>>> distArray;
   EXPECT_EQ(distArray.initialize(SIZE), pando::Status::Success);
 
-  galois::WaitGroup wg;
+  pando::WaitGroup wg;
   EXPECT_EQ(wg.initialize(0), pando::Status::Success);
 
-  auto f = +[](galois::WaitGroup::HandleType wgh,
+  auto f = +[](pando::WaitGroup::HandleType wgh,
                pando::GlobalRef<pando::Array<pando::Array<std::uint64_t>>> arrArrRef) {
-    auto g = +[](galois::WaitGroup::HandleType wgh,
+    auto g = +[](pando::WaitGroup::HandleType wgh,
                  pando::GlobalRef<pando::Array<std::uint64_t>> arrRef) {
       auto h = +[](pando::GlobalRef<std::uint64_t> ref) {
         constexpr std::uint64_t VALUE = 0xDEADBEEF;

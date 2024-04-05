@@ -7,11 +7,11 @@
 #include <pando-rt/export.h>
 
 #include <algorithm>
-#include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
+#include <pando-rt/sync/wait_group.hpp>
 
 namespace galois {
 

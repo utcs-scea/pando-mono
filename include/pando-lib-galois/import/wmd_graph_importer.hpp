@@ -102,7 +102,7 @@ void buildEdgeCountToSend(
     galois::Pair<std::uint64_t, std::uint64_t> p{0, i};
     sumArray[i] = p;
   }
-  galois::WaitGroup wg{};
+  pando::WaitGroup wg{};
   PANDO_CHECK(wg.initialize(0));
   auto wgh = wg.getHandle();
 

@@ -3,5 +3,4 @@
 
 pando_add_driver_test(test_simple_lock test_simple_lock.cpp)
 pando_add_driver_test(test_global_barrier test_global_barrier.cpp)
-pando_add_driver_test(test_wait_group test_wait_group.cpp)
 pando_add_driver_test(test_atomic test_atomic.cpp)
