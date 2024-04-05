@@ -20,6 +20,7 @@ endif()
 option(ENABLE_PANDORT_TESTS "Enable pando-rt to run tests" OFF)
 
 if (NOT ENABLE_PANDORT_TESTS)
+  message("Not Enabling Pandort testing")
   set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
   set(BUILD_TESTING OFF)
 endif()
@@ -43,13 +44,33 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     )
 endif()
 
+#create the sanitize build type
+set(CMAKE_CXX_FLAGS_SANITIZE
+  "-O3 -g -fsanitize=address -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C++ compiler during sanitizer builds"
+  FORCE )
+set(CMAKE_C_FLAGS_SANITIZE
+  "-O3 -g -fsanitize=address -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C compiler during sanitizer builds"
+  FORCE )
+set(CMAKE_EXE_LINKER_FLAGS_SANITIZE
+  "" CACHE STRING "Flags used for linking binaries during sanitizer builds"
+  FORCE )
+set(CMAKE_SHARED_LINKER_FLAGS_SANITIZE
+  "" CACHE STRING "Flags used for linking shared libraries during sanitizer builds"
+  FORCE )
+
+MARK_AS_ADVANCED(
+  CMAKE_CXX_FLAGS_SANITIZE
+  CMAKE_C_FLAGS_SANITIZE
+  CMAKE_EXE_LINKER_FLAGS_SANITIZE
+  CMAKE_SHARED_LINKER_FLAGS_SANITIZE)
+
 # default build type
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "Sanitize" "Coverage")
 set(DEFAULT_BUILD_TYPE "Release")
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to default '${DEFAULT_BUILD_TYPE}' as none was specified.")
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "Choose the type of build." FORCE)
   # possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif ()
 
 # target

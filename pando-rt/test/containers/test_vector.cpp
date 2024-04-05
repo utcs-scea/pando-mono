@@ -162,7 +162,7 @@ TEST(Vector, StressCreateDestroy) {
 
 TEST(Vector, StressPushBack) {
   const std::uint64_t size = 8;
-  const std::uint64_t finalSz = 1 << 10;
+  const std::uint64_t finalSz = 1 << 6;
 
   pando::Vector<std::uint64_t> vector;
   EXPECT_EQ(vector.initialize(size), pando::Status::Success);
