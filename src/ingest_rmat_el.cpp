@@ -20,7 +20,7 @@ auto generateRMATParser(
   };
 }
 
-void galois::loadELFilePerThread(galois::WaitGroup::HandleType wgh, pando::Array<char> filename,
+void galois::loadELFilePerThread(pando::WaitGroup::HandleType wgh, pando::Array<char> filename,
                                  std::uint64_t segmentsPerThread, std::uint64_t numThreads,
                                  std::uint64_t threadID,
                                  galois::PerThreadVector<pando::Vector<ELEdge>> localEdges,

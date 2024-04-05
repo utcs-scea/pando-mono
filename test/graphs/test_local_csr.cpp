@@ -10,11 +10,11 @@
 #include <pando-lib-galois/graphs/graph_traits.hpp>
 #include <pando-lib-galois/graphs/local_csr.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
-#include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
+#include <pando-rt/sync/wait_group.hpp>
 
 pando::Vector<pando::Vector<std::uint64_t>> generateFullyConnectedGraph(std::uint64_t SIZE) {
   pando::Vector<pando::Vector<std::uint64_t>> vec;

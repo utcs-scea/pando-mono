@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_LIB_GALOIS_SYNC_WAIT_GROUP_HPP_
-#define PANDO_LIB_GALOIS_SYNC_WAIT_GROUP_HPP_
+#ifndef PANDO_RT_SYNC_WAIT_GROUP_HPP_
+#define PANDO_RT_SYNC_WAIT_GROUP_HPP_
 
 #include <pando-rt/export.h>
 
@@ -13,7 +13,7 @@
 #include <pando-rt/sync/notification.hpp>
 #include <pando-rt/tracing.hpp>
 
-namespace galois {
+namespace pando {
 /**
  * @brief This is a termination detection mechanism that is used for detecting nested parallelism
  */
@@ -130,4 +130,4 @@ public:
   }
 };
 } // namespace galois
-#endif // PANDO_LIB_GALOIS_SYNC_WAIT_GROUP_HPP_
+#endif // PANDO_RT_SYNC_WAIT_GROUP_HPP_
