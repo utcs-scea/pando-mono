@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+
 #
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
@@ -29,32 +32,31 @@ usage: preprun -n <n> prog [program args]
 
 harts=""
 
-while getopts "n:c:t:h" option
-do
+while getopts "n:c:t:h" option; do
     case ${option} in
-        n) # number of emulated PXNs
-            nodes=${OPTARG}
-            ;;
-        c) # number of emulated cores per PXN
-            cores=${OPTARG}
-            ;;
-        t) # number of emulated cores per PXN
-            harts=${OPTARG}
-            ;;
-        h) # help
-            show_help
-            exit
-            ;;
+    n) # number of emulated PXNs
+        nodes=${OPTARG}
+        ;;
+    c) # number of emulated cores per PXN
+        cores=${OPTARG}
+        ;;
+    t) # number of emulated cores per PXN
+        harts=${OPTARG}
+        ;;
+    h) # help
+        show_help
+        exit
+        ;;
     esac
 done
-shift $(expr $OPTIND - 1 )
+shift $(expr $OPTIND - 1)
 prog=$@
 
 export GASNET_PSHM_NODES=$nodes
 export PANDO_PREP_NUM_CORES=$cores
 
 if [ -n "$harts" ]; then
-  export PANDO_PREP_NUM_HARTS=$harts
+    export PANDO_PREP_NUM_HARTS=$harts
 fi
 
 exec $prog

@@ -29,8 +29,8 @@ CORES="${CORES:-8}"
 HARTS="${HARTS:-16}"
 THREADD=$((${HOST_THREADS} * ${HOSTS} / ${PROCS}))
 THREADS="${THREADS:-${THREADD}}"
-# 8GB Main memory size by default
-MAIN_MEMORY_SIZE="${MAIN_MEMORY_SIZE-8589934592}"
+# 16GB Main memory size by default
+MAIN_MEMORY_SIZE="${MAIN_MEMORY_SIZE-17179869184}"
 LAUNCH_DIR="${LAUNCH_DIR:-$(realpath ${DRV_ROOT}/../)}"
 LAUNCH_SCRIPT="${LAUNCH_SCRIPT:-${LAUNCH_DIR}/pando-drv/tests/PANDOHammerDrvX.py}"
 
