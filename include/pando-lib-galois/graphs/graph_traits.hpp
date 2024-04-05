@@ -205,10 +205,16 @@ template <typename G, typename VertexTokenID, typename VertexTopologyID, typenam
           typename VertexDataRange, typename EdgeDataRange>
 struct gluon_graph {
   /** Size **/
+  std::uint64_t sizeMirrors();
+  std::uint64_t sizeMirrors() const noexcept;
   std::uint64_t getMasterSize();
   std::uint64_t getMasterSize() const noexcept;
   std::uint64_t getMirrorSize();
   std::uint64_t getMirrorSize() const noexcept;
+
+  /** Vertex Manipulation **/
+  VertexTopologyID getLocalTopologyID(VertexTokenID token);
+  VertexTopologyID getGlobalTopologyID(VertexTokenID token);
 
   /** Range **/
   VertexRange getMasterRange();

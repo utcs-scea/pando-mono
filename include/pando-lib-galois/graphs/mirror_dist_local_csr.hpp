@@ -115,48 +115,11 @@ public:
   std::uint64_t getNumEdges(VertexTopologyID vertex) {
     return dlcsr.getNumEdges(vertex);
   }
-  std::uint64_t sizeMirrors() noexcept {
-    return _mirror_size;
-  }
-  std::uint64_t sizeMirrors() const noexcept {
-    return _mirror_size;
-  }
-
-  struct MirrorToMasterMap {
-    MirrorToMasterMap() = default;
-    MirrorToMasterMap(VertexTopologyID _mirror, VertexTopologyID _master)
-        : mirror(_mirror), master(_master) {}
-    VertexTopologyID mirror;
-    VertexTopologyID master;
-    VertexTopologyID getMirror() {
-      return mirror;
-    }
-    VertexTopologyID getMaster() {
-      return master;
-    }
-
-    bool operator==(const MirrorToMasterMap& a) noexcept {
-      return a.mirror == mirror && a.master == master;
-    }
-  };
 
   /** Vertex Manipulation **/
   VertexTopologyID getTopologyID(VertexTokenID tid) {
     return dlcsr.getTopologyID(tid);
   }
-
-  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
-    return dlcsr.getLocalTopologyID(tid);
-  }
-
-  VertexTopologyID getGlobalTopologyID(VertexTokenID tid) {
-    return dlcsr.getGlobalTopologyID(tid);
-  }
-
-  pando::Array<MirrorToMasterMap> getLocalMirrorToRemoteMasterOrderedTable() {
-    return localMirrorToRemoteMasterOrderedTable.getLocalRef();
-  }
-
   VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
     return dlcsr.getTopologyIDFromIndex(index);
   }
@@ -197,7 +160,6 @@ public:
     // This will include all mirrored vertices
     return dlcsr.vertices();
   }
-
   EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr) {
     return dlcsr.edges(vPtr);
   }
@@ -226,14 +188,47 @@ public:
     return dlcsr.deleteEdges(src, edges);
   }
 
-  /** Gluon Graph APIS **/
+  /** Gluon Graph Structs **/
+  struct MirrorToMasterMap {
+    MirrorToMasterMap() = default;
+    MirrorToMasterMap(VertexTopologyID _mirror, VertexTopologyID _master)
+        : mirror(_mirror), master(_master) {}
+    VertexTopologyID mirror;
+    VertexTopologyID master;
+    VertexTopologyID getMirror() {
+      return mirror;
+    }
+    VertexTopologyID getMaster() {
+      return master;
+    }
+
+    bool operator==(const MirrorToMasterMap& a) noexcept {
+      return a.mirror == mirror && a.master == master;
+    }
+  };
+
+  /** Gluon Graph APIs **/
 
   /** Size **/
+  std::uint64_t sizeMirrors() noexcept {
+    return _mirror_size;
+  }
+  std::uint64_t sizeMirrors() const noexcept {
+    return _mirror_size;
+  }
   std::uint64_t getMasterSize() noexcept {
     return lift(masterRange.getLocalRef(), size);
   }
   std::uint64_t getMirrorSize() noexcept {
     return lift(mirrorRange.getLocalRef(), size);
+  }
+
+  /** Vertex Manipulation **/
+  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
+    return dlcsr.getLocalTopologyID(tid);
+  }
+  VertexTopologyID getGlobalTopologyID(VertexTokenID tid) {
+    return dlcsr.getGlobalTopologyID(tid);
   }
 
   /** Range **/
@@ -250,6 +245,22 @@ public:
   }
   std::uint64_t getPhysicalHostID(VertexTokenID tid) {
     return dlcsr.getPhysicalHostID(tid);
+  }
+
+  /**
+   * @brief For testing only
+   */
+  pando::GlobalRef<pando::Array<MirrorToMasterMap>> getLocalMirrorToRemoteMasterOrderedMap(
+      int16_t hostId) {
+    return localMirrorToRemoteMasterOrderedTable[hostId];
+  }
+  pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>> getLocalMasterToRemoteMirrorMap(
+      uint64_t hostId) {
+    return localMasterToRemoteMirrorTable[hostId];
+  }
+
+  pando::Array<MirrorToMasterMap> getLocalMirrorToRemoteMasterOrderedTable() {
+    return localMirrorToRemoteMasterOrderedTable.getLocalRef();
   }
 
   /**
@@ -441,18 +452,6 @@ public:
         });
 
     return pando::Status::Success;
-  }
-
-  /**
-   * @brief For testing only
-   */
-  pando::GlobalRef<pando::Array<MirrorToMasterMap>> getLocalMirrorToRemoteMasterOrderedMap(
-      int16_t hostId) {
-    return localMirrorToRemoteMasterOrderedTable[hostId];
-  }
-  pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>> getLocalMasterToRemoteMirrorMap(
-      uint64_t hostId) {
-    return localMasterToRemoteMirrorTable[hostId];
   }
 
 private:
