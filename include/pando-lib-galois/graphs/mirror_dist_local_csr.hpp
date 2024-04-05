@@ -101,10 +101,10 @@ public:
 
   /** size stuff **/
   std::uint64_t size() noexcept {
-    return dlcsr.size() - _mirror_size;
+    return _master_size;
   }
   std::uint64_t size() const noexcept {
-    return dlcsr.size() - _mirror_size;
+    return _master_size;
   }
   std::uint64_t sizeEdges() noexcept {
     return dlcsr.sizeEdges();
@@ -325,6 +325,7 @@ public:
     galois::WaitGroup wg;
     PANDO_CHECK(wg.initialize(numHosts));
     auto wgh = wg.getHandle();
+    _master_size = numVertices;
     _mirror_size = 0;
     HostLocalStorage<pando::Vector<VertexTokenID>> mirrorList;
     mirrorList = this->dlcsr.getMirrorList(edgeData, virtualToPhysical);
@@ -400,7 +401,12 @@ public:
     }
     PANDO_CHECK(wg.wait());
 
+    // exchange mapping to set up communication
     PANDO_CHECK_RETURN(setupCommunication());
+
+    // initialize bit sets for mirror and master
+    PANDO_CHECK_RETURN(mirrorBitSet.initialize(_mirror_size));
+    PANDO_CHECK_RETURN(masterBitSet.initialize(_master_size));
 
     return pando::Status::Success;
   }
@@ -456,12 +462,16 @@ public:
 
 private:
   DLCSR dlcsr;
+  uint64_t _master_size;
   uint64_t _mirror_size;
   galois::HostLocalStorage<LocalVertexRange> masterRange;
   galois::HostLocalStorage<LocalVertexRange> mirrorRange;
   galois::HostLocalStorage<pando::Array<MirrorToMasterMap>> localMirrorToRemoteMasterOrderedTable;
   galois::HostLocalStorage<pando::Vector<pando::Vector<MirrorToMasterMap>>>
       localMasterToRemoteMirrorTable;
+
+  pando::Array<bool> mirrorBitSet;
+  pando::Array<bool> masterBitSet;
 };
 
 static_assert(graph_checker<MirrorDistLocalCSR<std::uint64_t, std::uint64_t>>::value);
