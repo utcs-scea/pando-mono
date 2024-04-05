@@ -27,6 +27,14 @@ TEST(Fmap, GVectorInitialize) {
   pando::deallocateMemory(gvec, 1);
 }
 
+TEST(Fmap, VectorInitialize) {
+  constexpr std::uint64_t SIZE = 10;
+  pando::Vector<std::uint64_t> vec;
+  fmap(vec, initialize, SIZE);
+  EXPECT_EQ(vec.size(), SIZE);
+  vec.deinitialize();
+}
+
 TEST(Fmap, GVectorPushBack) {
   constexpr std::uint64_t SIZE = 10;
   pando::GlobalPtr<pando::Vector<std::uint64_t>> gvec;
@@ -52,6 +60,25 @@ TEST(Fmap, GVectorPushBack) {
   vec.deinitialize();
   EXPECT_EQ(SIZE, i);
   pando::deallocateMemory(gvec, 1);
+}
+
+TEST(Fmap, VectorPushBack) {
+  constexpr std::uint64_t SIZE = 10;
+  pando::Vector<std::uint64_t> vec;
+  PANDO_CHECK(fmap(vec, initialize, 0));
+
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    PANDO_CHECK(fmap(vec, pushBack, i));
+  }
+
+  EXPECT_EQ(vec.size(), SIZE);
+  std::uint64_t i = 0;
+  for (std::uint64_t v : vec) {
+    EXPECT_EQ(v, i);
+    i++;
+  }
+  vec.deinitialize();
+  EXPECT_EQ(SIZE, i);
 }
 
 pando::Vector<pando::Vector<std::uint64_t>> generateFullyConnectedGraph(std::uint64_t SIZE) {
@@ -113,6 +140,29 @@ TEST(FmapVoid, GDistArrayCSR) {
   liftVoid(*ggraph, deinitialize);
 }
 
+TEST(FmapVoid, DistArrayCSR) {
+  constexpr std::uint64_t SIZE = 10;
+  Graph graph{};
+  auto vvec = generateFullyConnectedGraph(SIZE);
+  PANDO_CHECK(fmap(graph, initialize, vvec));
+  PANDO_CHECK(deleteVectorVector(vvec));
+
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    fmapVoid(graph, setData, i, i);
+    for (std::uint64_t j = 0; j < SIZE; j++) {
+      fmapVoid(graph, setEdgeData, i, j, i * j);
+    }
+  }
+
+  for (std::uint64_t i = 0; i < SIZE; i++) {
+    EXPECT_EQ(fmap(graph, getData, i), i);
+    for (std::uint64_t j = 0; j < SIZE; j++) {
+      EXPECT_EQ(fmap(graph, getEdgeData, i, j), i * j);
+    }
+  }
+  liftVoid(graph, deinitialize);
+}
+
 TEST(Lift, GVectorSize) {
   constexpr std::uint64_t SIZE = 10;
   pando::GlobalPtr<pando::Vector<std::uint64_t>> gvec;
@@ -130,6 +180,14 @@ TEST(Lift, GVectorSize) {
   pando::deallocateMemory(gvec, 1);
 }
 
+TEST(Lift, VectorSize) {
+  constexpr std::uint64_t SIZE = 10;
+  pando::Vector<std::uint64_t> vec;
+  PANDO_CHECK(fmap(vec, initialize, SIZE));
+  EXPECT_EQ(lift(vec, size), SIZE);
+  vec.deinitialize();
+}
+
 TEST(LiftVoid, GVectorDeinitialize) {
   constexpr std::uint64_t SIZE = 10;
   pando::GlobalPtr<pando::Vector<std::uint64_t>> gvec;
@@ -143,6 +201,14 @@ TEST(LiftVoid, GVectorDeinitialize) {
   EXPECT_EQ(lift(*gvec, size), SIZE);
   liftVoid(*gvec, deinitialize);
   pando::deallocateMemory(gvec, 1);
+}
+
+TEST(LiftVoid, VectorDeinitialize) {
+  constexpr std::uint64_t SIZE = 10;
+  pando::Vector<std::uint64_t> vec;
+  PANDO_CHECK(fmap(vec, initialize, SIZE));
+  EXPECT_EQ(lift(vec, size), SIZE);
+  liftVoid(vec, deinitialize);
 }
 
 TEST(PANDO_EXPECT_RETURN, Success) {
