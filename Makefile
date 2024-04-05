@@ -18,6 +18,7 @@ CONTAINER_BUILD_DIR ?= /pando/dockerbuild
 CONTAINER_WORKDIR ?= ${CONTAINER_SRC_DIR}
 CONTAINER_CONTEXT ?= default
 CONTAINER_OPTS ?=
+CONTAINER_CPUSET ?=
 CONTAINER_CMD ?= setarch `uname -m` -R bash -l
 INTERACTIVE ?= i
 
@@ -110,6 +111,7 @@ docker:
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
 	${PANDO_CONTAINER_MOUNTS} \
 	${PANDO_CONTAINER_ENV} \
+	${CONTAINER_CPUSET} \
 	--privileged \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
 	${IMAGE_NAME}:${VERSION} \
@@ -181,19 +183,19 @@ drive-deps:
 run-tests-mpi:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${CONTAINER_BUILD_DIR} && ctest -j4 --verbose | tee test.out && \
+	cd ${CONTAINER_BUILD_DIR} && ctest -j2 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-smp:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${CONTAINER_BUILD_DIR}-smp && ctest -j4 --verbose | tee test.out && \
+	cd ${CONTAINER_BUILD_DIR}-smp && ctest -j2 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests-drv:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${DRV_BUILD_DIR} && ctest -j4 --verbose | tee test.out && \
+	cd ${DRV_BUILD_DIR} && ctest -j2 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests: run-tests-mpi
