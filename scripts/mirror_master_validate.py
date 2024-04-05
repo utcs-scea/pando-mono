@@ -7,7 +7,7 @@ def tablevalidation():
     dic = {}
     for line in sys.stdin:
         parts = line.strip().split(', ')
-        if len(parts) < 3:
+        if len(parts) != 3:
             continue
 
         operation, key, value = parts
