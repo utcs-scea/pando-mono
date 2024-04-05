@@ -219,7 +219,13 @@ public:
   std::uint64_t getMasterSize() noexcept {
     return lift(masterRange.getLocalRef(), size);
   }
+  std::uint64_t getMasterSize() const noexcept {
+    return lift(masterRange.getLocalRef(), size);
+  }
   std::uint64_t getMirrorSize() noexcept {
+    return lift(mirrorRange.getLocalRef(), size);
+  }
+  std::uint64_t getMirrorSize() const noexcept {
     return lift(mirrorRange.getLocalRef(), size);
   }
 
@@ -247,6 +253,74 @@ public:
     return dlcsr.getPhysicalHostID(tid);
   }
 
+  /** Vertex Property **/
+  bool isLocal(VertexTopologyID vertex) {
+    return dlcsr.isLocal(vertex);
+  }
+  bool isOwned(VertexTopologyID vertex) {
+    return dlcsr.isOwned(vertex);
+  }
+  bool isMirror(VertexTopologyID vertex) {
+    static_assert(isLocal(vertex), "Input needs to be local vertex topology ID!");
+    auto it = getMirrorRange();
+    if (*it.begin() <= vertex && vertex < *it.end()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  bool isMaster(VertexTopologyID vertex) {
+    static_assert(isLocal(vertex), "Input needs to be local vertex topology ID!");
+    auto it = getMasterRange();
+    if (*it.begin() <= vertex && vertex < *it.end()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * @brief get vertex local dense ID
+   */
+  std::uint64_t getVertexLocalIndex(VertexTopologyID vertex) {
+    return dlcsr.getVertexIndex(vertex);
+  }
+  /**
+   * @brief gives the number of edges
+   */
+  std::uint64_t localSize(std::uint32_t host) noexcept {
+    return dlcsr.localSize(host);
+  }
+  /**
+   * @brief Sets the value of the edge provided
+   */
+  void setEdgeData(VertexTopologyID vertex, std::uint64_t off, EdgeData data) {
+    dlcsr.setEdgeData(mintEdgeHandle(vertex, off), data);
+  }
+  /**
+   * @brief gets the reference to the vertex provided
+   */
+  pando::GlobalRef<EdgeData> getEdgeData(VertexTopologyID vertex, std::uint64_t off) {
+    return dlcsr.getEdgeData(mintEdgeHandle(vertex, off));
+  }
+  /**
+   * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
+   */
+  VertexTopologyID getEdgeDst(VertexTopologyID vertex, std::uint64_t off) {
+    return dlcsr.getEdgeDst(mintEdgeHandle(vertex, off));
+  }
+
+  /**
+   * @brief Get the local csr
+   */
+  pando::GlobalRef<CSR> getLocalCSR() {
+    return dlcsr.getLocalCSR();
+  }
+
+  pando::Array<MirrorToMasterMap> getLocalMirrorToRemoteMasterOrderedTable() {
+    return localMirrorToRemoteMasterOrderedTable.getLocalRef();
+  }
+
   /**
    * @brief For testing only
    */
@@ -257,61 +331,6 @@ public:
   pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>> getLocalMasterToRemoteMirrorMap(
       uint64_t hostId) {
     return localMasterToRemoteMirrorTable[hostId];
-  }
-
-  pando::Array<MirrorToMasterMap> getLocalMirrorToRemoteMasterOrderedTable() {
-    return localMirrorToRemoteMasterOrderedTable.getLocalRef();
-  }
-
-  /**
-   * @brief get vertex local dense ID
-   */
-  std::uint64_t getVertexLocalIndex(VertexTopologyID vertex) {
-    return dlcsr.getVertexIndex(vertex);
-  }
-
-  /**
-   * @brief gives the number of edges
-   */
-
-  std::uint64_t localSize(std::uint32_t host) noexcept {
-    return dlcsr.localSize(host);
-  }
-
-  /**
-   * @brief Sets the value of the edge provided
-   */
-  void setEdgeData(VertexTopologyID vertex, std::uint64_t off, EdgeData data) {
-    dlcsr.setEdgeData(mintEdgeHandle(vertex, off), data);
-  }
-
-  /**
-   * @brief gets the reference to the vertex provided
-   */
-  pando::GlobalRef<EdgeData> getEdgeData(VertexTopologyID vertex, std::uint64_t off) {
-    return dlcsr.getEdgeData(mintEdgeHandle(vertex, off));
-  }
-
-  /**
-   * @brief get the vertex at the end of the edge provided by vertex at the offset from the start
-   */
-  VertexTopologyID getEdgeDst(VertexTopologyID vertex, std::uint64_t off) {
-    return dlcsr.getEdgeDst(mintEdgeHandle(vertex, off));
-  }
-
-  bool isLocal(VertexTopologyID vertex) {
-    return dlcsr.isLocal(vertex);
-  }
-
-  bool isOwned(VertexTopologyID vertex) {
-    return dlcsr.isOwned(vertex);
-  }
-
-  /**
-   * @brief Get the local csr
-   */
-  pando::GlobalRef<CSR> getLocalCSR() {
-    return dlcsr.getLocalCSR();
   }
 
   template <typename ReadVertexType, typename ReadEdgeType>
@@ -459,6 +478,15 @@ public:
 
     return pando::Status::Success;
   }
+
+  /** Sync **/
+  // TODO(Ying-Wei):
+  // write a sync function that reduces mirror values and then broadcasts master values
+  // return a bitmap of modified vertices
+  //
+  // template <typename Func>
+  // pando::Array<bool> sync(Func func, pando::Array<bool>) {
+  //}
 
 private:
   DLCSR dlcsr;
