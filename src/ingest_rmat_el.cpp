@@ -20,15 +20,14 @@ auto generateRMATParser(
   };
 }
 
-void galois::loadELFilePerThread(galois::WaitGroup::HandleType wgh, pando::Array<char> filename,
-                                 std::uint64_t segmentsPerThread, std::uint64_t numThreads,
-                                 std::uint64_t threadID,
-                                 galois::PerThreadVector<pando::Vector<ELEdge>> localEdges,
-                                 DistArray<HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
-                                 std::uint64_t numVertices) {
-  auto hartID = localEdges.getLocalVectorID();
+void galois::loadELFilePerThread(
+    galois::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
+    std::uint64_t numThreads, std::uint64_t threadID,
+    galois::PerThreadVector<pando::Vector<ELEdge>> localEdges,
+    ThreadLocalStorage<HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
+    std::uint64_t numVertices) {
   auto parser =
-      generateRMATParser(&localEdges.getThreadVector(), &perThreadRename[hartID], numVertices);
+      generateRMATParser(&localEdges.getThreadVector(), perThreadRename.getLocal(), numVertices);
   PANDO_CHECK(
       internal::loadGraphFilePerThread(filename, segmentsPerThread, numThreads, threadID, parser));
   wgh.done();

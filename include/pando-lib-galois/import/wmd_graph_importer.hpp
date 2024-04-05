@@ -19,6 +19,7 @@
 #include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-lib-galois/containers/host_indexed_map.hpp>
 #include <pando-lib-galois/containers/per_thread.hpp>
+#include <pando-lib-galois/containers/thread_local_storage.hpp>
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
 #include <pando-lib-galois/import/ifstream.hpp>
 #include <pando-lib-galois/import/schema.hpp>
@@ -611,10 +612,9 @@ void loadEdgeFilePerThread(
     pando::NotificationHandle done, galois::EdgeParser<EdgeType> parser, uint64_t segmentsPerThread,
     std::uint64_t numThreads, std::uint64_t threadID,
     galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
-    galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
-  auto hartID = localEdges.getLocalVectorID();
+    galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
   auto localEdgeVec = localEdges.getThreadVector();
-  auto hashRef = perThreadRename[hartID];
+  auto hashRef = perThreadRename.getLocalRef();
 
   auto parseLine = [&parser, &localEdgeVec, &hashRef](const char* currentLine) {
     if (currentLine[0] != parser.comment) {
