@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   docker-drivex-ubuntu-2204:
-    name: gcc / ${{ matrix.build-type }} / ${{ matrix.sanitizer-type }}
+    name: gcc / ${{ matrix.build-type }}
     runs-on: self-hosted
     permissions:
       contents: read
@@ -36,7 +36,6 @@ jobs:
     strategy:
       matrix:
         build-type: ['Release']
-        sanitizer-type: ['nosan']
 
     steps:
 
