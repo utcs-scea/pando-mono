@@ -55,11 +55,11 @@ jobs:
         echo "PANDO_TEST_DISCOVERY_TIMEOUT=600" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$(git log --pretty="%h" -1 Dockerfile.dev)" >> $GITHUB_ENV
         echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON" >> $GITHUB_ENV
-        echo ${{ runner.labels }}
-        if [ ${{ runner.labels }} == 'zerberus-0' ]; then
+        echo ${{ runner.name }}
+        if [ ${{ runner.name }} == 'zerberus-0' ]; then
           echo "CONTAINER_CPUSET='--cpuset-cpus=0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30'" >> $GITHUB_ENV
         fi
-        if [ ${{ runner.labels }} == 'zerberus-1' ]; then
+        if [ ${{ runner.name }} == 'zerberus-1' ]; then
           echo "CONTAINER_CPUSET='--cpuset-cpus=1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31'" >> $GITHUB_ENV
         fi
         cat $GITHUB_ENV
