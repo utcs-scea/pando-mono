@@ -348,11 +348,11 @@ bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, GlobalPtr<T> expected, GlobalPt
     if (handle.value() == expectedValue) {
       // success
       postAtomicOpFence(success);
-      *expected = expectedValue;
       return true;
     } else {
       // failure
       postAtomicOpFence(failure);
+      *expected = handle.value();
       return false;
     }
   }
