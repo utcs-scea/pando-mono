@@ -6,6 +6,7 @@
 
 #include <pando-rt/export.h>
 
+#include <unordered_set>
 #include <utility>
 
 #include <pando-lib-galois/containers/array.hpp>
@@ -46,9 +47,13 @@ struct DLCSR_InitializeState {
 
 } // namespace internal
 
+template <typename VertexType, typename EdgeType>
+class MirrorDistLocalCSR;
+
 template <typename VertexType = WMDVertex, typename EdgeType = WMDEdge>
 class DistLocalCSR {
 public:
+  friend MirrorDistLocalCSR<VertexType, EdgeType>;
   using VertexTokenID = std::uint64_t;
   using VertexTopologyID = pando::GlobalPtr<Vertex>;
   using EdgeHandle = pando::GlobalPtr<HalfEdge>;
@@ -115,11 +120,11 @@ public:
     VertexIt& operator--() {
       auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos - 1;
-      CSR csrCurr = arrayOfCSRs.get(currNode);
+      CSR csrCurr = arrayOfCSRs[currNode];
       if (csrCurr.vertexEdgeOffsets.begin() <= ptr || currNode == 0) {
         m_pos = ptr;
       } else {
-        csrCurr = arrayOfCSRs.get(currNode - 1);
+        csrCurr = arrayOfCSRs[currNode - 1];
         m_pos = csrCurr.vertexEdgeOffsets.end() - 2;
       }
       return *this;
@@ -198,12 +203,12 @@ public:
     VertexDataIt& operator++() {
       auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos + 1;
-      CSR csrCurr = arrayOfCSRs.get(currNode);
+      CSR csrCurr = arrayOfCSRs[currNode];
       if (csrCurr.vertexData.end() > ptr ||
           currNode == static_cast<std::uint64_t>(pando::getPlaceDims().node.id - 1)) {
         m_pos = ptr;
       } else {
-        csrCurr = arrayOfCSRs.get(currNode + 1);
+        csrCurr = arrayOfCSRs[currNode + 1];
         m_pos = csrCurr.vertexData.begin();
       }
       return *this;
@@ -218,11 +223,11 @@ public:
     VertexDataIt& operator--() {
       auto currNode = static_cast<std::uint64_t>(galois::localityOf(m_pos).node.id);
       pointer ptr = m_pos - 1;
-      CSR csrCurr = arrayOfCSRs.get(currNode);
+      CSR csrCurr = arrayOfCSRs[currNode];
       if (csrCurr.vertexData.begin() <= ptr || currNode == 0) {
         m_pos = *ptr;
       } else {
-        csrCurr = arrayOfCSRs.get(currNode - 1);
+        csrCurr = arrayOfCSRs[currNode - 1];
         m_pos = *csrCurr.vertexData.end() - 1;
       }
       return *this;
@@ -351,6 +356,8 @@ private:
 
   template <typename, typename>
   friend class DistLocalCSR;
+  template <typename, typename>
+  friend class MirrorDistLocalCSR;
 
 public:
   constexpr DistLocalCSR() noexcept = default;
@@ -394,9 +401,27 @@ public:
   VertexTopologyID getTopologyID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
     std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
+    auto [ret, found] = fmap(getLocalCSR(), relaxedgetTopologyID, tid);
+    if (!found) {
+      return fmap(arrayOfCSRs[physicalHost], getTopologyID, tid);
+    } else {
+      return ret;
+    }
+  }
+
+private:
+  // This function is for mirrored dist local csr, or classes which will directly use it. Don't use
+  // it externally. getLocalTopologyID with non-existing tokenID will return failure.
+  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
+    return fmap(getLocalCSR(), getTopologyID, tid);
+  }
+  VertexTopologyID getGlobalTopologyID(VertexTokenID tid) {
+    std::uint64_t virtualHostID = tid % this->numVHosts();
+    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
     return fmap(arrayOfCSRs[physicalHost], getTopologyID, tid);
   }
 
+public:
   VertexTopologyID getTopologyIDFromIndex(std::uint64_t index) {
     std::uint64_t hostNum = 0;
     std::uint64_t hostSize;
@@ -456,11 +481,17 @@ public:
   }
   VertexDataRange vertexDataRange() noexcept {
     return VertexDataRange{arrayOfCSRs, lift(arrayOfCSRs[0], vertexData.begin),
-                           lift(arrayOfCSRs.get(arrayOfCSRs.size() - 1), vertexData.end),
-                           numVertices};
+                           lift(arrayOfCSRs[arrayOfCSRs.size() - 1], vertexData.end), numVertices};
   }
   EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
     return fmap(getCSR(vertex), edgeDataRange, vertex);
+  }
+
+  /** Host Information **/
+  std::uint64_t getPhysicalHostID(VertexTokenID tid) {
+    std::uint64_t virtualHostID = tid % this->numVHosts();
+    std::uint64_t physicalHost = virtualToPhysicalMap.getLocal()[virtualHostID];
+    return physicalHost;
   }
 
   /** Topology Modifications **/
@@ -642,7 +673,7 @@ public:
     std::uint64_t numVertices = 0;
     if constexpr (isEdgeList) {
       for (uint64_t h = 0; h < numHosts; h++) {
-        PANDO_CHECK(fmap(pHV.get(h), initialize, 0));
+        PANDO_CHECK(fmap(pHV[h], initialize, 0));
       }
       struct PHPV {
         HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges;
@@ -651,8 +682,8 @@ public:
       PHPV phpv{partEdges, pHV};
       galois::doAllEvenlyPartition(
           phpv, numHosts, +[](PHPV phpv, uint64_t host_id, uint64_t) {
-            pando::Vector<pando::Vector<EdgeType>> edgeVec = phpv.partEdges.get(host_id);
-            pando::GlobalRef<pando::Vector<VertexType>> vertexVec = phpv.pHV.get(host_id);
+            pando::Vector<pando::Vector<EdgeType>> edgeVec = phpv.partEdges[host_id];
+            pando::GlobalRef<pando::Vector<VertexType>> vertexVec = phpv.pHV[host_id];
             for (pando::Vector<EdgeType> vec : edgeVec) {
               EdgeType e = vec[0];
               VertexType v = VertexType(e.src, agile::TYPES::NONE);
@@ -661,7 +692,7 @@ public:
           });
 
       for (uint64_t h = 0; h < numHosts; h++) {
-        numVertices += lift(pHV.get(h), size);
+        numVertices += lift(pHV[h], size);
       }
     } else {
       numVertices = numVerticesRead;
@@ -691,6 +722,63 @@ public:
         pando::executeOn(pando::anyPlace, freeTheRest, pHV, partEdges, renamePerHost, numEdges));
 #endif
     return pando::Status::Success;
+  }
+
+  /**
+   * @brief This function creates a mirror list for each host. Currently it implements full
+   * mirroring
+   */
+  template <typename ReadEdgeType>
+  HostLocalStorage<pando::Array<std::uint64_t>> getMirrorList(
+      galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
+      HostLocalStorage<pando::Array<std::uint64_t>> V2PM) {
+    HostLocalStorage<pando::Array<std::uint64_t>> mirrorList;
+    PANDO_CHECK(mirrorList.initialize());
+    auto createMirrors =
+        +[](galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
+            HostLocalStorage<pando::Array<std::uint64_t>> mirrorList,
+            HostLocalStorage<pando::Array<std::uint64_t>> V2PM, std::uint64_t i,
+            galois::WaitGroup::HandleType wgh) {
+          pando::Array<uint64_t> mirrors;
+
+          // Populating the mirror list in a set to avoid duplicates
+          std::unordered_set<uint64_t> mirrorMap;
+          pando::Array<uint64_t> localV2PM = V2PM.getLocalRef();
+          for (std::uint64_t k = 0; k < lift(partEdges.getLocalRef(), size); k++) {
+            pando::Vector<ReadEdgeType> currentEdge = fmap(partEdges.getLocalRef(), get, k);
+            for (ReadEdgeType tmp : currentEdge) {
+              std::uint64_t dstVHost = tmp.dst % localV2PM.size();
+              std::uint64_t dstPHost = fmap(localV2PM, get, dstVHost);
+              if (dstPHost != i)
+                mirrorMap.insert(tmp.dst);
+            }
+          }
+          PANDO_CHECK(mirrors.initialize(mirrorMap.size()));
+
+          // TODO(Divija): Make this parallel
+          // Populate the mirror list
+          uint64_t idx = 0;
+          for (auto& mirror : mirrorMap) {
+            mirrors[idx] = mirror;
+            idx++;
+          }
+
+          mirrorList.getLocalRef() = mirrors;
+          wgh.done();
+        };
+
+    std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+    galois::WaitGroup wg;
+    PANDO_CHECK(wg.initialize(numHosts));
+    auto wgh = wg.getHandle();
+    for (std::uint64_t i = 0; i < numHosts; i++) {
+      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
+                                        pando::anyPod, pando::anyCore};
+      PANDO_CHECK(pando::executeOn(place, createMirrors, partEdges, mirrorList, V2PM, i, wgh));
+    }
+    PANDO_CHECK(wg.wait());
+    wg.deinitialize();
+    return mirrorList;
   }
 
   /**
@@ -814,7 +902,7 @@ public:
       }
       currentCSR.vertexEdgeOffsets[vertex] = Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
 
-      arrayOfCSRs.get(host) = currentCSR;
+      arrayOfCSRs[host] = currentCSR;
       edgesStart = edgesEnd;
     }
     edgeCounts.deinitialize();
@@ -822,7 +910,7 @@ public:
 
     edgesStart = 0;
     for (uint64_t host = 0; host < hosts; host++) {
-      CSR currentCSR = arrayOfCSRs.get(host);
+      CSR currentCSR = arrayOfCSRs[host];
 
       uint64_t lastLocalVertexIndex = verticesPerHost * (host + 1) - 1;
       if (lastLocalVertexIndex >= numVertices) {
@@ -844,7 +932,7 @@ public:
           currEdge = edges[edgesStart + currLocalEdge + 1];
         }
       }
-      arrayOfCSRs.get(host) = currentCSR;
+      arrayOfCSRs[host] = currentCSR;
 
       edgesStart += currLocalEdge;
     }
@@ -923,7 +1011,7 @@ public:
     galois::onEach(
         state2, +[](InitializeEdgeState& state, uint64_t thread, uint64_t) {
           uint64_t host = static_cast<std::uint64_t>(pando::getCurrentNode().id);
-          CSR currentCSR = state.dlcsr.arrayOfCSRs.get(host);
+          CSR currentCSR = state.dlcsr.arrayOfCSRs[host];
 
           uint64_t hostOffset;
           PANDO_CHECK(state.edges.currentHostIndexOffset(hostOffset));
@@ -955,8 +1043,8 @@ public:
     galois::PerThreadVector<pando::Vector<EdgeType>> localEdges;
     PANDO_CHECK_RETURN(localEdges.initialize());
 
-    galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
-    PANDO_CHECK(perThreadRename.initialize());
+    galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
+    PANDO_CHECK(perThreadRename.initialize(localEdges.size()));
 
     for (auto hashRef : perThreadRename) {
       hashRef = galois::HashTable<std::uint64_t, std::uint64_t>{};
@@ -1000,14 +1088,13 @@ public:
 
 #ifdef FREE
     auto freePerThreadRename =
-        +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
-                perThreadRename) {
+        +[](galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
           for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
             hash.deinitialize();
           }
+          perThreadRename.deinitialize();
         };
     PANDO_CHECK(pando::executeOn(pando::anyPlace, freePerThreadRename, perThreadRename));
-    perThreadRename.deinitialize();
 #endif
 
     const bool isEdgeList = false;
@@ -1021,7 +1108,7 @@ public:
    */
   std::uint64_t getVertexLocalIndex(VertexTopologyID vertex) {
     std::uint64_t hostNum = static_cast<std::uint64_t>(galois::localityOf(vertex).node.id);
-    return fmap(arrayOfCSRs.get(hostNum), getVertexIndex, vertex);
+    return fmap(arrayOfCSRs[hostNum], getVertexIndex, vertex);
   }
 
   /**
@@ -1029,7 +1116,7 @@ public:
    */
 
   std::uint64_t localSize(std::uint32_t host) noexcept {
-    return lift(arrayOfCSRs.get(host), size);
+    return lift(arrayOfCSRs[host], size);
   }
 
   /**
@@ -1066,7 +1153,7 @@ public:
    */
   pando::GlobalRef<CSR> getLocalCSR() {
     std::uint64_t nodeIdx = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-    return arrayOfCSRs.get(nodeIdx);
+    return arrayOfCSRs[nodeIdx];
   }
 
 private:

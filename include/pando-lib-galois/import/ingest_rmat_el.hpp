@@ -10,6 +10,7 @@
 #include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-lib-galois/containers/thread_local_storage.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
+#include <pando-lib-galois/graphs/mirror_dist_local_csr.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 
 namespace galois {
@@ -51,10 +52,9 @@ pando::Status generateEdgesPerVirtualHost(pando::GlobalRef<pando::Vector<ELVerte
                                           std::uint64_t totalVertices, std::uint64_t vHostID,
                                           std::uint64_t numVHosts);
 
-template <typename VertexType, typename EdgeType>
-galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> filename,
-                                                             std::uint64_t numVertices,
-                                                             std::uint64_t vHostsScaleFactor = 8) {
+template <typename ReturnType, typename VertexType, typename EdgeType>
+ReturnType initializeELDLCSR(pando::Array<char> filename, std::uint64_t numVertices,
+                             std::uint64_t vHostsScaleFactor = 8) {
   galois::PerThreadVector<pando::Vector<ELEdge>> localEdges;
   PANDO_CHECK(localEdges.initialize());
 
@@ -148,7 +148,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
   auto [partEdges, renamePerHost] =
       internal::partitionEdgesParallely(pHV, std::move(localEdges), v2PM);
 
-  using Graph = galois::DistLocalCSR<VertexType, EdgeType>;
+  using Graph = ReturnType;
   Graph graph;
   graph.template initializeAfterGather<galois::ELVertex, galois::ELEdge>(
       pHV, numVertices, partEdges, renamePerHost, numEdges,

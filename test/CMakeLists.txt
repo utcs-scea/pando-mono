@@ -28,11 +28,16 @@ add_subdirectory(utility)
 pando_add_exec(import_csrlist import_csrlist.cpp)
 pando_add_exec(import_dirOptCsrList import_dirOptCsrList.cpp)
 pando_add_exec(import_ifstream import_ifstream.cpp)
+pando_add_exec(mirror_master_table test_mirror_master_table.cpp)
 
 pando_add_bin_test(import_dirOptCsrList "-n 10 -f" ${pando-lib-galois_SOURCE_DIR}/graphs/repeats.el
   ${pando-lib-galois_SOURCE_DIR}/ok/repeats.el-import-dirOptCsrList-10.ok)
+pando_add_bin_python_test(mirror_master_table "-n 10 -f" ${pando-lib-galois_SOURCE_DIR}/graphs/repeats.el)
+pando_add_bin_python_test(mirror_master_table "-n 10 -f" ${pando-lib-galois_SOURCE_DIR}/graphs/simple.el)
+
 
 if (NOT PANDO_RT_BACKEND STREQUAL "DRVX") # for speed reasons
+pando_add_bin_python_test(mirror_master_table  "-n 1024 -f" ${pando-lib-galois_SOURCE_DIR}/graphs/rmat_571919_seed1_scale10_nV1024_nE10447.el)
 
 pando_add_bin_test(import_dirOptCsrList "-n 1024 -f" ${pando-lib-galois_SOURCE_DIR}/graphs/rmat_571919_seed1_scale10_nV1024_nE10447.el
   ${pando-lib-galois_SOURCE_DIR}/ok/rmat_571919_seed1_scale10_nV1024_nE10447.el-import-dirOptCsrList-1024.ok)
