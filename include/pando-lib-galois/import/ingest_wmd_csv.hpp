@@ -16,7 +16,7 @@ namespace galois {
 void loadWMDFilePerThread(
     galois::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
     std::uint64_t numThreads, std::uint64_t threadID,
-    PerThreadVector<pando::Vector<WMDEdge>> localEdges,
+    ThreadLocalVector<pando::Vector<WMDEdge>> localReadEdges,
     ThreadLocalStorage<HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
     ThreadLocalVector<WMDVertex> localReadVertices, galois::DAccumulator<std::uint64_t> totVerts);
 
@@ -63,13 +63,13 @@ pando::Status wmdCSVParse(const char* line, pando::Array<galois::StringView> tok
 template <typename VertexType, typename EdgeType>
 galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char> filename,
                                                               std::uint16_t scale_factor = 8) {
-  galois::PerThreadVector<pando::Vector<WMDEdge>> localEdges;
-  PANDO_CHECK(localEdges.initialize());
+  galois::ThreadLocalVector<pando::Vector<WMDEdge>> localReadEdges;
+  PANDO_CHECK(localReadEdges.initialize());
 
   galois::ThreadLocalVector<WMDVertex> localReadVertices;
   PANDO_CHECK(localReadVertices.initialize());
 
-  const std::uint64_t numThreads = localEdges.size() - pando::getPlaceDims().node.id;
+  const std::uint64_t numThreads = localReadEdges.size() - pando::getPlaceDims().node.id;
   const std::uint64_t hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
   const std::uint64_t numVHosts = hosts * scale_factor;
 
@@ -93,7 +93,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
     pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % hosts)},
                                       pando::anyPod, pando::anyCore};
     PANDO_CHECK(pando::executeOn(place, &galois::loadWMDFilePerThread, wgh, filename, 1, numThreads,
-                                 i, localEdges, perThreadRename, localReadVertices, totVerts));
+                                 i, localReadEdges, perThreadRename, localReadVertices, totVerts));
   }
 
   pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts;
@@ -114,8 +114,8 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
   perThreadRename.deinitialize();
 #endif
 
-  PANDO_CHECK(
-      galois::internal::buildEdgeCountToSend<WMDEdge>(numVHosts, localEdges, *labeledEdgeCounts));
+  PANDO_CHECK(galois::internal::buildEdgeCountToSend<WMDEdge>(numVHosts, localReadEdges,
+                                                              *labeledEdgeCounts));
 
   auto [v2PM, numEdges] = PANDO_EXPECT_CHECK(
       galois::internal::buildVirtualToPhysicalMapping(hosts, *labeledEdgeCounts));
@@ -136,7 +136,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
 
   /** Generate Edge Partition **/
   auto [partEdges, renamePerHost] =
-      internal::partitionEdgesParallely(pHV, std::move(localEdges), v2PM);
+      internal::partitionEdgesParallely(pHV, std::move(localReadEdges), v2PM);
 
   std::uint64_t numVertices = totVerts.reduce();
 

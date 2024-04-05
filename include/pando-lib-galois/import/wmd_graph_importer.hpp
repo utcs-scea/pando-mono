@@ -95,7 +95,7 @@ template <typename EdgeType>
  */
 template <typename EdgeType>
 void buildEdgeCountToSend(
-    std::uint64_t numVirtualHosts, galois::PerThreadVector<EdgeType> localEdges,
+    std::uint64_t numVirtualHosts, galois::ThreadLocalVector<EdgeType> localReadEdges,
     pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
   PANDO_CHECK(sumArray.initialize(numVirtualHosts));
@@ -113,10 +113,11 @@ void buildEdgeCountToSend(
 
   auto state = galois::make_tpl(wgh, sumArray);
   PANDO_CHECK(galois::doAll(
-      wgh, state, localEdges, +[](decltype(state) state, pando::Vector<EdgeType> localEdges) {
+      wgh, state, localReadEdges,
+      +[](decltype(state) state, pando::Vector<EdgeType> localReadEdges) {
         auto [wgh, sumArray] = state;
         PANDO_CHECK(galois::doAll(
-            wgh, sumArray, localEdges, +[](decltype(sumArray) counts, EdgeType localEdge) {
+            wgh, sumArray, localReadEdges, +[](decltype(sumArray) counts, EdgeType localEdge) {
               pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
                   static_cast<pando::GlobalPtr<void>>(&counts[localEdge.src % counts.size()]));
               toAdd += pairOffset;
@@ -154,14 +155,14 @@ uint64_t combiner(B f, B s) {
 }
 
 /**
- * @brief Consumes localEdges, and references a partitionMap to produced partitioned Edges grouped
- * by Vertex, along with a rename set of Vertices
+ * @brief Consumes localReadEdges, and references a partitionMap to produced partitioned Edges
+ * grouped by Vertex, along with a rename set of Vertices
  */
 template <typename EdgeType, typename VertexType>
 [[nodiscard]] Pair<HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>>,
                    HostIndexedMap<HashTable<std::uint64_t, std::uint64_t>>>
 partitionEdgesParallely(HostIndexedMap<pando::Vector<VertexType>> partitionedVertices,
-                        PerThreadVector<pando::Vector<EdgeType>>&& localEdges,
+                        ThreadLocalVector<pando::Vector<EdgeType>>&& localReadEdges,
                         pando::Array<std::uint64_t> v2PM) {
   HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
   PANDO_CHECK(partEdges.initialize());
@@ -204,10 +205,12 @@ partitionEdgesParallely(HostIndexedMap<pando::Vector<VertexType>> partitionedVer
     }
     i++;
   }
+
+  const std::uint64_t numThreads = static_cast<std::uint64_t>(localReadEdges.size());
   std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
   DistArray<HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>>> perThreadEdges;
-  PANDO_CHECK(perThreadEdges.initialize(localEdges.size()));
-  for (uint64_t i = 0; i < localEdges.size(); i++) {
+  PANDO_CHECK(perThreadEdges.initialize(numThreads));
+  for (uint64_t i = 0; i < numThreads; i++) {
     PANDO_CHECK(lift(perThreadEdges[i], initialize));
     HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> pVec = perThreadEdges[i];
     for (pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> vec : pVec) {
@@ -221,13 +224,13 @@ partitionEdgesParallely(HostIndexedMap<pando::Vector<VertexType>> partitionedVer
   PANDO_CHECK(numEdgesPerHostPerThread.initialize());
   PANDO_CHECK(prefixArrayPerHostPerThread.initialize());
   for (std::uint64_t i = 0; i < numHosts; i++) {
-    PANDO_CHECK(fmap(prefixArrayPerHostPerThread[i], initialize, lift(localEdges, size)));
-    PANDO_CHECK(fmap(numEdgesPerHostPerThread[i], initialize, lift(localEdges, size)));
+    PANDO_CHECK(fmap(prefixArrayPerHostPerThread[i], initialize, numThreads));
+    PANDO_CHECK(fmap(numEdgesPerHostPerThread[i], initialize, numThreads));
   }
 
-  auto state = galois::make_tpl(perThreadEdges, localEdges, v2PM, numEdgesPerHostPerThread);
+  auto state = galois::make_tpl(perThreadEdges, localReadEdges, v2PM, numEdgesPerHostPerThread);
   galois::doAllEvenlyPartition(
-      state, lift(localEdges, size), +[](decltype(state) state, uint64_t tid, uint64_t) {
+      state, numThreads, +[](decltype(state) state, uint64_t tid, uint64_t) {
         auto [perThreadEdges, localEdgesPTV, V2PMap, prefixArr] = state;
         pando::GlobalPtr<pando::Vector<pando::Vector<EdgeType>>> localEdgesPtr =
             localEdgesPTV.get(tid);
@@ -244,6 +247,7 @@ partitionEdgesParallely(HostIndexedMap<pando::Vector<VertexType>> partitionedVer
           *(arr.begin() + tid) = lift(edgeVec[i], size);
         }
       });
+  localReadEdges.deinitialize();
 
   // Compute prefix sum
   using SRC = galois::Array<uint64_t>;
@@ -258,18 +262,18 @@ partitionEdgesParallely(HostIndexedMap<pando::Vector<VertexType>> partitionedVer
                       galois::internal::combiner<DST_Val>, galois::Array>
         prefixSum(arr, prefixArr);
     PANDO_CHECK(prefixSum.initialize(pando::getPlaceDims().core.x * pando::getPlaceDims().core.y));
-    prefixSum.computePrefixSum(lift(localEdges, size));
+    prefixSum.computePrefixSum(numThreads);
   }
   HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> pHVEdge{};
   PANDO_CHECK(pHVEdge.initialize());
   for (uint64_t i = 0; i < numHosts; i++) {
     galois::Array<uint64_t> prefixArr = prefixArrayPerHostPerThread[i];
-    PANDO_CHECK(fmap(pHVEdge[i], initialize, prefixArr[lift(localEdges, size) - 1]));
+    PANDO_CHECK(fmap(pHVEdge[i], initialize, prefixArr[numThreads - 1]));
   }
   // Parallel insert
   auto PHState = galois::make_tpl(pHVEdge, prefixArrayPerHostPerThread, perThreadEdges);
   galois::doAllEvenlyPartition(
-      PHState, lift(localEdges, size), +[](decltype(PHState) PHState, uint64_t threadID, uint64_t) {
+      PHState, numThreads, +[](decltype(PHState) PHState, uint64_t threadID, uint64_t) {
         auto [phVec, prefixArrPHPT, newEdge] = PHState;
         std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
         for (uint64_t i = 0; i < numHosts; i++) {
