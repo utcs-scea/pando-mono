@@ -6,6 +6,7 @@
 
 #include <numeric>
 
+#include <pando-lib-galois/containers/thread_local_storage.hpp>
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
 #include <pando-lib-galois/import/ingest_wmd_csv.hpp>
@@ -679,25 +680,20 @@ TEST(loadGraphFilePerThread, loadGraph) {
   for (uint64_t i = 0; i < wmdFile.size(); i++)
     filename[i] = wmdFile[i];
 
-  galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
-  PANDO_CHECK(perThreadRename.initialize(localEdges.size()));
-  for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+  galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
+  PANDO_CHECK(perThreadRename.initialize());
+  for (std::uint64_t i = 0; i < perThreadRename.size(); i++) {
     perThreadRename[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
     pando::Status err = fmap(perThreadRename[i], initialize, 0);
     EXPECT_EQ(err, pando::Status::Success);
   }
 
-  for (std::uint64_t i = 0; i < numThreads; i++) {
-    perThreadRename[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
-    pando::Status err = fmap(perThreadRename[i], initialize, 0);
-    EXPECT_EQ(err, pando::Status::Success);
-  }
-
-  galois::DAccumulator<std::uint64_t> totVerts;
+  galois::DAccumulator<std::uint64_t> totVerts{};
   EXPECT_EQ(totVerts.initialize(), pando::Status::Success);
 
   galois::WaitGroup wg;
   EXPECT_EQ(pando::Status::Success, wg.initialize(numThreads));
+
   auto wgh = wg.getHandle();
 
   for (uint64_t i = 0; i < numThreads; i++) {
@@ -713,13 +709,13 @@ TEST(loadGraphFilePerThread, loadGraph) {
 
   wg.deinitialize();
 
-  auto freeStuff =
-      +[](galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
-        for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
-          hash.deinitialize();
-        }
-        perThreadRename.deinitialize();
-      };
+  auto freeStuff = +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
+                           perThreadRename) {
+    for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
+      hash.deinitialize();
+    }
+  };
+  perThreadRename.deinitialize();
   EXPECT_EQ(pando::Status::Success, pando::executeOn(pando::anyPlace, freeStuff, perThreadRename));
 
   uint64_t numVertices = 0;
@@ -756,9 +752,9 @@ TEST(loadGraphFilePerThread, loadEdgeList) {
 
   const std::uint64_t numThreads = localEdges.size() - pando::getPlaceDims().node.id;
 
-  galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename{};
-  PANDO_CHECK(perThreadRename.initialize(localEdges.size()));
-  for (std::uint64_t i = 0; i < localEdges.size(); i++) {
+  galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename{};
+  PANDO_CHECK(perThreadRename.initialize());
+  for (std::uint64_t i = 0; i < perThreadRename.size(); i++) {
     perThreadRename[i] = galois::HashTable<std::uint64_t, std::uint64_t>();
     pando::Status err = fmap(perThreadRename[i], initialize, 0);
     EXPECT_EQ(err, pando::Status::Success);
@@ -778,14 +774,14 @@ TEST(loadGraphFilePerThread, loadEdgeList) {
   }
   EXPECT_EQ(wg.wait(), pando::Status::Success);
 
-  auto freeStuff =
-      +[](galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
-        for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
-          hash.deinitialize();
-        }
-        perThreadRename.deinitialize();
-      };
+  auto freeStuff = +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
+                           perThreadRename) {
+    for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
+      hash.deinitialize();
+    }
+  };
   EXPECT_EQ(pando::Status::Success, pando::executeOn(pando::anyPlace, freeStuff, perThreadRename));
+  perThreadRename.deinitialize();
 
   uint64_t numEdges = getNumEdges(edgelistFile);
   uint64_t edges = 0;

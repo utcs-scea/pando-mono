@@ -8,6 +8,7 @@
 
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/containers/hashtable.hpp>
+#include <pando-lib-galois/containers/thread_local_storage.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 
@@ -32,7 +33,7 @@ void loadELFilePerThread(
     galois::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
     std::uint64_t numThreads, std::uint64_t threadID,
     galois::PerThreadVector<pando::Vector<ELEdge>> localEdges,
-    galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
+    galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
     std::uint64_t numVertices);
 
 const char* elGetOne(const char* line, std::uint64_t& val);
@@ -59,8 +60,8 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
 
   const std::uint64_t numThreads = localEdges.size() - pando::getPlaceDims().node.id;
 
-  galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
-  PANDO_CHECK(perThreadRename.initialize(localEdges.size()));
+  galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
+  PANDO_CHECK(perThreadRename.initialize());
 
   for (auto hashRef : perThreadRename) {
     hashRef = galois::HashTable<std::uint64_t, std::uint64_t>{};
@@ -92,13 +93,14 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
 
 #ifdef FREE
   auto freePerThreadRename =
-      +[](galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
+      +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
+              perThreadRename) {
         for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
           hash.deinitialize();
         }
-        perThreadRename.deinitialize();
       };
   PANDO_CHECK(pando::executeOn(pando::anyPlace, freePerThreadRename, perThreadRename));
+  perThreadRename.deinitialize();
 #endif
 
   PANDO_CHECK(

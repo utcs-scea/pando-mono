@@ -955,8 +955,8 @@ public:
     galois::PerThreadVector<pando::Vector<EdgeType>> localEdges;
     PANDO_CHECK_RETURN(localEdges.initialize());
 
-    galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
-    PANDO_CHECK(perThreadRename.initialize(localEdges.size()));
+    galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
+    PANDO_CHECK(perThreadRename.initialize());
 
     for (auto hashRef : perThreadRename) {
       hashRef = galois::HashTable<std::uint64_t, std::uint64_t>{};
@@ -1000,13 +1000,14 @@ public:
 
 #ifdef FREE
     auto freePerThreadRename =
-        +[](galois::DistArray<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename) {
+        +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
+                perThreadRename) {
           for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
             hash.deinitialize();
           }
-          perThreadRename.deinitialize();
         };
     PANDO_CHECK(pando::executeOn(pando::anyPlace, freePerThreadRename, perThreadRename));
+    perThreadRename.deinitialize();
 #endif
 
     const bool isEdgeList = false;
