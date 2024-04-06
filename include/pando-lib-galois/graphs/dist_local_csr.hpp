@@ -6,6 +6,7 @@
 
 #include <pando-rt/export.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <pando-lib-galois/containers/array.hpp>
@@ -487,6 +488,19 @@ public:
     Vertex v1 = *(vPtr + 1);
     return RefSpan<galois::HalfEdge>(v.edgeBegin, v1.edgeBegin - v.edgeBegin);
   }
+
+  EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr, uint64_t offset_st, uint64_t window_sz) {
+    Vertex v = *vPtr;
+    Vertex v1 = *(vPtr + 1);
+
+    auto beg = v.edgeBegin + offset_st;
+    if (beg > v1.edgeBegin)
+      return RefSpan<galois::HalfEdge>(v.edgeBegin, 0);
+
+    auto clipped_window_sz = std::min(window_sz, (uint64_t)(v1.edgeBegin - beg));
+    return RefSpan<galois::HalfEdge>(beg, clipped_window_sz);
+  }
+
   VertexDataRange vertexDataRange() noexcept {
     return VertexDataRange{arrayOfCSRs, lift(arrayOfCSRs[0], vertexData.begin),
                            lift(arrayOfCSRs[arrayOfCSRs.size() - 1], vertexData.end), numVertices};
