@@ -66,6 +66,7 @@ TEST(SimpleLock, ActualLockUnlock) {
                 tpl, hls,
                 +[](decltype(tpl) tpl, pando::GlobalRef<std::uint64_t>) {
                   auto [mutex, array] = tpl;
+                  mutex.lock();
                   for (int i = 0; i < 10; i++) {
                     if ((i + 1 + pando::getCurrentPlace().node.id) <= 10) {
                       array[i] = i + 1 + pando::getCurrentPlace().node.id;
