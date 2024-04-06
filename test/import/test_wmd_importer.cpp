@@ -283,6 +283,7 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
 
   const std::string elFile = std::get<0>(GetParam());
   const std::uint64_t numVertices = std::get<1>(GetParam());
+
   pando::Array<char> filename;
   EXPECT_EQ(pando::Status::Success, filename.initialize(elFile.size()));
   for (uint64_t i = 0; i < elFile.size(); i++)
