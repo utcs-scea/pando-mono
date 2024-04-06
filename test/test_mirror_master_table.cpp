@@ -77,10 +77,9 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
   }
   filename[length] = '\0'; // Ensure the string is null-terminated
 
-  Graph graph =
-      galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
-
   if (pando::getCurrentPlace().node.id == 0) {
+    Graph graph =
+        galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
     // Iterate over vertices
     std::uint64_t vid = 0;
     auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
@@ -112,7 +111,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
         }
       }
     }
+    graph.deinitialize();
   }
   pando::waitAll();
-  graph.deinitialize();
 }
