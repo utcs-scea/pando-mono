@@ -94,7 +94,7 @@ public:
   constexpr MirrorDistLocalCSR& operator=(const MirrorDistLocalCSR&) noexcept = default;
   constexpr MirrorDistLocalCSR& operator=(MirrorDistLocalCSR&&) noexcept = default;
 
-  /** Official Graph APIS **/
+  /** Official Graph APIs **/
   void deinitialize() {
     dlcsr.deinitialize();
   }
@@ -144,6 +144,8 @@ public:
   /** Data Manipulations **/
   void setData(VertexTopologyID vertex, VertexData data) {
     dlcsr.setData(vertex, data);
+
+    setBitSet(vertex);
   }
   pando::GlobalRef<VertexData> getData(VertexTopologyID vertex) {
     return dlcsr.getData(vertex);
@@ -261,24 +263,74 @@ public:
     return dlcsr.isOwned(vertex);
   }
   bool isMirror(VertexTopologyID vertex) {
-    static_assert(isLocal(vertex), "Input needs to be local vertex topology ID!");
-    auto it = getMirrorRange();
-    if (*it.begin() <= vertex && vertex < *it.end()) {
-      return true;
+    if (isLocal(vertex)) {
+      auto it = getMirrorRange();
+      if (*it.begin() <= vertex && vertex < *it.end()) {
+        return true;
+      } else {
+        return false;
+      }
     } else {
-      return false;
+      PANDO_ABORT("INPUT NEEDS TO BE LOCAL VERTEX TOPOLOGY ID");
     }
   }
   bool isMaster(VertexTopologyID vertex) {
-    static_assert(isLocal(vertex), "Input needs to be local vertex topology ID!");
-    auto it = getMasterRange();
-    if (*it.begin() <= vertex && vertex < *it.end()) {
-      return true;
+    if (isLocal(vertex)) {
+      auto it = getMasterRange();
+      if (*it.begin() <= vertex && vertex < *it.end()) {
+        return true;
+      } else {
+        return false;
+      }
     } else {
-      return false;
+      PANDO_ABORT("INPUT NEEDS TO BE LOCAL VERTEX TOPOLOGY ID");
     }
   }
 
+  /** Bit Set **/
+  pando::GlobalRef<pando::Array<bool>> getLocalMirrorBitSet() {
+    return mirrorBitSets.getLocalRef();
+  }
+  pando::GlobalRef<pando::Array<bool>> getLocalMasterBitSet() {
+    return masterBitSets.getLocalRef();
+  }
+  void resetLocalMirrorBitSet() {
+    fmap(getLocalMirrorBitSet(), fill, false);
+  }
+  void resetLocalMasterBitSet() {
+    fmap(getLocalMasterBitSet(), fill, false);
+  }
+  void setBitSet(VertexTopologyID vertex) {
+    if (isLocal(vertex)) { // vertex is local
+      // set bit set according to mirror or master
+      if (isMirror(vertex)) {
+        std::uint64_t index = getIndex(vertex, getMirrorRange());
+        pando::GlobalRef<pando::Array<bool>> mirrorBitSet = mirrorBitSets.getLocalRef();
+        fmap(mirrorBitSet, get, index) = true;
+      } else if (isMirror(vertex)) {
+        std::uint64_t index = getIndex(vertex, getMasterRange());
+        pando::GlobalRef<pando::Array<bool>> masterBitSet = masterBitSets.getLocalRef();
+        fmap(masterBitSet, get, index) = true;
+      }
+    } else { // vertex is remote
+      std::uint64_t index = getIndex(vertex, getMasterRange());
+      VertexTokenID tokenId = getTokenID(vertex);
+      std::uint64_t physicalHost = getPhysicalHostID(tokenId);
+      pando::GlobalRef<pando::Array<bool>> masterBitSet = masterBitSets[physicalHost];
+      fmap(masterBitSet, get, index) = true;
+    }
+  }
+
+  /**
+   * @brief get the index of a vertex within a specific vertex range
+   */
+  std::uint64_t getIndex(VertexTopologyID vertex, LocalVertexRange vertexList) {
+    if (*vertexList.begin() <= vertex && *vertexList.end() >= vertex) {
+      return static_cast<uint64_t>(vertex - *vertexList.begin());
+    } else {
+      PANDO_ABORT("ILLEGAL SUBTRACTION OF POINTERS");
+    }
+  }
   /**
    * @brief get vertex local dense ID
    */
@@ -309,29 +361,80 @@ public:
   VertexTopologyID getEdgeDst(VertexTopologyID vertex, std::uint64_t off) {
     return dlcsr.getEdgeDst(mintEdgeHandle(vertex, off));
   }
-
   /**
    * @brief Get the local csr
    */
   pando::GlobalRef<CSR> getLocalCSR() {
     return dlcsr.getLocalCSR();
   }
-
-  pando::Array<MirrorToMasterMap> getLocalMirrorToRemoteMasterOrderedTable() {
+  /**
+   * @brief Get the local mirror to master map
+   */
+  pando::Array<MirrorToMasterMap> getLocalMirrorToMasterMap() {
     return localMirrorToRemoteMasterOrderedTable.getLocalRef();
   }
-
   /**
-   * @brief For testing only
+   * @brief Get the local master to mirror map
    */
-  pando::GlobalRef<pando::Array<MirrorToMasterMap>> getLocalMirrorToRemoteMasterOrderedMap(
-      int16_t hostId) {
-    return localMirrorToRemoteMasterOrderedTable[hostId];
+  pando::Vector<pando::Vector<MirrorToMasterMap>> getLocalMasterToMirrorMap() {
+    return localMasterToRemoteMirrorTable.getLocalRef();
   }
-  pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>> getLocalMasterToRemoteMirrorMap(
-      uint64_t hostId) {
-    return localMasterToRemoteMirrorTable[hostId];
+
+  /** Sync **/
+  template <typename Func>
+  void reduce(Func func) {
+    auto state = galois::make_tpl(localMirrorToRemoteMasterOrderedTable, masterBitSets, func);
+
+    galois::doAll(
+        state, mirrorBitSets,
+        +[](decltype(state) state, pando::GlobalRef<pando::Array<bool>> mirrorBitSet) {
+          auto [localMirrorToRemoteMasterOrderedTable, masterBitSets, func] = state;
+
+          for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
+            bool dirty = fmap(mirrorBitSet, get, i);
+            if (dirty) {
+              // obtain the local mirror vertex data
+              LocalVertexRange localMirrorRange = getMirrorRange();
+              VertexTopologyID mirrorTopologyID = *localMirrorRange.begin() + i;
+              // a copy
+              VertexData mirrorData = getData(mirrorTopologyID);
+
+              // obtain the corresponding remote master information
+              pando::GlobalRef<pando::Array<MirrorToMasterMap>>
+                  localMirrorToRemoteMasterOrderedMap =
+                      localMirrorToRemoteMasterOrderedTable[pando::getCurrentPlace().node.id];
+              MirrorToMasterMap mirrorToMasterMap =
+                  fmap(localMirrorToRemoteMasterOrderedMap, get, i);
+              VertexTopologyID masterTopologyID = mirrorToMasterMap.getMaster();
+              // actual reference
+              pando::GlobalRef<VertexData> masterData = getData(masterTopologyID);
+
+              // atomic function signature: func(VertexData mirror, pando::GlobalRef<VertexData>
+              // master) apply the function
+              VertexData oldMasterData = masterData;
+              func(mirrorData, masterData);
+              // master data updated
+              if (masterData != oldMasterData) {
+                // set the remote master bit set
+                VertexTokenID masterTokenID = getTokenID(masterTopologyID);
+                std::uint64_t physicalHost = getPhysicalHostID(masterTokenID);
+                pando::GlobalRef<pando::Array<bool>> masterBitSet = masterBitSets[physicalHost];
+                std::uint64_t index = getIndex(masterTopologyID, getMasterRange());
+                fmap(masterBitSet, get, index) = true;
+              }
+            }
+          }
+        });
   }
+  // void broadcast() {
+  // }
+  // TODO(Ying-Wei):
+  //  write a sync function that reduces mirror values and then broadcasts master values
+  //  return a bitmap of modified vertices
+  //
+  //  template <typename Func>
+  //  pando::Array<bool> sync(Func func, pando::Array<bool>) {
+  // }
 
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
@@ -424,8 +527,14 @@ public:
     PANDO_CHECK_RETURN(setupCommunication());
 
     // initialize bit sets for mirror and master
-    PANDO_CHECK_RETURN(mirrorBitSet.initialize(_mirror_size));
-    PANDO_CHECK_RETURN(masterBitSet.initialize(_master_size));
+    PANDO_CHECK_RETURN(mirrorBitSets.initialize());
+    PANDO_CHECK_RETURN(masterBitSets.initialize());
+    for (std::uint64_t i = 0; i < numHosts; i++) {
+      pando::GlobalRef<pando::Array<bool>> mirrorBitSet = mirrorBitSets[i];
+      pando::GlobalRef<pando::Array<bool>> masterBitSet = masterBitSets[i];
+      PANDO_CHECK_RETURN(fmap(mirrorBitSet, initialize, _mirror_size));
+      PANDO_CHECK_RETURN(fmap(masterBitSet, initialize, _master_size));
+    }
 
     return pando::Status::Success;
   }
@@ -479,14 +588,15 @@ public:
     return pando::Status::Success;
   }
 
-  /** Sync **/
-  // TODO(Ying-Wei):
-  // write a sync function that reduces mirror values and then broadcasts master values
-  // return a bitmap of modified vertices
-  //
-  // template <typename Func>
-  // pando::Array<bool> sync(Func func, pando::Array<bool>) {
-  //}
+  /** Testing Purpose **/
+  pando::GlobalRef<pando::Array<MirrorToMasterMap>> getLocalMirrorToRemoteMasterOrderedMap(
+      int16_t hostId) {
+    return localMirrorToRemoteMasterOrderedTable[hostId];
+  }
+  pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>> getLocalMasterToRemoteMirrorMap(
+      uint64_t hostId) {
+    return localMasterToRemoteMirrorTable[hostId];
+  }
 
 private:
   DLCSR dlcsr;
@@ -498,8 +608,8 @@ private:
   galois::HostLocalStorage<pando::Vector<pando::Vector<MirrorToMasterMap>>>
       localMasterToRemoteMirrorTable;
 
-  pando::Array<bool> mirrorBitSet;
-  pando::Array<bool> masterBitSet;
+  galois::HostLocalStorage<pando::Array<bool>> mirrorBitSets;
+  galois::HostLocalStorage<pando::Array<bool>> masterBitSets;
 };
 
 static_assert(graph_checker<MirrorDistLocalCSR<std::uint64_t, std::uint64_t>>::value);
