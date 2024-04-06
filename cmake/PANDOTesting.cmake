@@ -136,7 +136,7 @@ function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
 
     set(NUM_PXNS 2)
     set(NUM_CORES 4)
-    set(NUM_HTHREADS 8)
+    set(NUM_HTHREADS 1)
 
     get_filename_component(FNAME ${TARGET} NAME)
 
@@ -171,7 +171,7 @@ function(pando_add_bin_python_test TARGET ARGS INPUTFILE)
 
     set(NUM_PXNS 2)
     set(NUM_CORES 4)
-    set(NUM_HTHREADS 8)
+    set(NUM_HTHREADS 1)
 
     get_filename_component(FNAME ${TARGET} NAME)
 
