@@ -62,7 +62,7 @@ public:
     return nodes * getThreadsPerHost();
   }
 
-  [[nodiscard]] constexpr std::uint64_t getCurrentThreadIdx() const noexcept {
+  [[nodiscard]] static constexpr std::uint64_t getCurrentThreadIdx() noexcept {
     return getThreadIdxFromPlace(pando::getCurrentPlace(), pando::getCurrentThread());
   }
 

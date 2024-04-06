@@ -60,7 +60,7 @@ template <typename EdgeType>
  */
 template <typename EdgeType>
 [[nodiscard]] pando::Status buildEdgeCountToSend(
-    std::uint64_t numVirtualHosts, galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
+    std::uint64_t numVirtualHosts, galois::ThreadLocalVector<pando::Vector<EdgeType>> localEdges,
     pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
   PANDO_CHECK_RETURN(sumArray.initialize(numVirtualHosts));
@@ -88,46 +88,6 @@ template <typename EdgeType>
       }));
   labeledEdgeCounts = sumArray;
   return pando::Status::Success;
-}
-
-/**
- * @brief fills out the metadata for the VirtualToPhysical Host mapping.
- */
-template <typename EdgeType>
-void buildEdgeCountToSend(
-    std::uint64_t numVirtualHosts, galois::ThreadLocalVector<EdgeType> localReadEdges,
-    pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
-  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
-  PANDO_CHECK(sumArray.initialize(numVirtualHosts));
-
-  for (std::uint64_t i = 0; i < numVirtualHosts; i++) {
-    galois::Pair<std::uint64_t, std::uint64_t> p{0, i};
-    sumArray[i] = p;
-  }
-  galois::WaitGroup wg{};
-  PANDO_CHECK(wg.initialize(0));
-  auto wgh = wg.getHandle();
-
-  using UPair = galois::Pair<std::uint64_t, std::uint64_t>;
-  const uint64_t pairOffset = offsetof(UPair, first);
-
-  auto state = galois::make_tpl(wgh, sumArray);
-  PANDO_CHECK(galois::doAll(
-      wgh, state, localReadEdges,
-      +[](decltype(state) state, pando::Vector<EdgeType> localReadEdges) {
-        auto [wgh, sumArray] = state;
-        PANDO_CHECK(galois::doAll(
-            wgh, sumArray, localReadEdges, +[](decltype(sumArray) counts, EdgeType localEdge) {
-              pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
-                  static_cast<pando::GlobalPtr<void>>(&counts[localEdge.src % counts.size()]));
-              toAdd += pairOffset;
-              pando::GlobalPtr<std::uint64_t> p = static_cast<pando::GlobalPtr<std::uint64_t>>(
-                  static_cast<pando::GlobalPtr<void>>(toAdd));
-              pando::atomicFetchAdd(p, 1, std::memory_order_relaxed);
-            }));
-      }));
-  PANDO_CHECK(wg.wait());
-  labeledEdgeCounts = sumArray;
 }
 
 [[nodiscard]] pando::Expected<

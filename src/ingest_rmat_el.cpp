@@ -4,15 +4,15 @@
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
 
 auto generateRMATParser(
-    pando::GlobalPtr<pando::Vector<pando::Vector<galois::ELEdge>>> localEdges,
+    pando::GlobalPtr<pando::Vector<pando::Vector<galois::ELEdge>>> localReadEdges,
     pando::GlobalPtr<galois::HashTable<std::uint64_t, std::uint64_t>> localRename,
     std::uint64_t numVertices) {
   using galois::ELEdge;
   using galois::internal::insertLocalEdgesPerThread;
-  return [localEdges, localRename, numVertices](char* line) {
-    auto efunc = [localEdges, localRename, numVertices](std::uint64_t src, std::uint64_t dst) {
+  return [localReadEdges, localRename, numVertices](char* line) {
+    auto efunc = [localReadEdges, localRename, numVertices](std::uint64_t src, std::uint64_t dst) {
       if (src < numVertices && dst < numVertices) {
-        return insertLocalEdgesPerThread(*localRename, *localEdges, ELEdge{src, dst});
+        return insertLocalEdgesPerThread(*localRename, *localReadEdges, ELEdge{src, dst});
       }
       return pando::Status::Success;
     };
@@ -23,11 +23,11 @@ auto generateRMATParser(
 void galois::loadELFilePerThread(
     galois::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
     std::uint64_t numThreads, std::uint64_t threadID,
-    galois::PerThreadVector<pando::Vector<ELEdge>> localEdges,
+    galois::ThreadLocalVector<pando::Vector<ELEdge>> localReadEdges,
     ThreadLocalStorage<HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
     std::uint64_t numVertices) {
   auto parser =
-      generateRMATParser(&localEdges.getThreadVector(), perThreadRename.getLocal(), numVertices);
+      generateRMATParser(localReadEdges.getLocal(), perThreadRename.getLocal(), numVertices);
   PANDO_CHECK(
       internal::loadGraphFilePerThread(filename, segmentsPerThread, numThreads, threadID, parser));
   wgh.done();
