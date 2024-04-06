@@ -68,10 +68,10 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
   using VT = galois::ELVertex;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
   galois::HostLocalStorageHeap::HeapInit();
+  galois::PodLocalStorageHeap::HeapInit();
   pando::Array<char> filename;
   std::size_t length = strlen(elFile);
   PANDO_CHECK(filename.initialize(length + 1));
-
   for (std::size_t i = 0; i < length; i++) {
     filename[i] = elFile[i];
   }
