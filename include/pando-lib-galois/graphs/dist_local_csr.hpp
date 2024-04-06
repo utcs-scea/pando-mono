@@ -490,7 +490,7 @@ public:
   /** Host Information **/
   std::uint64_t getPhysicalHostID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
-    std::uint64_t physicalHost = virtualToPhysicalMap.getLocal()[virtualHostID];
+    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
     return physicalHost;
   }
 
@@ -777,7 +777,6 @@ public:
       PANDO_CHECK(pando::executeOn(place, createMirrors, partEdges, mirrorList, V2PM, i, wgh));
     }
     PANDO_CHECK(wg.wait());
-    wg.deinitialize();
     return mirrorList;
   }
 
