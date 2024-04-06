@@ -672,7 +672,7 @@ TEST(loadGraphFilePerThread, loadGraph) {
   uint64_t segmentsPerThread = 1;
   galois::PerThreadVector<pando::Vector<galois::WMDEdge>> localEdges;
   EXPECT_EQ(localEdges.initialize(), pando::Status::Success);
-  galois::PerThreadVector<galois::WMDVertex> localVertices;
+  galois::ThreadLocalVector<galois::WMDVertex> localVertices;
   EXPECT_EQ(localVertices.initialize(), pando::Status::Success);
   pando::Array<char> filename;
   std::string wmdFile = "/pando/graphs/simple_wmd.csv";
@@ -723,7 +723,7 @@ TEST(loadGraphFilePerThread, loadGraph) {
   getNumVerticesAndEdges(wmdFile, numVertices, numEdges);
   uint64_t vert = 0;
   for (uint64_t i = 0; i < localVertices.size(); i++) {
-    pando::Vector<galois::WMDVertex> vec = *localVertices.get(i);
+    pando::Vector<galois::WMDVertex> vec = localVertices[i];
     vert += vec.size();
   }
   uint64_t edges = 0;
@@ -736,6 +736,7 @@ TEST(loadGraphFilePerThread, loadGraph) {
   EXPECT_EQ(vert, numVertices);
   EXPECT_EQ(edges, 2 * numEdges);
   totVerts.deinitialize();
+  localVertices.deinitialize();
 }
 
 TEST(loadGraphFilePerThread, loadEdgeList) {
