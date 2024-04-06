@@ -149,7 +149,7 @@ function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
   endif()
 endfunction()
 
-function(pando_add_bin_python_test TARGET ARGS INPUTFILE)
+function(pando_add_bin_python_test TARGET ARGS INPUTFILE PYTHONFILE)
   if (NOT PANDO_RT_BACKEND STREQUAL "DRVX")
     if (${GASNet_CONDUIT} STREQUAL "smp")
       set(DRIVER_SCRIPT ${PROJECT_SOURCE_DIR}/pando-rt/scripts/preprun.sh)
@@ -163,7 +163,7 @@ function(pando_add_bin_python_test TARGET ARGS INPUTFILE)
     set(NUM_CORES 4)
 
     add_test(NAME ${TARGET}-${INPUTFILE}-pythonvalidate
-      COMMAND bash -c "${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE} | python3 ${PROJECT_SOURCE_DIR}/scripts/mirror_master_validate.py")
+      COMMAND bash -c "${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE} | python3 ${PYTHONFILE}")
 
   else()
 
