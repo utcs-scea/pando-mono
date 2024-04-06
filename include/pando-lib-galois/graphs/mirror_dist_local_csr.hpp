@@ -252,15 +252,6 @@ public:
     return dlcsr.getPhysicalHostID(tid);
   }
 
-  /** Sync **/
-  // TODO(Ying-Wei):
-  // write a sync function that reduces mirror values and then broadcasts master values
-  // return a bitmap of modified vertices
-  //
-  // template <typename Func>
-  // pando::Array<bool> sync(Func func, pando::Array<bool>) {
-  //}
-
   /**
    * @brief get vertex local dense ID
    */
