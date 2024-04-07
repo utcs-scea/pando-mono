@@ -32,7 +32,7 @@ struct ELEdge {
 void loadELFilePerThread(
     galois::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
     std::uint64_t numThreads, std::uint64_t threadID,
-    galois::PerThreadVector<pando::Vector<ELEdge>> localEdges,
+    galois::ThreadLocalVector<pando::Vector<ELEdge>> localReadEdges,
     galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
     std::uint64_t numVertices);
 
@@ -55,10 +55,10 @@ template <typename VertexType, typename EdgeType>
 galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> filename,
                                                              std::uint64_t numVertices,
                                                              std::uint64_t vHostsScaleFactor = 8) {
-  galois::PerThreadVector<pando::Vector<ELEdge>> localEdges;
-  PANDO_CHECK(localEdges.initialize());
+  galois::ThreadLocalVector<pando::Vector<ELEdge>> localReadEdges;
+  PANDO_CHECK(localReadEdges.initialize());
 
-  const std::uint64_t numThreads = localEdges.size() - pando::getPlaceDims().node.id;
+  const std::uint64_t numThreads = localReadEdges.size() - pando::getPlaceDims().node.id;
 
   galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
   PANDO_CHECK(perThreadRename.initialize());
@@ -83,7 +83,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
     pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % hosts)},
                                       pando::anyPod, pando::anyCore};
     PANDO_CHECK(pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, 1, numThreads,
-                                 i, localEdges, perThreadRename, numVertices));
+                                 i, localReadEdges, perThreadRename, numVertices));
   }
 
   pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts;
@@ -103,8 +103,8 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
   perThreadRename.deinitialize();
 #endif
 
-  PANDO_CHECK(
-      galois::internal::buildEdgeCountToSend<ELEdge>(numVHosts, localEdges, *labeledEdgeCounts));
+  PANDO_CHECK(galois::internal::buildEdgeCountToSend<ELEdge>(numVHosts, localReadEdges,
+                                                             *labeledEdgeCounts));
 
   auto [v2PM, numEdges] = PANDO_EXPECT_CHECK(
       galois::internal::buildVirtualToPhysicalMapping(hosts, *labeledEdgeCounts));
@@ -146,7 +146,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
       galois::doAll(GenerateVerticesState{numVertices, v2PM}, pHV, generateVerticesPerHost));
 
   auto [partEdges, renamePerHost] =
-      internal::partitionEdgesParallely(pHV, std::move(localEdges), v2PM);
+      internal::partitionEdgesParallely(pHV, std::move(localReadEdges), v2PM);
 
   using Graph = galois::DistLocalCSR<VertexType, EdgeType>;
   Graph graph;
