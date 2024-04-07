@@ -27,6 +27,9 @@ struct ELEdge {
   constexpr operator std::uint64_t() {
     return src;
   }
+  bool operator<(const ELEdge& other) const {
+    return (src == other.src) ? (dst < other.dst) : (src < other.src);
+  }
 };
 
 void loadELFilePerThread(
@@ -50,6 +53,67 @@ pando::Status elParse(const char* line, EdgeFunc efunc) {
 pando::Status generateEdgesPerVirtualHost(pando::GlobalRef<pando::Vector<ELVertex>> vertices,
                                           std::uint64_t totalVertices, std::uint64_t vHostID,
                                           std::uint64_t numVHosts);
+
+pando::Vector<pando::Vector<ELEdge>> reduceLocalEdges(
+    galois::PerThreadVector<pando::Vector<ELEdge>> localEdges, uint64_t numVertices);
+
+template <typename VertexType, typename EdgeType>
+galois::DistArrayCSR<VertexType, EdgeType> initializeELDACSR(pando::Array<char> filename,
+                                                             std::uint64_t numVertices) {
+  galois::PerThreadVector<pando::Vector<ELEdge>> localEdges;
+  PANDO_CHECK(localEdges.initialize());
+
+  const std::uint64_t numThreads = localEdges.size() - pando::getPlaceDims().node.id;
+
+  galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
+  PANDO_CHECK(perThreadRename.initialize());
+
+  for (auto hashRef : perThreadRename) {
+    hashRef = galois::HashTable<std::uint64_t, std::uint64_t>{};
+    PANDO_CHECK(fmap(hashRef, initialize, 0));
+  }
+
+  std::uint64_t hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+
+  galois::WaitGroup wg;
+  PANDO_CHECK(wg.initialize(numThreads));
+  auto wgh = wg.getHandle();
+
+  PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread Start");
+  for (std::uint64_t i = 0; i < numThreads; i++) {
+    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % hosts)},
+                                      pando::anyPod, pando::anyCore};
+    PANDO_CHECK(pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, 1, numThreads,
+                                 i, localEdges, perThreadRename, numVertices));
+  }
+  PANDO_CHECK(wg.wait());
+  PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread End");
+
+  pando::Vector<pando::Vector<ELEdge>> edgeList = reduceLocalEdges(localEdges, numVertices);
+
+#ifdef FREE
+  auto freePerThreadRename =
+      +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
+              perThreadRename) {
+        for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
+          hash.deinitialize();
+        }
+      };
+  PANDO_CHECK(pando::executeOn(pando::anyPlace, freePerThreadRename, perThreadRename));
+  perThreadRename.deinitialize();
+#endif
+
+  using Graph = galois::DistArrayCSR<VertexType, EdgeType>;
+  Graph graph;
+  PANDO_CHECK(graph.initialize(edgeList));
+
+  for (uint64_t i = 0; i < numVertices; i++) {
+    pando::Vector<ELEdge> ev = edgeList[i];
+    ev.deinitialize();
+    edgeList[i] = std::move(ev);
+  }
+  return graph;
+}
 
 template <typename VertexType, typename EdgeType>
 galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> filename,
