@@ -45,24 +45,62 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 endif()
 
 #create the sanitize build type
-set(CMAKE_CXX_FLAGS_SANITIZE
-  "-O2 -g -fsanitize=address -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C++ compiler during sanitizer builds"
+set(CMAKE_CXX_FLAGS_ASAN
+  "-O2 -fsanitize=address -DNDEBUG" CACHE STRING "Flags used by the C++ compiler during sanitizer builds"
   FORCE )
-set(CMAKE_C_FLAGS_SANITIZE
-  "-O2 -g -fsanitize=address -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C compiler during sanitizer builds"
+set(CMAKE_C_FLAGS_ASAN
+  "-O2 -fsanitize=address -DNDEBUG" CACHE STRING "Flags used by the C compiler during sanitizer builds"
   FORCE )
-set(CMAKE_EXE_LINKER_FLAGS_SANITIZE
+set(CMAKE_EXE_LINKER_FLAGS_ASAN
   "" CACHE STRING "Flags used for linking binaries during sanitizer builds"
   FORCE )
-set(CMAKE_SHARED_LINKER_FLAGS_SANITIZE
+set(CMAKE_SHARED_LINKER_FLAGS_ASAN
   "" CACHE STRING "Flags used for linking shared libraries during sanitizer builds"
   FORCE )
 
 MARK_AS_ADVANCED(
-  CMAKE_CXX_FLAGS_SANITIZE
-  CMAKE_C_FLAGS_SANITIZE
-  CMAKE_EXE_LINKER_FLAGS_SANITIZE
-  CMAKE_SHARED_LINKER_FLAGS_SANITIZE)
+  CMAKE_CXX_FLAGS_ASAN
+  CMAKE_C_FLAGS_ASAN
+  CMAKE_EXE_LINKER_FLAGS_ASAN
+  CMAKE_SHARED_LINKER_FLAGS_ASAN)
+
+set(CMAKE_CXX_FLAGS_UBSAN
+  "-O2 -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C++ compiler during sanitizer builds"
+  FORCE )
+set(CMAKE_C_FLAGS_UBSAN
+  "-O2 -fsanitize=undefined -DNDEBUG" CACHE STRING "Flags used by the C compiler during sanitizer builds"
+  FORCE )
+set(CMAKE_EXE_LINKER_FLAGS_UBSAN
+  "" CACHE STRING "Flags used for linking binaries during sanitizer builds"
+  FORCE )
+set(CMAKE_SHARED_LINKER_FLAGS_UBSAN
+  "" CACHE STRING "Flags used for linking shared libraries during sanitizer builds"
+  FORCE )
+
+MARK_AS_ADVANCED(
+  CMAKE_CXX_FLAGS_UBSAN
+  CMAKE_C_FLAGS_UBSAN
+  CMAKE_EXE_LINKER_FLAGS_UBSAN
+  CMAKE_SHARED_LINKER_FLAGS_UBSAN)
+
+set(CMAKE_CXX_FLAGS_LSAN
+  "-O2 -fsanitize=leak -DNDEBUG" CACHE STRING "Flags used by the C++ compiler during sanitizer builds"
+  FORCE )
+set(CMAKE_C_FLAGS_LSAN
+  "-O2 -fsanitize=leak -DNDEBUG" CACHE STRING "Flags used by the C compiler during sanitizer builds"
+  FORCE )
+set(CMAKE_EXE_LINKER_FLAGS_LSAN
+  "" CACHE STRING "Flags used for linking binaries during sanitizer builds"
+  FORCE )
+set(CMAKE_SHARED_LINKER_FLAGS_LSAN
+  "" CACHE STRING "Flags used for linking shared libraries during sanitizer builds"
+  FORCE )
+
+MARK_AS_ADVANCED(
+  CMAKE_CXX_FLAGS_LSAN
+  CMAKE_C_FLAGS_LSAN
+  CMAKE_EXE_LINKER_FLAGS_LSAN
+  CMAKE_SHARED_LINKER_FLAGS_LSAN)
 
 # default build type
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "Sanitize" "Coverage")

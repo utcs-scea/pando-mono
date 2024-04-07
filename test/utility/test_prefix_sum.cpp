@@ -34,24 +34,25 @@ uint64_t scan_opV(pando::Vector<uint64_t> p, uint64_t l) {
 
 TEST(PrefixSum, Init) {
   const uint64_t elts = 100;
-  galois::DistArray<uint64_t> arr;
+  galois::Array<uint64_t> arr;
   EXPECT_EQ(arr.initialize(elts), pando::Status::Success);
-  galois::DistArray<uint64_t> prefixArr;
+  galois::Array<uint64_t> prefixArr;
   EXPECT_EQ(prefixArr.initialize(elts), pando::Status::Success);
   for (uint64_t i = 0; i < arr.size(); i++) {
     arr[i] = i;
   }
 
-  using SRC = galois::DistArray<uint64_t>;
-  using DST = galois::DistArray<uint64_t>;
+  using SRC = galois::Array<uint64_t>;
+  using DST = galois::Array<uint64_t>;
   using SRC_Val = uint64_t;
   using DST_Val = uint64_t;
 
   galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute<uint64_t>, scan_op<SRC_Val, DST_Val>,
-                    combiner<DST_Val>, galois::DistArray>
+                    combiner<DST_Val>, galois::Array>
       prefixSum(arr, prefixArr);
-  EXPECT_EQ(prefixSum.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
-  prefixSum.computePrefixSum(elts);
+  EXPECT_EQ(prefixSum.initialize(pando::getPlaceDims().core.x * pando::getPlaceDims().core.y),
+            pando::Status::Success);
+  prefixSum.computePrefixSumPasteLocality(elts);
 
   uint64_t expected = 0;
   for (uint64_t i = 0; i < prefixArr.size(); i++) {
