@@ -6,7 +6,6 @@
 
 #include <pando-rt/export.h>
 
-#include <unordered_set>
 #include <utility>
 
 #include <pando-lib-galois/containers/array.hpp>
@@ -729,38 +728,37 @@ public:
    * mirroring
    */
   template <typename ReadEdgeType>
-  HostLocalStorage<pando::Array<std::uint64_t>> getMirrorList(
+  HostLocalStorage<pando::Vector<std::uint64_t>> getMirrorList(
       galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
       HostLocalStorage<pando::Array<std::uint64_t>> V2PM) {
-    HostLocalStorage<pando::Array<std::uint64_t>> mirrorList;
+    HostLocalStorage<pando::Vector<std::uint64_t>> mirrorList;
     PANDO_CHECK(mirrorList.initialize());
     auto createMirrors =
         +[](galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
-            HostLocalStorage<pando::Array<std::uint64_t>> mirrorList,
+            HostLocalStorage<pando::Vector<std::uint64_t>> mirrorList,
             HostLocalStorage<pando::Array<std::uint64_t>> V2PM, std::uint64_t i,
             galois::WaitGroup::HandleType wgh) {
-          pando::Array<uint64_t> mirrors;
+          pando::Vector<uint64_t> mirrors;
+          PANDO_CHECK(mirrors.initialize(0));
 
-          // Populating the mirror list in a set to avoid duplicates
-          std::unordered_set<uint64_t> mirrorMap;
+          // Populating the mirror list in a hashtable to avoid duplicates
+          galois::HashTable<uint64_t, bool> mirrorMap;
+          // initialize hashtable to size 1?
+          PANDO_CHECK(mirrorMap.initialize(1));
           pando::Array<uint64_t> localV2PM = V2PM.getLocalRef();
           for (std::uint64_t k = 0; k < lift(partEdges.getLocalRef(), size); k++) {
             pando::Vector<ReadEdgeType> currentEdge = fmap(partEdges.getLocalRef(), get, k);
             for (ReadEdgeType tmp : currentEdge) {
               std::uint64_t dstVHost = tmp.dst % localV2PM.size();
               std::uint64_t dstPHost = fmap(localV2PM, get, dstVHost);
-              if (dstPHost != i)
-                mirrorMap.insert(tmp.dst);
+              if (dstPHost != i) {
+                // not in mirror list yet
+                if (mirrorMap.contains(tmp.dst) == false) {
+                  mirrorMap.put(tmp.dst, true);
+                  PANDO_CHECK(mirrors.pushBack(tmp.dst));
+                }
+              }
             }
-          }
-          PANDO_CHECK(mirrors.initialize(mirrorMap.size()));
-
-          // TODO(Divija): Make this parallel
-          // Populate the mirror list
-          uint64_t idx = 0;
-          for (auto& mirror : mirrorMap) {
-            mirrors[idx] = mirror;
-            idx++;
           }
 
           mirrorList.getLocalRef() = mirrors;

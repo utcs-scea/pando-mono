@@ -317,17 +317,17 @@ public:
     PANDO_CHECK(wg.initialize(numHosts));
     auto wgh = wg.getHandle();
     _mirror_size = 0;
-    HostLocalStorage<pando::Array<VertexTokenID>> mirrorList;
+    HostLocalStorage<pando::Vector<VertexTokenID>> mirrorList;
     mirrorList = this->dlcsr.getMirrorList(edgeData, virtualToPhysical);
     PANDO_CHECK(masterRange.initialize());
     PANDO_CHECK(mirrorRange.initialize());
     PANDO_CHECK(localMirrorToRemoteMasterOrderedTable.initialize());
 
     auto mirrorAttach = +[](galois::HostIndexedMap<pando::Vector<ReadVertexType>> vertexData,
-                            HostLocalStorage<pando::Array<VertexTokenID>> mirrorList,
+                            HostLocalStorage<pando::Vector<VertexTokenID>> mirrorList,
                             std::uint64_t i, galois::WaitGroup::HandleType wgh) {
       pando::Vector<ReadVertexType> curVertexData = vertexData[i];
-      pando::Array<VertexTokenID> curMirrorList = mirrorList[i];
+      pando::Vector<VertexTokenID> curMirrorList = mirrorList[i];
       for (uint64_t j = 0; j < lift(curMirrorList, size); j++) {
         ReadVertexType v = ReadVertexType{curMirrorList[j]};
         PANDO_CHECK(fmap(curVertexData, pushBack, v));
@@ -353,9 +353,9 @@ public:
     // Generate masterRange, mirrorRange, localMirrorToRemoteMasterOrderedTable
     auto generateMetadata = +[](MirrorDistLocalCSR<VertexType, EdgeType> mdlcsr,
                                 DistLocalCSR<VertexType, EdgeType> dlcsr,
-                                HostLocalStorage<pando::Array<std::uint64_t>> mirrorList,
+                                HostLocalStorage<pando::Vector<std::uint64_t>> mirrorList,
                                 std::uint64_t i, galois::WaitGroup::HandleType wgh) {
-      pando::Array<std::uint64_t> localMirrorList = mirrorList[i];
+      pando::Vector<std::uint64_t> localMirrorList = mirrorList[i];
       uint64_t mirror_size = lift(localMirrorList, size);
       CSR csrCurr = dlcsr.arrayOfCSRs[i];
 
