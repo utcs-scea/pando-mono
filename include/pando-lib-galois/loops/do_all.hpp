@@ -305,8 +305,8 @@ public:
       return err;
     }
 
-    uint64_t hosts = pando::getPlaceDims().node.id;
-    uint64_t workPerHost = workItems / hosts;
+    const uint64_t hosts = pando::getPlaceDims().node.id;
+    const uint64_t workPerHost = workItems / hosts;
     galois::IotaRange range(0, workItems);
     const auto end = range.end();
 

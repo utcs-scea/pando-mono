@@ -35,7 +35,7 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        build-type: ['Release', 'Sanitize']
+        build-type: ['Release', 'LSAN', 'UBSAN']
 
     steps:
 
@@ -54,9 +54,13 @@ jobs:
         echo "SRC_DIR=$(pwd)" >> $GITHUB_ENV
         echo "PANDO_TEST_DISCOVERY_TIMEOUT=600" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$(git log --pretty="%h" -1 Dockerfile.dev)" >> $GITHUB_ENV
-        if [ ${{ matrix.build-type }} == 'Sanitize' ]; then
+        if [ ${{ matrix.build-type }} == 'LSAN' ]; then
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=32768 -ePANDO_PREP_MAIN_NODE=8589934592" >> $GITHUB_ENV
+          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=16384 -ePANDO_PREP_MAIN_NODE=8589934592" >> $GITHUB_ENV
+        fi
+        if [ ${{ matrix.build-type }} == 'UBSAN' ]; then
+          echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
+          echo "PANDO_CONTAINER_ENV=-e=PANDO_PREP_L1SP_HART=16384 -ePANDO_PREP_MAIN_NODE=8589934592" >> $GITHUB_ENV
         fi
         if [ ${{ matrix.build-type }} == 'Release' ]; then
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV

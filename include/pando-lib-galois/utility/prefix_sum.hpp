@@ -10,18 +10,18 @@
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/sync/waterfall_lock.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
+#include <pando-lib-galois/utility/tuple.hpp>
 
 namespace galois {
 
 template <typename T>
 struct PrefixState {
   PrefixState() = default;
-  PrefixState(T prefixSum_, uint64_t numObjects_, uint64_t workers_)
-      : prefixSum(prefixSum_), numObjects(numObjects_), workers(workers_) {}
+  PrefixState(T prefixSum_, uint64_t numObjects_)
+      : prefixSum(prefixSum_), numObjects(numObjects_) {}
 
   T prefixSum;
   uint64_t numObjects;
-  uint64_t workers;
 };
 
 /** This function computes the indices for the different phases and forwards
@@ -215,32 +215,68 @@ public:
       workers /= pando::getThreadDims().id;
     }
     galois::doAllEvenlyPartition(
-        PrefixState<PrefixSum<A, B, A_Val, B_Val, transmute, scan_op, combiner, Conduit>>(*this, ns,
-                                                                                          workers),
+        PrefixState<PrefixSum<A, B, A_Val, B_Val, transmute, scan_op, combiner, Conduit>>(*this,
+                                                                                          ns),
         workers,
         +[](PrefixState<PrefixSum<A, B, A_Val, B_Val, transmute, scan_op, combiner, Conduit>>&
                 state,
             uint64_t wf_id, uint64_t workers) {
-          uint64_t ns = state.numObjects;
-          uint64_t nt = workers;
+          const uint64_t ns = state.numObjects;
+          const uint64_t nt = workers;
 
           // optimize for smaller structures near the size of num_threads
-          uint64_t div_sz = ns / (nt + 1);
-          uint64_t bigs = ns % (nt + 1);
-          uint64_t mid = nt >> 1;
-          bool is_mid = mid == wf_id;
+          const uint64_t div_sz = ns / (nt + 1);
+          const uint64_t bigs = ns % (nt + 1);
+          const uint64_t mid = nt >> 1;
+          const bool is_mid = mid == wf_id;
           // Concentrate the big in the middle thread
-          uint64_t phase0_sz = is_mid ? div_sz + bigs : div_sz;
+          const uint64_t phase0_sz = is_mid ? div_sz + bigs : div_sz;
           uint64_t phase0_ind;
           if (wf_id <= mid)
             phase0_ind = div_sz * wf_id;
           else
             phase0_ind = bigs + (div_sz * wf_id);
 
-          uint64_t phase2_sz = phase0_sz;
-          uint64_t phase2_ind = wf_id ? phase0_ind : ns - div_sz;
+          const uint64_t phase2_sz = phase0_sz;
+          const uint64_t phase2_ind = wf_id ? phase0_ind : ns - div_sz;
           state.prefixSum.parallel_pfxsum_work(phase0_ind, phase0_sz, phase2_ind, phase2_sz, wf_id,
                                                nt);
+        });
+    this->lock.reset();
+  }
+
+  void computePrefixSumPasteLocality(uint64_t ns) {
+    std::uint64_t workers = paste.size();
+    uint64_t workPerThread = ns / (workers + 1);
+    if (workPerThread <= 10) {
+      workers /= pando::getThreadDims().id;
+    }
+    const auto pfxsum = *this;
+    const auto tpl = galois::make_tpl(pfxsum, ns, workers);
+    galois::doAll(
+        tpl, galois::IotaRange(0, workers),
+        +[](decltype(tpl) tpl, std::uint64_t wf_id) {
+          auto [pfxsum, ns, nt] = tpl;
+
+          // optimize for smaller structures near the size of num_threads
+          const uint64_t div_sz = ns / (nt + 1);
+          const uint64_t bigs = ns % (nt + 1);
+          const uint64_t mid = nt >> 1;
+          const bool is_mid = mid == wf_id;
+          // Concentrate the big in the middle thread
+          const uint64_t phase0_sz = is_mid ? div_sz + bigs : div_sz;
+          uint64_t phase0_ind;
+          if (wf_id <= mid)
+            phase0_ind = div_sz * wf_id;
+          else
+            phase0_ind = bigs + (div_sz * wf_id);
+
+          const uint64_t phase2_sz = phase0_sz;
+          const uint64_t phase2_ind = wf_id ? phase0_ind : ns - div_sz;
+          pfxsum.parallel_pfxsum_work(phase0_ind, phase0_sz, phase2_ind, phase2_sz, wf_id, nt);
+        },
+        [this](decltype(tpl), std::uint64_t i) {
+          return pando::localityOf(paste.get(i));
         });
     this->lock.reset();
   }
