@@ -117,7 +117,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
   perThreadRename.deinitialize();
 #endif
 
-  galois::HostIndexedMap<pando::Vector<ELVertex>> pHV{};
+  galois::HostLocalStorage<pando::Vector<ELVertex>> pHV{};
   PANDO_CHECK(pHV.initialize());
 
   /**
