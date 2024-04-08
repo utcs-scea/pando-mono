@@ -55,8 +55,8 @@ pando::Status generateEdgesPerVirtualHost(pando::GlobalRef<pando::Vector<ELVerte
 template <typename ReturnType, typename VertexType, typename EdgeType>
 ReturnType initializeELDLCSR(pando::Array<char> filename, std::uint64_t numVertices,
                              std::uint64_t vHostsScaleFactor = 8) {
-  galois::PerThreadVector<pando::Vector<ELEdge>> localEdges;
-  PANDO_CHECK(localEdges.initialize());
+  galois::ThreadLocalVector<pando::Vector<ELEdge>> localReadEdges;
+  PANDO_CHECK(localReadEdges.initialize());
 
   const std::uint64_t numThreads = localReadEdges.size() - pando::getPlaceDims().node.id;
 
