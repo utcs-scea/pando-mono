@@ -115,6 +115,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
 
   auto [v2PM, numEdges] =
       PANDO_EXPECT_CHECK(galois::internal::buildVirtualToPhysicalMapping(hosts, labeledEdgeCounts));
+  auto hostLocalV2PM = galois::copyToAllHosts(std::move(v2PM));
 
 #if FREE
   auto freeLabeledEdgeCounts =
@@ -130,7 +131,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
 
   /** Generate Vertex Partition **/
   galois::HostLocalStorage<pando::Vector<WMDVertex>> pHV =
-      internal::partitionVerticesParallel(std::move(localReadVertices), v2PM);
+      internal::partitionVerticesParallel(std::move(localReadVertices), hostLocalV2PM);
 
   /** Generate Edge Partition **/
   auto [partEdges, renamePerHost] =
