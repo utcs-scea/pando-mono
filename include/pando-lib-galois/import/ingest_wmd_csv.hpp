@@ -128,21 +128,22 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
   perThreadRename.deinitialize();
 #endif
 
+  auto hostLocalV2PM = PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM)));
+
   /** Generate Vertex Partition **/
   galois::HostLocalStorage<pando::Vector<WMDVertex>> pHV =
-      internal::partitionVerticesParallel(std::move(localReadVertices), v2PM);
+      internal::partitionVerticesParallel(std::move(localReadVertices), hostLocalV2PM);
 
   /** Generate Edge Partition **/
   auto [partEdges, renamePerHost] =
-      internal::partitionEdgesParallely(pHV, std::move(localReadEdges), v2PM);
+      internal::partitionEdgesParallely(pHV, std::move(localReadEdges), hostLocalV2PM);
 
   std::uint64_t numVertices = totVerts.reduce();
 
   using Graph = galois::DistLocalCSR<VertexType, EdgeType>;
   Graph graph;
   graph.template initializeAfterGather<galois::WMDVertex, galois::WMDEdge>(
-      pHV, numVertices, partEdges, renamePerHost, numEdges,
-      PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM))));
+      pHV, numVertices, partEdges, renamePerHost, numEdges, hostLocalV2PM);
 
 #if FREE
   auto freeTheRest = +[](decltype(pHV) pHV, decltype(partEdges) partEdges,
