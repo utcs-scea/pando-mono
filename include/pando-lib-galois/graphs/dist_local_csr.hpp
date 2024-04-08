@@ -487,7 +487,7 @@ public:
 
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
-      galois::HostIndexedMap<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
+      galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
       galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
       galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
       galois::HostIndexedMap<std::uint64_t> numEdges,
