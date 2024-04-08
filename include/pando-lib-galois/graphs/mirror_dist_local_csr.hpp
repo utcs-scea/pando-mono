@@ -387,6 +387,9 @@ public:
   }
 
   /** Sync **/
+  /**
+   * @brief Reduces the updated mirror values to the corresponding master values
+   */
   template <typename Func>
   void reduce(Func func) {
     galois::GlobalBarrier barrier;
@@ -442,6 +445,9 @@ public:
           PANDO_CHECK(barrier.wait());
         });
   }
+  /**
+   * @brief Broadcast the updated master values to the corresponding mirror values
+   */
   void broadcast() {
     galois::GlobalBarrier barrier;
     PANDO_CHECK(barrier.initialize(pando::getPlaceDims().node.id));
@@ -495,13 +501,14 @@ public:
           PANDO_CHECK(barrier.wait());
         });
   }
-  // TODO(Ying-Wei):
-  //  write a sync function that reduces mirror values and then broadcasts master values
-  //  return a bitmap of modified vertices
-  //
-  //  template <typename Func>
-  //  pando::Array<bool> sync(Func func, pando::Array<bool>) {
-  // }
+  /**
+   * @brief Synchronize master and mirror values among hosts
+   */
+  template <typename Func>
+  void sync(Func func) {
+    reduce(func);
+    broadcast();
+  }
 
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
