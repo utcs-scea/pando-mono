@@ -198,7 +198,7 @@ struct graph_checker {
 };
 
 /**
- * @brief this is the gluon_graph interface, methods from here should mostly be used
+ * @brief this is the gluon_graph interface
  */
 template <typename G, typename VertexTokenID, typename VertexTopologyID, typename EdgeHandle,
           typename VertexData, typename EdgeData, typename VertexRange, typename EdgeRange,
