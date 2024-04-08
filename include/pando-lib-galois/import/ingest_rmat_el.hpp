@@ -91,18 +91,12 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
 
 #ifdef FREE
   galois::WaitGroup freeWaiter;
+  PANDO_CHECK(freeWaiter.initialize(0));
   auto freeWGH = freeWaiter.getHandle();
-  freeWGH.addOne();
-  auto freePerThreadRename =
-      +[](decltype(perThreadRename) perThreadRename, WaitGroup::HandleType wgh) {
-        for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
-          hash.deinitialize();
-        }
-        perThreadRename.deinitialize();
-        wgh.done();
-      };
-  PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex(0), pando::anyPod, pando::anyCore},
-                               freePerThreadRename, perThreadRename, freeWGH));
+  galois::doAll(
+      freeWGH, perThreadRename, +[](galois::HashTable<std::uint64_t, std::uint64_t> hash) {
+        hash.deinitialize();
+      });
 #endif
 
   auto labeledEdgeCounts =
@@ -112,7 +106,6 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
       PANDO_EXPECT_CHECK(galois::internal::buildVirtualToPhysicalMapping(hosts, labeledEdgeCounts));
 
 #if FREE
-  PANDO_CHECK(freeWaiter.wait());
   auto freeLabeledEdgeCounts =
       +[](pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledEdgeCounts) {
         labeledEdgeCounts.deinitialize();
@@ -120,6 +113,8 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
   PANDO_CHECK(pando::executeOn(
       pando::anyPlace, freeLabeledEdgeCounts,
       static_cast<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>(labeledEdgeCounts)));
+  PANDO_CHECK(freeWaiter.wait());
+  perThreadRename.deinitialize();
 #endif
 
   galois::HostIndexedMap<pando::Vector<ELVertex>> pHV{};
@@ -177,8 +172,8 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
 
   PANDO_CHECK(
       pando::executeOn(pando::anyPlace, freeTheRest, pHV, partEdges, renamePerHost, numEdges));
+  freeWaiter.deinitialize();
 #endif
-
   wg.deinitialize();
   return graph;
 }
