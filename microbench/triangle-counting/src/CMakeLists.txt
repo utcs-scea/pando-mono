@@ -52,4 +52,5 @@ endfunction()
 
 tc_add_executable(tc ${CMAKE_CURRENT_SOURCE_DIR}/tc.cpp)
 tc_add_executable(graph_compare ${CMAKE_CURRENT_SOURCE_DIR}/graph_compare.cpp)
+tc_add_executable(bench_remote_access ${CMAKE_CURRENT_SOURCE_DIR}/bench_remote_access.cpp)
 tc_add_executable(tc_naive ${CMAKE_CURRENT_SOURCE_DIR}/tc_naive.cpp)

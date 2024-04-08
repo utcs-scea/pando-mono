@@ -152,14 +152,15 @@ TEST(FmapVoid, DistArrayCSR) {
   for (std::uint64_t i = 0; i < SIZE; i++) {
     fmapVoid(graph, setData, i, i);
     for (std::uint64_t j = 0; j < SIZE; j++) {
-      fmapVoid(graph, setEdgeData, i, j, i * j);
+      fmapVoid(graph, setEdgeData, i, j, galois::ELEdge{i, i * j});
     }
   }
 
   for (std::uint64_t i = 0; i < SIZE; i++) {
     EXPECT_EQ(fmap(graph, getData, i), i);
     for (std::uint64_t j = 0; j < SIZE; j++) {
-      EXPECT_EQ(fmap(graph, getEdgeData, i, j), i * j);
+      galois::ELEdge actual = fmap(graph, getEdgeData, i, j);
+      EXPECT_EQ(actual.dst, i * j);
     }
   }
   liftVoid(graph, deinitialize);
