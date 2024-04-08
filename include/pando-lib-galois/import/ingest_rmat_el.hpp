@@ -116,6 +116,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
   PANDO_CHECK(freeWaiter.wait());
   perThreadRename.deinitialize();
 #endif
+  auto hostLocalV2PM = PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM)));
 
   galois::HostLocalStorage<pando::Vector<ELVertex>> pHV{};
   PANDO_CHECK(pHV.initialize());
@@ -123,34 +124,30 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
   /**
    * Make the vertices
    */
-  struct GenerateVerticesState {
-    std::uint64_t numVertices;
-    pando::Array<std::uint64_t> v2PM;
+  auto generateVerticesState = galois::make_tpl(numVertices, hostLocalV2PM);
+  auto generateVerticesPerHost = +[](decltype(generateVerticesState) state,
+                                     pando::GlobalRef<pando::Vector<ELVertex>> vertices) {
+    auto [numVertices, hostLocalV2PM] = state;
+    PANDO_CHECK(fmap(vertices, initialize, 0));
+    const std::uint64_t host = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
+    pando::Array<std::uint64_t> v2PM = hostLocalV2PM.getLocalRef();
+    const std::uint64_t numVHosts = v2PM.size();
+    for (std::uint64_t i = 0; i < numVHosts; i++) {
+      if (v2PM[i] == host) {
+        PANDO_CHECK(generateEdgesPerVirtualHost(vertices, numVertices, i, numVHosts));
+      }
+    }
   };
 
-  auto generateVerticesPerHost =
-      +[](GenerateVerticesState genVerts, pando::GlobalRef<pando::Vector<ELVertex>> vertices) {
-        PANDO_CHECK(fmap(vertices, initialize, 0));
-        const std::uint64_t host = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-        const std::uint64_t numVHosts = genVerts.v2PM.size();
-        for (std::uint64_t i = 0; i < numVHosts; i++) {
-          if (genVerts.v2PM[i] == host) {
-            PANDO_CHECK(generateEdgesPerVirtualHost(vertices, genVerts.numVertices, i, numVHosts));
-          }
-        }
-      };
-
-  PANDO_CHECK(
-      galois::doAll(GenerateVerticesState{numVertices, v2PM}, pHV, generateVerticesPerHost));
+  PANDO_CHECK(galois::doAll(generateVerticesState, pHV, generateVerticesPerHost));
 
   auto [partEdges, renamePerHost] =
-      internal::partitionEdgesParallely(pHV, std::move(localReadEdges), v2PM);
+      internal::partitionEdgesParallely(pHV, std::move(localReadEdges), hostLocalV2PM);
 
   using Graph = galois::DistLocalCSR<VertexType, EdgeType>;
   Graph graph;
   graph.template initializeAfterGather<galois::ELVertex, galois::ELEdge>(
-      pHV, numVertices, partEdges, renamePerHost, numEdges,
-      PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM))));
+      pHV, numVertices, partEdges, renamePerHost, numEdges, hostLocalV2PM);
 
 #if FREE
   auto freeTheRest = +[](decltype(pHV) pHV, decltype(partEdges) partEdges,
