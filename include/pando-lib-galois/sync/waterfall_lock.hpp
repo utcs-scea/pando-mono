@@ -44,11 +44,11 @@ public:
 
   template <unsigned val>
   void wait(uint64_t num) {
-    while (pando::atomicLoad(wfc.get(num), std::memory_order::memory_order_acquire) != val) {}
+    while (pando::atomicLoad(wfc.get(num), std::memory_order_acquire) != val) {}
   }
   template <unsigned val>
   void done(uint64_t num) {
-    pando::atomicStore(wfc.get(num), val, std::memory_order::memory_order_release);
+    pando::atomicStore(wfc.get(num), val, std::memory_order_release);
   }
 };
 

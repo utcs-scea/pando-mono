@@ -82,7 +82,7 @@ public:
    * @brief Parse US date from StringView
    */
   time_t getUSDate() {
-    auto charToInt = [=](size_t& pos) {
+    auto charToInt = [*this](size_t& pos) {
       int result = 0;
       char delimiter = '/';
       for (size_t i = pos; i < size_ && start_[i] != delimiter; ++i) {

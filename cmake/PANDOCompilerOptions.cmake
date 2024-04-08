@@ -11,7 +11,7 @@ option(PANDO_WERROR "Make all warnings into errors." ON)
 function(pando_compiler_options TARGET)
     set_target_properties(${TARGET}
         PROPERTIES
-            CXX_STANDARD                17
+            CXX_STANDARD                20
             CXX_STANDARD_REQUIRED       ON
             CXX_EXTENSIONS              OFF
             CXX_VISIBILITY_PRESET       hidden
@@ -20,7 +20,7 @@ function(pando_compiler_options TARGET)
     )
     target_compile_features(${TARGET}
         PUBLIC
-            cxx_std_17)
+            cxx_std_20)
 endfunction()
 
 # Default compiler warnings for targets

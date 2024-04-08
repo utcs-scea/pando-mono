@@ -273,6 +273,10 @@ public:
     VertexTopologyID m_end;
     std::uint64_t m_size;
 
+    constexpr VertexRange(decltype(arrayOfCSRs) csrs, decltype(m_beg) begin, decltype(m_end) end,
+                          std::uint64_t size)
+        : arrayOfCSRs(csrs), m_beg(begin), m_end(end), m_size(size) {}
+
     constexpr VertexRange() noexcept = default;
     constexpr VertexRange(VertexRange&&) noexcept = default;
     constexpr VertexRange(const VertexRange&) noexcept = default;
