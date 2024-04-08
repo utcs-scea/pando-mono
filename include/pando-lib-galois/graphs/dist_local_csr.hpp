@@ -508,7 +508,7 @@ public:
     }
 
     auto createCSRFuncs = +[](galois::HostIndexedMap<CSR> arrayOfCSRs,
-                              galois::HostIndexedMap<pando::Vector<ReadVertexType>> vertexData,
+                              galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData,
                               galois::HostIndexedMap<std::uint64_t> numEdges, std::uint64_t i,
                               galois::WaitGroup::HandleType wgh) {
       CSR currentCSR;

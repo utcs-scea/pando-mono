@@ -149,8 +149,8 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
         pando::Vector<VertexType> partVert = partitionedVertices[hostID];
         pando::Vector<EdgeType> v;
         PANDO_CHECK(fmap(v, initialize, 0));
-        for (VertexType vrtx : partVert) {
-          PANDO_CHECK(fmap(hashRef, put, vrtx.id, idx));
+        for (VertexType vertex : partVert) {
+          PANDO_CHECK(fmap(hashRef, put, vertex.id, idx));
           idx++;
         }
       }));
@@ -392,7 +392,7 @@ template <typename VertexType>
     prefixSum.computePrefixSum(numThreads);
   }
 
-  galois::HostIndexedMap<pando::Vector<VertexType>> pHV{};
+  galois::HostLocalStorage<pando::Vector<VertexType>> pHV{};
   PANDO_CHECK(pHV.initialize());
 
   for (uint64_t i = 0; i < numHosts; i++) {
