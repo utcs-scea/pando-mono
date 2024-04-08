@@ -249,7 +249,7 @@ public:
   pando::GlobalRef<LocalVertexRange> getMasterRange(int16_t hostId) {
     return masterRange[hostId];
   }
-  pando::GlobalRef<LocalVertexRange> geMirrorRange(int16_t hostId) {
+  pando::GlobalRef<LocalVertexRange> getMirrorRange(int16_t hostId) {
     return mirrorRange[hostId];
   }
 
@@ -402,6 +402,9 @@ public:
           auto [object, barrier, localMirrorToRemoteMasterOrderedTable, masterBitSets, func] =
               state;
 
+          pando::GlobalRef<pando::Array<MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
+              localMirrorToRemoteMasterOrderedTable[pando::getCurrentPlace().node.id];
+
           for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
             bool dirty = fmap(mirrorBitSet, get, i);
             if (dirty) {
@@ -412,30 +415,18 @@ public:
               VertexData mirrorData = object.getData(mirrorTopologyID);
 
               // obtain the corresponding remote master information
-              pando::GlobalRef<pando::Array<MirrorToMasterMap>>
-                  localMirrorToRemoteMasterOrderedMap =
-                      localMirrorToRemoteMasterOrderedTable[pando::getCurrentPlace().node.id];
               MirrorToMasterMap mirrorToMasterMap =
                   fmap(localMirrorToRemoteMasterOrderedMap, get, i);
               VertexTopologyID masterTopologyID = mirrorToMasterMap.getMaster();
               // actual reference
               pando::GlobalRef<VertexData> masterData = object.getData(masterTopologyID);
-              VertexTokenID masterTokenID = object.getTokenID(masterTopologyID);
-              std::uint64_t physicalHost = object.getPhysicalHostID(masterTokenID);
-              std::cout << "mirror (host " << pando::getCurrentPlace().node.id
-                        << ") = " << lift(mirrorData, get) << ", master (host " << physicalHost
-                        << ") = " << lift(masterData, get) << std::endl;
 
               // atomic function signature: func(VertexData mirror, pando::GlobalRef<VertexData>
               // master) apply the function
               VertexData oldMasterData = masterData;
               func(mirrorData, masterData);
-              // std::cout << "mirror = " << lift(mirrorData, get) << ", master = " <<
-              // lift(masterData, get) << ", old master = " << lift(oldMasterData, get) <<
-              // std::endl;
               //  master data updated
               if (masterData != oldMasterData) {
-                std::cout << "Test" << std::endl;
                 // set the remote master bit set
                 VertexTokenID masterTokenID = object.getTokenID(masterTopologyID);
                 std::uint64_t physicalHost = object.getPhysicalHostID(masterTokenID);
@@ -557,8 +548,8 @@ public:
     for (std::uint64_t i = 0; i < numHosts; i++) {
       pando::GlobalRef<pando::Array<bool>> mirrorBitSet = mirrorBitSets[i];
       pando::GlobalRef<pando::Array<bool>> masterBitSet = masterBitSets[i];
-      PANDO_CHECK_RETURN(fmap(mirrorBitSet, initialize, _mirror_size));
-      PANDO_CHECK_RETURN(fmap(masterBitSet, initialize, _master_size));
+      PANDO_CHECK_RETURN(fmap(mirrorBitSet, initialize, lift(mirrorRange[i], size)));
+      PANDO_CHECK_RETURN(fmap(masterBitSet, initialize, lift(masterRange[i], size)));
       fmapVoid(mirrorBitSet, fill, false);
       fmapVoid(masterBitSet, fill, false);
     }

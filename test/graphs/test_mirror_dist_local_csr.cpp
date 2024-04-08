@@ -130,7 +130,7 @@ TEST_P(MirrorDLCSRInitEdgeList, MapExchange) {
 }
 
 void TestFunc(galois::ELVertex mirror, pando::GlobalRef<galois::ELVertex> master) {
-  fmapVoid(master, set, mirror.get());
+  fmapVoid(master, set, mirror.get() + 1);
 }
 
 TEST_P(MirrorDLCSRInitEdgeList, Reduce) {
@@ -178,7 +178,17 @@ TEST_P(MirrorDLCSRInitEdgeList, Reduce) {
   }
 
   graph.reduce(TestFunc);
-  std::cout << "After Reduce" << std::endl;
+
+  std::uint64_t sumMaster = 0;
+  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    pando::GlobalRef<pando::Array<bool>> masterBitSet = graph.getMasterBitSet(nodeId);
+    for (std::uint64_t i = 0ul; i < lift(masterBitSet, size); i++) {
+      if (fmap(masterBitSet, get, i) == true) {
+        sumMaster += 1;
+      }
+    }
+  }
+  EXPECT_EQ(sumMaster, graph.sizeMirrors());
 
   for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     pando::GlobalRef<pando::Array<bool>> mirrorBitSet = graph.getMirrorBitSet(nodeId);
@@ -186,6 +196,7 @@ TEST_P(MirrorDLCSRInitEdgeList, Reduce) {
         graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);
     for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
       Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, get, i);
+      Graph::VertexTopologyID mirrorTopologyID = m.getMirror();
       Graph::VertexTopologyID masterTopologyID = m.getMaster();
       Graph::VertexTokenID masterTokenID = graph.getTokenID(masterTopologyID);
       std::uint64_t physicalHost = graph.getPhysicalHostID(masterTokenID);
@@ -193,6 +204,10 @@ TEST_P(MirrorDLCSRInitEdgeList, Reduce) {
       pando::GlobalRef<pando::Array<bool>> masterBitSet = graph.getMasterBitSet(physicalHost);
       std::uint64_t index = graph.getIndex(masterTopologyID, graph.getMasterRange(physicalHost));
       EXPECT_EQ(fmap(masterBitSet, get, index), true);
+
+      Graph::VertexData mirrorData = graph.getData(mirrorTopologyID);
+      Graph::VertexData masterData = graph.getData(masterTopologyID);
+      EXPECT_EQ(masterData.get(), mirrorData.get() + 1);
     }
   }
 
