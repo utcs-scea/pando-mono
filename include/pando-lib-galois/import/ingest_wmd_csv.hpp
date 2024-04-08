@@ -8,6 +8,7 @@
 
 #include <pando-lib-galois/containers/thread_local_vector.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
+#include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/tracing.hpp>
 
@@ -96,29 +97,24 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
                                  i, localReadEdges, perThreadRename, localReadVertices, totVerts));
   }
 
-  pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts;
-  pando::LocalStorageGuard labeledEdgeCountsGuard(labeledEdgeCounts, 1);
-
   PANDO_CHECK(wg.wait());
   PANDO_MEM_STAT_NEW_KERNEL("loadWMDFilePerThread End");
 
 #ifdef FREE
-  auto freePerThreadRename =
-      +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
-              perThreadRename) {
-        for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
-          hash.deinitialize();
-        }
-      };
-  PANDO_CHECK(pando::executeOn(pando::anyPlace, freePerThreadRename, perThreadRename));
-  perThreadRename.deinitialize();
+  galois::WaitGroup freeWaiter;
+  PANDO_CHECK(freeWaiter.initialize(0));
+  auto freeWGH = freeWaiter.getHandle();
+  galois::doAll(
+      freeWGH, perThreadRename, +[](galois::HashTable<std::uint64_t, std::uint64_t> hash) {
+        hash.deinitialize();
+      });
 #endif
 
-  PANDO_CHECK(galois::internal::buildEdgeCountToSend<WMDEdge>(numVHosts, localReadEdges,
-                                                              *labeledEdgeCounts));
+  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledEdgeCounts = PANDO_EXPECT_CHECK(
+      galois::internal::buildEdgeCountToSend<WMDEdge>(numVHosts, localReadEdges));
 
-  auto [v2PM, numEdges] = PANDO_EXPECT_CHECK(
-      galois::internal::buildVirtualToPhysicalMapping(hosts, *labeledEdgeCounts));
+  auto [v2PM, numEdges] =
+      PANDO_EXPECT_CHECK(galois::internal::buildVirtualToPhysicalMapping(hosts, labeledEdgeCounts));
 
 #if FREE
   auto freeLabeledEdgeCounts =
@@ -127,24 +123,27 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
       };
   PANDO_CHECK(pando::executeOn(
       pando::anyPlace, freeLabeledEdgeCounts,
-      static_cast<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>(*labeledEdgeCounts)));
+      static_cast<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>(labeledEdgeCounts)));
+  PANDO_CHECK(freeWaiter.wait());
+  perThreadRename.deinitialize();
 #endif
 
+  auto hostLocalV2PM = PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM)));
+
   /** Generate Vertex Partition **/
-  galois::HostIndexedMap<pando::Vector<WMDVertex>> pHV =
-      internal::partitionVerticesParallel(std::move(localReadVertices), v2PM);
+  galois::HostLocalStorage<pando::Vector<WMDVertex>> pHV =
+      internal::partitionVerticesParallel(std::move(localReadVertices), hostLocalV2PM);
 
   /** Generate Edge Partition **/
   auto [partEdges, renamePerHost] =
-      internal::partitionEdgesParallely(pHV, std::move(localReadEdges), v2PM);
+      internal::partitionEdgesParallely(pHV, std::move(localReadEdges), hostLocalV2PM);
 
   std::uint64_t numVertices = totVerts.reduce();
 
   using Graph = galois::DistLocalCSR<VertexType, EdgeType>;
   Graph graph;
   graph.template initializeAfterGather<galois::WMDVertex, galois::WMDEdge>(
-      pHV, numVertices, partEdges, renamePerHost, numEdges,
-      PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM))));
+      pHV, numVertices, partEdges, renamePerHost, numEdges, hostLocalV2PM);
 
 #if FREE
   auto freeTheRest = +[](decltype(pHV) pHV, decltype(partEdges) partEdges,
@@ -166,6 +165,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
 
   PANDO_CHECK(
       pando::executeOn(pando::anyPlace, freeTheRest, pHV, partEdges, renamePerHost, numEdges));
+  freeWaiter.deinitialize();
 #endif
   wg.deinitialize();
   return graph;

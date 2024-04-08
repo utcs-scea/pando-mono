@@ -303,10 +303,6 @@ TEST(BuildEdgeCountToSend, SmallSequentialTest) {
   uint16_t numHosts = pando::getPlaceDims().node.id;
   uint32_t numVirtualHosts = numHosts;
 
-  pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
-  pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
-
-  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledEdgeCounts;
   galois::ThreadLocalVector<pando::Vector<galois::WMDEdge>> perThreadLocalEdges{};
   EXPECT_EQ(perThreadLocalEdges.initialize(), pando::Status::Success);
   auto dims = pando::getPlaceDims();
@@ -329,12 +325,11 @@ TEST(BuildEdgeCountToSend, SmallSequentialTest) {
     i++;
   }
 
-  PANDO_CHECK(
-      galois::internal::buildEdgeCountToSend(numVirtualHosts, perThreadLocalEdges, *edgeCounts));
+  auto labeledEdgeCounts = PANDO_EXPECT_CHECK(
+      galois::internal::buildEdgeCountToSend(numVirtualHosts, perThreadLocalEdges));
 
-  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts = *edgeCounts;
   uint64_t cnt = 1;
-  galois::Pair<std::uint64_t, std::uint64_t> p = counts[0];
+  galois::Pair<std::uint64_t, std::uint64_t> p = labeledEdgeCounts[0];
   EXPECT_EQ(p.first, cnt);
 }
 
@@ -380,15 +375,11 @@ TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
     err = galois::doAll(State{hashPtr, localEdges}, edges, f);
     EXPECT_EQ(err, pando::Status::Success);
 
-    pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
-    pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
+    auto edgeCounts = PANDO_EXPECT_CHECK(
+        galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges));
 
-    PANDO_CHECK(galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges,
-                                                                        *edgeCounts));
-
-    pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts = *edgeCounts;
     std::uint64_t i = 0;
-    for (galois::Pair<std::uint64_t, std::uint64_t> count : counts) {
+    for (galois::Pair<std::uint64_t, std::uint64_t> count : edgeCounts) {
       EXPECT_EQ(count.second, i);
       std::uint64_t j = SIZE / numVirtualHosts;
       j += (SIZE % numVirtualHosts > i) ? 1 : 0;
@@ -407,7 +398,7 @@ TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
     }
 
     localEdges.deinitialize();
-    counts.deinitialize();
+    edgeCounts.deinitialize();
   }
   edges.deinitialize();
 }
@@ -590,15 +581,12 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
     err = galois::doAll(State{hashPtr, localEdges}, edges, f);
     EXPECT_EQ(err, pando::Status::Success);
 
-    pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> edgeCounts;
-    pando::LocalStorageGuard edgeCountsGuard(edgeCounts, 1);
-
-    PANDO_CHECK(galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges,
-                                                                        *edgeCounts));
+    auto edgeCounts = PANDO_EXPECT_CHECK(
+        galois::internal::buildEdgeCountToSend<galois::WMDEdge>(numVirtualHosts, localEdges));
 
     for (std::uint64_t numHosts = 2; numHosts <= numVirtualHosts; numHosts *= 3) {
-      auto [virtualToPhysicalMapping, totEdges] = PANDO_EXPECT_CHECK(
-          galois::internal::buildVirtualToPhysicalMapping(numHosts, *edgeCounts));
+      auto [virtualToPhysicalMapping, totEdges] =
+          PANDO_EXPECT_CHECK(galois::internal::buildVirtualToPhysicalMapping(numHosts, edgeCounts));
       totEdges.deinitialize();
       if (numHosts == 1) {
         for (std::uint64_t i = 0; i < numVirtualHosts; i++) {

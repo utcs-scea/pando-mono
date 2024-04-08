@@ -16,20 +16,26 @@
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
 
-pando::Vector<pando::Vector<std::uint64_t>> generateFullyConnectedGraph(std::uint64_t SIZE) {
-  pando::Vector<pando::Vector<std::uint64_t>> vec;
+struct TestEdgeType {
+  uint64_t dst = 0;
+};
+
+using Graph = galois::DistArrayCSR<uint64_t, TestEdgeType>;
+
+pando::Vector<pando::Vector<TestEdgeType>> generateFullyConnectedGraph(std::uint64_t SIZE) {
+  pando::Vector<pando::Vector<TestEdgeType>> vec;
   EXPECT_EQ(vec.initialize(SIZE), pando::Status::Success);
-  for (pando::GlobalRef<pando::Vector<std::uint64_t>> edges : vec) {
-    pando::Vector<std::uint64_t> inner;
+  for (pando::GlobalRef<pando::Vector<TestEdgeType>> edges : vec) {
+    pando::Vector<TestEdgeType> inner;
     EXPECT_EQ(inner.initialize(0), pando::Status::Success);
     edges = inner;
   }
 
   galois::doAll(
-      SIZE, vec, +[](std::uint64_t size, pando::GlobalRef<pando::Vector<std::uint64_t>> innerRef) {
-        pando::Vector<std::uint64_t> inner = innerRef;
+      SIZE, vec, +[](std::uint64_t size, pando::GlobalRef<pando::Vector<TestEdgeType>> innerRef) {
+        pando::Vector<TestEdgeType> inner = innerRef;
         for (std::uint64_t i = 0; i < size; i++) {
-          EXPECT_EQ(inner.pushBack(i), pando::Status::Success);
+          EXPECT_EQ(inner.pushBack(TestEdgeType{i}), pando::Status::Success);
         }
         innerRef = inner;
       });
@@ -40,7 +46,7 @@ template <typename T>
 pando::Status deleteVectorVector(pando::Vector<pando::Vector<T>> vec) {
   auto err = galois::doAll(
       vec, +[](pando::GlobalRef<pando::Vector<T>> innerRef) {
-        pando::Vector<std::uint64_t> inner = innerRef;
+        pando::Vector<T> inner = innerRef;
         inner.deinitialize();
         innerRef = inner;
       });
@@ -51,10 +57,10 @@ pando::Status deleteVectorVector(pando::Vector<pando::Vector<T>> vec) {
 TEST(DistArrayCSR, FullyConnected) {
   constexpr std::uint64_t SIZE = 10;
   constexpr std::uint64_t value = 0xDEADBEEF;
-  galois::DistArrayCSR<std::uint64_t, std::uint64_t> graph;
+  Graph graph;
   auto vec = generateFullyConnectedGraph(SIZE);
   graph.initialize(vec);
-  auto err = deleteVectorVector<std::uint64_t>(vec);
+  auto err = deleteVectorVector<TestEdgeType>(vec);
   EXPECT_EQ(err, pando::Status::Success);
 
   for (std::uint64_t i = 0; i < SIZE; i++) {
@@ -62,7 +68,7 @@ TEST(DistArrayCSR, FullyConnected) {
     graph.setData(i, value);
     for (std::uint64_t j = 0; j < SIZE; j++) {
       EXPECT_EQ(graph.getEdgeDst(i, j), j);
-      graph.setEdgeData(i, j, value);
+      graph.setEdgeData(i, j, TestEdgeType{value});
     }
   }
   for (std::uint64_t i = 0; i < SIZE; i++) {
@@ -70,7 +76,8 @@ TEST(DistArrayCSR, FullyConnected) {
     EXPECT_EQ(graph.getData(i), value);
     for (std::uint64_t j = 0; j < SIZE; j++) {
       EXPECT_EQ(graph.getEdgeDst(i, j), j);
-      EXPECT_EQ(graph.getEdgeData(i, j), value);
+      TestEdgeType actual = graph.getEdgeData(i, j);
+      EXPECT_EQ(actual.dst, value);
     }
   }
   graph.deinitialize();
@@ -79,9 +86,9 @@ TEST(DistArrayCSR, FullyConnected) {
 TEST(DistArrayCSR, TopologyIteratorsFor) {
   constexpr std::uint64_t SIZE = 10;
   auto vec = generateFullyConnectedGraph(SIZE);
-  galois::DistArrayCSR<std::uint64_t, std::uint64_t> graph;
+  Graph graph;
   graph.initialize(vec);
-  auto err = deleteVectorVector<std::uint64_t>(std::move(vec));
+  auto err = deleteVectorVector<TestEdgeType>(std::move(vec));
   EXPECT_EQ(err, pando::Status::Success);
 
   galois::WaitGroup wg;
@@ -115,8 +122,6 @@ TEST(DistArrayCSR, TopologyIteratorsFor) {
   graph.deinitialize();
 }
 
-using Graph = galois::DistArrayCSR<std::uint64_t, std::uint64_t>;
-
 struct GraphBools {
   Graph graph;
   pando::GlobalPtr<bool> ptr;
@@ -127,7 +132,7 @@ TEST(DistArrayCSR, TopologyVertexIteratorsDoAll) {
   auto vec = generateFullyConnectedGraph(SIZE);
   GraphBools gBools;
   gBools.graph.initialize(vec);
-  auto err = deleteVectorVector<std::uint64_t>(std::move(vec));
+  auto err = deleteVectorVector<TestEdgeType>(std::move(vec));
   EXPECT_EQ(err, pando::Status::Success);
 
   pando::GlobalPtr<bool> touchedBools;
@@ -161,7 +166,7 @@ TEST(DistArrayCSR, TopologyEdgeIteratorsDoAll) {
   auto vec = generateFullyConnectedGraph(SIZE);
   Graph g;
   g.initialize(vec);
-  auto err = deleteVectorVector<std::uint64_t>(std::move(vec));
+  auto err = deleteVectorVector<TestEdgeType>(std::move(vec));
   EXPECT_EQ(err, pando::Status::Success);
 
   pando::GlobalPtr<bool> touchedBools;
@@ -197,7 +202,7 @@ TEST(DistArrayCSR, DataVertexIteratorsDoAll) {
   auto vec = generateFullyConnectedGraph(SIZE);
   Graph g;
   g.initialize(vec);
-  auto err = deleteVectorVector<std::uint64_t>(std::move(vec));
+  auto err = deleteVectorVector<TestEdgeType>(std::move(vec));
   EXPECT_EQ(err, pando::Status::Success);
 
   galois::doAll(
@@ -219,20 +224,21 @@ TEST(DistArrayCSR, DataEdgeIteratorsDoAll) {
   auto vec = generateFullyConnectedGraph(SIZE);
   Graph g;
   g.initialize(vec);
-  auto err = deleteVectorVector<std::uint64_t>(std::move(vec));
+  auto err = deleteVectorVector<TestEdgeType>(std::move(vec));
   EXPECT_EQ(err, pando::Status::Success);
 
   for (typename Graph::VertexTopologyID vlid : g.vertices()) {
     galois::doAll(
         goodValue, g.edgeDataRange(vlid),
-        +[](std::uint64_t goodValue, pando::GlobalRef<std::uint64_t> eData) {
-          eData = goodValue;
+        +[](std::uint64_t goodValue, pando::GlobalRef<TestEdgeType> eData) {
+          eData = TestEdgeType{goodValue};
         });
   }
 
   for (std::uint64_t i = 0; i < g.size(); i++) {
     for (std::uint64_t j = 0; j < g.getNumEdges(i); j++) {
-      EXPECT_EQ(g.getEdgeData(i, j), goodValue);
+      TestEdgeType edge_data = g.getEdgeData(i, j);
+      EXPECT_EQ(edge_data.dst, goodValue);
     }
   }
 
