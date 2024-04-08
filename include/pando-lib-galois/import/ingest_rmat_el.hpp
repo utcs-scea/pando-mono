@@ -54,10 +54,8 @@ pando::Status elParse(const char* line, EdgeFunc efunc) {
 pando::Status generateEdgesPerVirtualHost(pando::GlobalRef<pando::Vector<ELVertex>> vertices,
                                           std::uint64_t totalVertices, std::uint64_t vHostID,
                                           std::uint64_t numVHosts);
-
 pando::Vector<pando::Vector<ELEdge>> reduceLocalEdges(
     galois::PerThreadVector<pando::Vector<ELEdge>> localEdges, uint64_t numVertices);
-
 
 template <typename VertexType, typename EdgeType>
 galois::DistArrayCSR<VertexType, EdgeType> initializeELDACSR(pando::Array<char> filename,
