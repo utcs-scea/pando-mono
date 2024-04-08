@@ -36,6 +36,8 @@ using G = pando::GlobalPtr<T>;
 void runTest(const char* elFile, std::uint64_t numVertices);
 
 int pandoMain(int argc, char** argv) {
+  galois::HostLocalStorageHeap::HeapInit();
+  galois::PodLocalStorageHeap::HeapInit();
   std::uint64_t numVertices = 0;
   char* filepath = nullptr;
   optind = 0;
@@ -67,8 +69,6 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
   using ET = galois::ELEdge;
   using VT = galois::ELVertex;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
-  galois::HostLocalStorageHeap::HeapInit();
-  galois::PodLocalStorageHeap::HeapInit();
   pando::Array<char> filename;
   std::size_t length = strlen(elFile);
   PANDO_CHECK(filename.initialize(length + 1));
