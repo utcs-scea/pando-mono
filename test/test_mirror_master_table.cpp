@@ -36,8 +36,10 @@ using G = pando::GlobalPtr<T>;
 void runTest(const char* elFile, std::uint64_t numVertices);
 
 int pandoMain(int argc, char** argv) {
-  galois::HostLocalStorageHeap::HeapInit();
-  galois::PodLocalStorageHeap::HeapInit();
+  if (pando::getCurrentPlace().node.id == 0) {
+    galois::HostLocalStorageHeap::HeapInit();
+    galois::PodLocalStorageHeap::HeapInit();
+  }
   std::uint64_t numVertices = 0;
   char* filepath = nullptr;
   optind = 0;
