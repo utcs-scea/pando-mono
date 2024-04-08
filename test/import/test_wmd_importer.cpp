@@ -261,6 +261,7 @@ TEST_P(DLCSRInitEdgeList, initializeEL) {
       EXPECT_LE(graph.getTokenID(dst0), graph.getTokenID(dst1));
     }
   }
+  filename.deinitialize();
   graph.deinitialize();
 }
 
