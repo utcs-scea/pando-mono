@@ -59,9 +59,9 @@ template <typename EdgeType>
  * @brief fills out the metadata for the VirtualToPhysical Host mapping.
  */
 template <typename EdgeType>
-[[nodiscard]] pando::Status buildEdgeCountToSend(
-    std::uint64_t numVirtualHosts, galois::ThreadLocalVector<pando::Vector<EdgeType>> localEdges,
-    pando::GlobalRef<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts) {
+[[nodiscard]] pando::Expected<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>
+buildEdgeCountToSend(std::uint64_t numVirtualHosts,
+                     galois::ThreadLocalVector<pando::Vector<EdgeType>> localEdges) {
   pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
   PANDO_CHECK_RETURN(sumArray.initialize(numVirtualHosts));
 
@@ -86,8 +86,7 @@ template <typename EdgeType>
           pando::atomicFetchAdd(p, v.size(), std::memory_order_relaxed);
         }
       }));
-  labeledEdgeCounts = sumArray;
-  return pando::Status::Success;
+  return sumArray;
 }
 
 [[nodiscard]] pando::Expected<

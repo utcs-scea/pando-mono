@@ -86,28 +86,24 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
                                  i, localReadEdges, perThreadRename, numVertices));
   }
 
-  pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts;
-  pando::LocalStorageGuard labeledEdgeCountsGuard(labeledEdgeCounts, 1);
   PANDO_CHECK(wg.wait());
   PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread End");
 
 #ifdef FREE
-  auto freePerThreadRename =
-      +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
-              perThreadRename) {
-        for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
-          hash.deinitialize();
-        }
-      };
-  PANDO_CHECK(pando::executeOn(pando::anyPlace, freePerThreadRename, perThreadRename));
-  perThreadRename.deinitialize();
+  galois::WaitGroup freeWaiter;
+  PANDO_CHECK(freeWaiter.initialize(0));
+  auto freeWGH = freeWaiter.getHandle();
+  galois::doAll(
+      freeWGH, perThreadRename, +[](galois::HashTable<std::uint64_t, std::uint64_t> hash) {
+        hash.deinitialize();
+      });
 #endif
 
-  PANDO_CHECK(galois::internal::buildEdgeCountToSend<ELEdge>(numVHosts, localReadEdges,
-                                                             *labeledEdgeCounts));
+  auto labeledEdgeCounts =
+      PANDO_EXPECT_CHECK(galois::internal::buildEdgeCountToSend<ELEdge>(numVHosts, localReadEdges));
 
-  auto [v2PM, numEdges] = PANDO_EXPECT_CHECK(
-      galois::internal::buildVirtualToPhysicalMapping(hosts, *labeledEdgeCounts));
+  auto [v2PM, numEdges] =
+      PANDO_EXPECT_CHECK(galois::internal::buildVirtualToPhysicalMapping(hosts, labeledEdgeCounts));
 
 #if FREE
   auto freeLabeledEdgeCounts =
@@ -116,7 +112,9 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
       };
   PANDO_CHECK(pando::executeOn(
       pando::anyPlace, freeLabeledEdgeCounts,
-      static_cast<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>(*labeledEdgeCounts)));
+      static_cast<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>(labeledEdgeCounts)));
+  PANDO_CHECK(freeWaiter.wait());
+  perThreadRename.deinitialize();
 #endif
 
   galois::HostIndexedMap<pando::Vector<ELVertex>> pHV{};
@@ -174,8 +172,8 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
 
   PANDO_CHECK(
       pando::executeOn(pando::anyPlace, freeTheRest, pHV, partEdges, renamePerHost, numEdges));
+  freeWaiter.deinitialize();
 #endif
-
   wg.deinitialize();
   return graph;
 }
