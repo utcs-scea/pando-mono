@@ -20,7 +20,7 @@ function(pando_compiler_options TARGET)
     )
     target_compile_features(${TARGET}
         PUBLIC
-            cxx_std_20)
+            cxx_std_23)
 endfunction()
 
 # Default compiler warnings for targets
