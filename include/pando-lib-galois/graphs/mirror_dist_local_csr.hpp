@@ -331,7 +331,7 @@ public:
    * @brief get the index of a vertex within a specific vertex range
    */
   std::uint64_t getIndex(VertexTopologyID vertex, LocalVertexRange vertexList) {
-    if (*vertexList.begin() <= vertex && *vertexList.end() >= vertex) {
+    if (*vertexList.begin() <= vertex && *vertexList.end() > vertex) {
       return static_cast<uint64_t>(vertex - *vertexList.begin());
     } else {
       PANDO_ABORT("ILLEGAL SUBTRACTION OF POINTERS");
@@ -442,8 +442,59 @@ public:
           PANDO_CHECK(barrier.wait());
         });
   }
-  // void broadcast() {
-  // }
+  void broadcast() {
+    galois::GlobalBarrier barrier;
+    PANDO_CHECK(barrier.initialize(pando::getPlaceDims().node.id));
+
+    auto thisCSR = *this;
+    auto state = galois::make_tpl(thisCSR, barrier, masterBitSets, mirrorBitSets);
+
+    galois::doAll(
+        state, localMasterToRemoteMirrorTable,
+        +[](decltype(state) state, pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>>
+                                       localMasterToRemoteMirrorMap) {
+          auto [object, barrier, masterBitSets, mirrorBitSets] = state;
+
+          pando::GlobalRef<pando::Array<bool>> masterBitSet =
+              masterBitSets[pando::getCurrentPlace().node.id];
+
+          std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+
+          for (std::uint64_t nodeId = 0ul; nodeId < numHosts; nodeId++) {
+            pando::GlobalRef<pando::Vector<MirrorToMasterMap>> mapVectorFromHost =
+                fmap(localMasterToRemoteMirrorMap, get, nodeId);
+            for (std::uint64_t i = 0ul; i < lift(mapVectorFromHost, size); i++) {
+              MirrorToMasterMap m = fmap(mapVectorFromHost, get, i);
+              VertexTopologyID masterTopologyID = m.getMaster();
+              std::uint64_t index = object.getIndex(masterTopologyID, object.getLocalMasterRange());
+              bool dirty = fmap(masterBitSet, get, index);
+              if (dirty) {
+                // obtain the local master vertex data
+                VertexData masterData = object.getData(masterTopologyID);
+
+                // obtain the corresponding remote mirror information
+                VertexTopologyID mirrorTopologyID = m.getMirror();
+                // actual reference
+                pando::GlobalRef<VertexData> mirrorData = object.getData(mirrorTopologyID);
+
+                VertexData oldMirrorData = mirrorData;
+                mirrorData = masterData;
+                //  mirror data updated
+                if (mirrorData != oldMirrorData) {
+                  // set the remote mirror bit set
+                  pando::GlobalRef<pando::Array<bool>> mirrorBitSet = mirrorBitSets[nodeId];
+                  std::uint64_t index =
+                      object.getIndex(mirrorTopologyID, object.getMirrorRange(nodeId));
+                  fmap(mirrorBitSet, get, index) = true;
+                }
+              }
+            }
+          }
+
+          barrier.done();
+          PANDO_CHECK(barrier.wait());
+        });
+  }
   // TODO(Ying-Wei):
   //  write a sync function that reduces mirror values and then broadcasts master values
   //  return a bitmap of modified vertices
