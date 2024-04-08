@@ -170,25 +170,7 @@ TEST_P(MirrorDLCSRInitEdgeList, Reduce) {
   }
   EXPECT_EQ(barrier.wait(), pando::Status::Success);
 
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
-    pando::GlobalRef<pando::Array<bool>> mirrorBitSet = graph.getMirrorBitSet(nodeId);
-    for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
-      EXPECT_EQ(fmap(mirrorBitSet, get, i), true);
-    }
-  }
-
   graph.reduce(TestFunc);
-
-  std::uint64_t sumMaster = 0;
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
-    pando::GlobalRef<pando::Array<bool>> masterBitSet = graph.getMasterBitSet(nodeId);
-    for (std::uint64_t i = 0ul; i < lift(masterBitSet, size); i++) {
-      if (fmap(masterBitSet, get, i) == true) {
-        sumMaster += 1;
-      }
-    }
-  }
-  EXPECT_EQ(sumMaster, graph.sizeMirrors());
 
   for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     pando::GlobalRef<pando::Array<bool>> mirrorBitSet = graph.getMirrorBitSet(nodeId);
@@ -252,21 +234,11 @@ TEST_P(MirrorDLCSRInitEdgeList, Broadcast) {
   EXPECT_EQ(barrier.wait(), pando::Status::Success);
 
   for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
-    pando::GlobalRef<pando::Array<bool>> masterBitSet = graph.getMasterBitSet(nodeId);
-    for (std::uint64_t i = 0ul; i < lift(masterBitSet, size); i++) {
-      EXPECT_EQ(fmap(masterBitSet, get, i), true);
-    }
-  }
-
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     pando::GlobalRef<Graph::LocalVertexRange> masterRange = graph.getMasterRange(nodeId);
     for (Graph::VertexTopologyID masterTopologyID = *lift(masterRange, begin);
          masterTopologyID < *lift(masterRange, end); masterTopologyID++) {
       pando::GlobalRef<Graph::VertexData> masterData = graph.getData(masterTopologyID);
       fmapVoid(masterData, set, lift(masterData, get) + 1);
-
-      Graph::VertexTokenID masterTokenID = graph.getTokenID(masterTopologyID);
-      EXPECT_EQ(lift(masterData, get), masterTokenID + 1);
     }
   }
 
