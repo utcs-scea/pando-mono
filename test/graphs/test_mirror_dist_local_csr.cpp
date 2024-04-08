@@ -92,6 +92,7 @@ bool isInVector(T element, pando::GlobalRef<pando::Vector<T>> vec) {
 
 class MirrorDLCSRInitEdgeList
     : public ::testing::TestWithParam<std::tuple<const char*, std::uint64_t>> {};
+
 TEST_P(MirrorDLCSRInitEdgeList, MapExchange) {
   using ET = galois::ELEdge;
   using VT = galois::ELVertex;
@@ -115,8 +116,8 @@ TEST_P(MirrorDLCSRInitEdgeList, MapExchange) {
         graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);
     for (std::uint64_t i = 0ul; i < lift(localMirrorToRemoteMasterOrderedMap, size); i++) {
       Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, get, i);
-      Graph::VertexTopologyID masterToopologyID = m.getMaster();
-      Graph::VertexTokenID masterTokenID = graph.getTokenID(masterToopologyID);
+      Graph::VertexTopologyID masterTopologyID = m.getMaster();
+      Graph::VertexTokenID masterTokenID = graph.getTokenID(masterTopologyID);
       std::uint64_t physicalHost = graph.getPhysicalHostID(masterTokenID);
       pando::GlobalRef<pando::Vector<pando::Vector<Graph::MirrorToMasterMap>>>
           localMasterToRemoteMirrorMap = graph.getLocalMasterToRemoteMirrorMap(physicalHost);
@@ -125,6 +126,76 @@ TEST_P(MirrorDLCSRInitEdgeList, MapExchange) {
       EXPECT_TRUE(isInVector<Graph::MirrorToMasterMap>(m, mapVectorFromHost));
     }
   }
+  graph.deinitialize();
+}
+
+void TestFunc(galois::ELVertex mirror, pando::GlobalRef<galois::ELVertex> master) {
+  fmapVoid(master, set, mirror.get());
+}
+
+TEST_P(MirrorDLCSRInitEdgeList, Reduce) {
+  using ET = galois::ELEdge;
+  using VT = galois::ELVertex;
+  using Graph = galois::MirrorDistLocalCSR<VT, ET>;
+  galois::HostLocalStorageHeap::HeapInit();
+
+  const std::string elFile = std::get<0>(GetParam());
+  const std::uint64_t numVertices = std::get<1>(GetParam());
+
+  pando::Array<char> filename;
+  EXPECT_EQ(pando::Status::Success, filename.initialize(elFile.size()));
+  for (uint64_t i = 0; i < elFile.size(); i++)
+    filename[i] = elFile[i];
+
+  Graph graph =
+      galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
+
+  auto dims = pando::getPlaceDims();
+
+  galois::GlobalBarrier barrier;
+  EXPECT_EQ(barrier.initialize(dims.node.id), pando::Status::Success);
+
+  auto func = +[](galois::GlobalBarrier barrier,
+                  galois::HostLocalStorage<pando::Array<bool>> mirrorBitSets) {
+    pando::GlobalRef<pando::Array<bool>> mirrorBitSet =
+        mirrorBitSets[pando::getCurrentPlace().node.id];
+    fmapVoid(mirrorBitSet, fill, true);
+    barrier.done();
+  };
+  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    EXPECT_EQ(
+        pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
+                         func, barrier, graph.getMirrorBitSets()),
+        pando::Status::Success);
+  }
+  EXPECT_EQ(barrier.wait(), pando::Status::Success);
+
+  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    pando::GlobalRef<pando::Array<bool>> mirrorBitSet = graph.getMirrorBitSet(nodeId);
+    for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
+      EXPECT_EQ(fmap(mirrorBitSet, get, i), true);
+    }
+  }
+
+  graph.reduce(TestFunc);
+  std::cout << "After Reduce" << std::endl;
+
+  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    pando::GlobalRef<pando::Array<bool>> mirrorBitSet = graph.getMirrorBitSet(nodeId);
+    pando::GlobalRef<pando::Array<Graph::MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
+        graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);
+    for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
+      Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, get, i);
+      Graph::VertexTopologyID masterTopologyID = m.getMaster();
+      Graph::VertexTokenID masterTokenID = graph.getTokenID(masterTopologyID);
+      std::uint64_t physicalHost = graph.getPhysicalHostID(masterTokenID);
+
+      pando::GlobalRef<pando::Array<bool>> masterBitSet = graph.getMasterBitSet(physicalHost);
+      std::uint64_t index = graph.getIndex(masterTopologyID, graph.getMasterRange(physicalHost));
+      EXPECT_EQ(fmap(masterBitSet, get, index), true);
+    }
+  }
+
   graph.deinitialize();
 }
 

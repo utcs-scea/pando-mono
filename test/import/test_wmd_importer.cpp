@@ -345,14 +345,14 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
         ASSERT_TRUE(graph.isLocal(mirrorTopology));
         ASSERT_TRUE(!graph.isLocal(masterTopology));
         // Mirror must exist in mirror range.
-        auto it = graph.getMirrorRange();
+        auto it = graph.getLocalMirrorRange();
         ASSERT_TRUE(*it.begin() <= mirrorTopology && mirrorTopology < *it.end());
       } else {
         // If I don't have mirror, that could be because it is in local, or never be a destination
         // from me.
         if (graph.isLocal(masterTopology)) {
           // If it is from me, it is in my master range.
-          auto it = graph.getMasterRange();
+          auto it = graph.getLocalMasterRange();
           ASSERT_TRUE(*it.begin() <= masterTopology && masterTopology < *it.end());
           // In mirror to master, this should never exist
         }
