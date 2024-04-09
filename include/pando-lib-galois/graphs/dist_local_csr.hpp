@@ -408,6 +408,24 @@ public:
   VertexTopologyID getTopologyID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
     std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
+    auto [ret, found] = fmap(getLocalCSR(), relaxedgetTopologyID, tid);
+    if (!found) {
+      return fmap(getCSR(physicalHost), getTopologyID, tid);
+    } else {
+      return ret;
+    }
+  }
+
+private:
+  // This function is for mirrored dist local csr, or classes which will directly use it. Don't use
+  // it externally. getLocalTopologyID with non-existing tokenID will return failure.
+  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
+    return fmap(getLocalCSR(), getTopologyID, tid);
+  }
+
+  VertexTopologyID getGlobalTopologyID(VertexTokenID tid) {
+    std::uint64_t virtualHostID = tid % this->numVHosts();
+    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
     return fmap(getCSR(physicalHost), getTopologyID, tid);
   }
 
@@ -482,6 +500,7 @@ public:
     std::uint64_t virtualHostID = tid % this->numVHosts();
     return virtualHostID;
   }
+
   std::uint64_t getPhysicalHostID(VertexTokenID tid) {
     std::uint64_t virtualHostID = this->getVirtualHostID(tid);
     std::uint64_t physicalHostID = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
@@ -1148,7 +1167,7 @@ public:
    */
   pando::GlobalRef<CSR> getLocalCSR() {
     std::uint64_t nodeIdx = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-    return lift(arrayOfCSRs.getLocalRef(), getLocalRef);
+    return getCSR(nodeIdx);
   }
 
   /**
