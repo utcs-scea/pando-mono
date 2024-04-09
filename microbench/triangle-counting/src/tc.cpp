@@ -26,7 +26,7 @@ int pandoMain(int argc, char** argv) {
     PANDO_CHECK(necessary.init());
     PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
                                  &HBMainDFS, necessary.getHandle(), filename, opts->num_vertices,
-                                 opts->load_balanced_graph, opts->rt_algo, final_tri_count));
+                                 opts->load_balanced_graph, opts->tc_chunk, final_tri_count));
     necessary.wait();
     filename.deinitialize();
     std::cout << "*** FINAL TRI COUNT = " << final_tri_count.reduce() << "\n";

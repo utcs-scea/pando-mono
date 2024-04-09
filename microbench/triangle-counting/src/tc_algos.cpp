@@ -33,117 +33,14 @@ void edge_tc_counting(pando::GlobalPtr<Graph> graph_ptr, typename Graph::VertexT
 // #####################################################################
 //                        TC IMPLEMENTATIONS
 // #####################################################################
-void TC_Algo_Chunk_Vertices(pando::GlobalPtr<GraphDL> graph_ptr,
-                            galois::DAccumulator<uint64_t> final_tri_count) {
-  GraphDL graph = *graph_ptr;
-  uint64_t query_sz = 1;
-  uint64_t iters = 0;
-  std::uint64_t num_hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
-
-  galois::DAccumulator<uint64_t> work_remaining{};
-  PANDO_CHECK(work_remaining.initialize());
-
-  // Initialize vertexlist offsets to 0
-  galois::HostIndexedMap<uint64_t> per_host_iterator_offsets{};
-  PANDO_CHECK(per_host_iterator_offsets.initialize());
-
-  for (std::uint64_t i = 0; i < num_hosts; i++) {
-    per_host_iterator_offsets[i] = 0;
-  }
-
-  do {
-    work_remaining.reset();
-    auto state = galois::make_tpl(graph_ptr, work_remaining, query_sz, final_tri_count);
-
-    auto fn_per_host_embedding =
-        +[](galois::WaitGroup::HandleType outer_wgh,
-            galois::HostIndexedMap<uint64_t> per_host_iterator_offsets,
-            pando::GlobalPtr<GraphDL> graph_ptr, galois::DAccumulator<uint64_t> work_remaining,
-            uint64_t query_sz, galois::DAccumulator<uint64_t> final_tri_count) {
-          uint64_t host_iter_offset = per_host_iterator_offsets.getLocalRef();
-          GraphDL graph = *graph_ptr;
-          auto local_csr_ptr = graph.getLocalCSR();
-          auto local_csr = *local_csr_ptr;
-          uint64_t local_num_vertices = fmap(local_csr, size);
-          auto curr_vertex_range =
-              fmap(local_csr, vertices); // local_csr.vertices(); // , host_iter_offset, query_sz
-          auto local_work_remaining = local_num_vertices; // curr_vertex_range.size();
-
-          for (typename GraphDL::VertexTopologyID v0 : curr_vertex_range) {
-            // Degree Filtering Optimization
-            uint64_t v0_degree = graph.getNumEdges(v0);
-            if (v0_degree < (TC_EMBEDDING_SZ - 1))
-              return;
-
-            galois::WaitGroup wg;
-            PANDO_CHECK(wg.initialize(v0_degree));
-            auto wgh = wg.getHandle();
-
-            // Declare state the galois::doAll loop should capture
-            auto inner_state = galois::make_tpl(graph_ptr, v0, v0_degree, wgh, final_tri_count);
-            galois::doAll(
-                inner_state, graph.edges(v0),
-                +[](decltype(inner_state) inner_state, typename GraphDL::EdgeHandle eh) {
-                  auto [graph_ptr, v0, v0_degree, wgh, final_tri_count] = inner_state;
-                  GraphDL g = *graph_ptr;
-                  typename GraphDL::VertexTopologyID v1 = fmap(g, getEdgeDst, eh);
-
-                  bool v0_higher_degree = v0_degree >= fmap(g, getNumEdges, v1);
-                  pando::Place place_to_execute = v0_higher_degree ? fmap(g, getLocalityVertex, v0)
-                                                                   : fmap(g, getLocalityVertex, v1);
-
-                  // Adds |N(v0) and N(v1)| to the final_tri_count
-                  // Executes on v_max_degree to minimize number of remote references
-                  PANDO_CHECK(pando::executeOn(place_to_execute, &intersect_dag_merge<GraphDL>, wgh,
-                                               graph_ptr, v0, v1, final_tri_count));
-                });
-
-            // Waits for all the created threads to terminate
-            PANDO_CHECK(wg.wait());
-          }
-
-          // Move bookmark forward and flag if this vertex is not yet done
-          host_iter_offset += local_work_remaining;
-          if (host_iter_offset < local_num_vertices)
-            work_remaining.increment();
-
-          per_host_iterator_offsets.getLocalRef() = host_iter_offset;
-          outer_wgh.done();
-        };
-
-    galois::WaitGroup outer_wg;
-    PANDO_CHECK(outer_wg.initialize(num_hosts));
-    auto outer_wgh = outer_wg.getHandle();
-
-    // Execute kernels
-    for (uint64_t i = 0; i < num_hosts; i++) {
-      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
-                                        pando::anyPod, pando::anyCore};
-      PANDO_CHECK(pando::executeOn(place, fn_per_host_embedding, outer_wgh,
-                                   per_host_iterator_offsets, graph_ptr, work_remaining, query_sz,
-                                   final_tri_count));
-    }
-    PANDO_CHECK(outer_wg.wait());
-
-    uint64_t current_count = final_tri_count.reduce();
-    std::cout << "After Iter " << iters << " found " << current_count << " triangles.\n";
-    final_tri_count.reset();
-    final_tri_count.add(current_count);
-    iters++;
-    // query_sz <<= 1;
-  } while (work_remaining.reduce());
-
-  per_host_iterator_offsets.deinitialize();
-}
-
 /**
  * @brief Runs Chunked Triangle Counting Algorithm on DistLocalCSRs (GraphDL)
  *
  * @param[in] graph_ptr Pointer to the in-memory graph
  * @param[in] final_tri_count Thread-safe counter
  */
-void TC_Algo_Chunked(pando::GlobalPtr<GraphDL> graph_ptr,
-                     galois::DAccumulator<uint64_t> final_tri_count) {
+void TC_Algo_Chunk_Edges(pando::GlobalPtr<GraphDL> graph_ptr,
+                         galois::DAccumulator<uint64_t> final_tri_count) {
   GraphDL graph = *graph_ptr;
   uint64_t query_sz = 1;
   uint64_t iters = 0;
@@ -214,7 +111,7 @@ void TC_Algo(pando::GlobalPtr<GraphType> graph_ptr,
 }
 
 void HBGraphDL(pando::Place thisPlace, pando::Array<char> filename, int64_t num_vertices,
-               RT_TC_ALGO rt_algo, galois::DAccumulator<uint64_t> final_tri_count) {
+               TC_CHUNK tc_chunk, galois::DAccumulator<uint64_t> final_tri_count) {
 #if BENCHMARK
   auto time_graph_import_st = std::chrono::high_resolution_clock().now();
 #endif
@@ -241,11 +138,11 @@ void HBGraphDL(pando::Place thisPlace, pando::Array<char> filename, int64_t num_
 #endif
   PANDO_MEM_STAT_NEW_KERNEL("TC_DFS_Algo Start");
 
-  switch (rt_algo) {
-    case RT_TC_ALGO::BASP:
-      TC_Algo_Chunked(graph_ptr, final_tri_count);
+  switch (tc_chunk) {
+    case TC_CHUNK::CHUNK_EDGES:
+      TC_Algo_Chunk_Edges(graph_ptr, final_tri_count);
       break;
-    case RT_TC_ALGO::BSP:
+    case TC_CHUNK::CHUNK_VERTICES:
       TC_Algo_Chunk_Vertices(graph_ptr, final_tri_count);
       break;
     default:
@@ -310,12 +207,12 @@ void HBGraphDA(pando::Place thisPlace, pando::Array<char> filename, int64_t num_
 }
 
 void HBMainDFS(pando::Notification::HandleType hb_done, pando::Array<char> filename,
-               int64_t num_vertices, bool load_balanced_graph, RT_TC_ALGO rt_algo,
+               int64_t num_vertices, bool load_balanced_graph, TC_CHUNK tc_chunk,
                galois::DAccumulator<uint64_t> final_tri_count) {
   auto thisPlace = pando::getCurrentPlace();
 
   if (load_balanced_graph)
-    HBGraphDL(thisPlace, filename, num_vertices, rt_algo, final_tri_count);
+    HBGraphDL(thisPlace, filename, num_vertices, tc_chunk, final_tri_count);
   else
     HBGraphDA(thisPlace, filename, num_vertices, final_tri_count);
 

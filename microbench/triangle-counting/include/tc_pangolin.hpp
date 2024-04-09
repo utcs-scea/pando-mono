@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_PANGOLIN_HPP_
-#define PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_PANGOLIN_HPP_
+#ifndef PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_PANGOLIN_HPP_
+#define PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_PANGOLIN_HPP_
 
 #include <utility>
 
@@ -119,4 +119,4 @@ struct EmbeddingList {
 void HBMainPangolin(pando::Notification::HandleType hb_done, pando::Array<char> filename,
                     int64_t num_vertices);
 
-#endif // PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_PANGOLIN_HPP_
+#endif // PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_TC_PANGOLIN_HPP_

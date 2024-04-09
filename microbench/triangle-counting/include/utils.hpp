@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
-#define PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#ifndef PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#define PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
 
 #include <getopt.h>
 #include <pando-rt/export.h>
@@ -34,25 +34,25 @@ using VT = galois::ELVertex;
 using GraphDL = galois::DistLocalCSR<VT, ET>;
 using GraphDA = galois::DistArrayCSR<VT, ET>;
 
-enum RT_TC_ALGO { BASIC = 0, BASP = 1, BSP = 2 };
+enum TC_CHUNK { NO_CHUNK = 0, CHUNK_EDGES = 1, CHUNK_VERTICES = 2 };
 
 struct CommandLineOptions {
   std::string elFile;
   int64_t num_vertices = 0;
   bool load_balanced_graph = false;
-  RT_TC_ALGO rt_algo = RT_TC_ALGO::BASIC;
+  TC_CHUNK tc_chunk = TC_CHUNK::NO_CHUNK;
 
   void print() {
     printf("******** CommandLineOptions ******** \n");
     std::cout << "elFile = " << elFile << '\n';
     std::cout << "num_vertices = " << num_vertices << '\n';
     std::cout << "load_balanced_graph = " << load_balanced_graph << '\n';
-    std::cout << "rt_algo = " << rt_algo << '\n';
+    std::cout << "tc_chunk = " << tc_chunk << '\n';
     printf("******** END CommandLineOptions ******** \n");
   }
 
   CommandLineOptions()
-      : elFile(""), num_vertices(0), load_balanced_graph(false), rt_algo(RT_TC_ALGO::BASIC) {}
+      : elFile(""), num_vertices(0), load_balanced_graph(false), tc_chunk(TC_CHUNK::NO_CHUNK) {}
 };
 
 std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv);
@@ -188,4 +188,4 @@ void vertexset_intersection(pando::GlobalPtr<GraphType> graph_ptr,
 #endif
 }
 
-#endif // PANDO_LIB_GAL_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#endif // PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
