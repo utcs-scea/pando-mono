@@ -4,6 +4,7 @@
 #ifndef PANDO_LIB_GALOIS_IMPORT_INGEST_RMAT_EL_HPP_
 #define PANDO_LIB_GALOIS_IMPORT_INGEST_RMAT_EL_HPP_
 
+#include <algorithm>
 #include <utility>
 
 #include <pando-lib-galois/containers/dist_array.hpp>
@@ -207,6 +208,18 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeELDLCSR(pando::Array<char> 
 
   auto [partEdges, renamePerHost] =
       internal::partitionEdgesParallely(pHV, std::move(localReadEdges), hostLocalV2PM);
+
+  galois::doAll(
+      partEdges, +[](pando::GlobalRef<pando::Vector<pando::Vector<ELEdge>>> edge_vectors) {
+        pando::Vector<pando::Vector<ELEdge>> evs_tmp = edge_vectors;
+        galois::doAll(
+            evs_tmp, +[](pando::GlobalRef<pando::Vector<ELEdge>> src_ev) {
+              pando::Vector<ELEdge> tmp = src_ev;
+              std::sort(tmp.begin(), tmp.end());
+              src_ev = tmp;
+            });
+        edge_vectors = evs_tmp;
+      });
 
   using Graph = galois::DistLocalCSR<VertexType, EdgeType>;
   Graph graph;
