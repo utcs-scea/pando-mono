@@ -102,16 +102,6 @@ ReturnType initializeELDACSR(pando::Array<char> filename, std::uint64_t numVerti
 
   pando::Vector<pando::Vector<ELEdge>> edgeList = reduceLocalEdges(localReadEdges, numVertices);
 
-  using Graph = ReturnType;
-  Graph graph;
-  PANDO_CHECK(graph.initialize(edgeList));
-
-  for (uint64_t i = 0; i < numVertices; i++) {
-    pando::Vector<ELEdge> ev = edgeList[i];
-    ev.deinitialize();
-    edgeList[i] = std::move(ev);
-  }
-
 #ifdef FREE
   galois::WaitGroup freeWaiter;
   PANDO_CHECK(freeWaiter.initialize(0));
@@ -123,6 +113,16 @@ ReturnType initializeELDACSR(pando::Array<char> filename, std::uint64_t numVerti
   perThreadRename.deinitialize();
   freeWaiter.deinitialize();
 #endif
+
+  using Graph = ReturnType;
+  Graph graph;
+  PANDO_CHECK(graph.initialize(edgeList));
+
+  for (uint64_t i = 0; i < numVertices; i++) {
+    pando::Vector<ELEdge> ev = edgeList[i];
+    ev.deinitialize();
+    edgeList[i] = std::move(ev);
+  }
 
   return graph;
 }
