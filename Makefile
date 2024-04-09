@@ -24,6 +24,7 @@ INTERACTIVE ?= i
 
 BUILD_TYPE ?= Release
 PANDORT_TESTS ?= OFF
+WF4_TESTS ?= OFF
 
 # CMake variables
 PANDO_TEST_DISCOVERY_TIMEOUT ?= 150
@@ -131,6 +132,7 @@ cmake-mpi:
   -DBUILD_TESTING=ON \
   -DBUILD_EXAMPLES=ON \
 	-DENABLE_PANDORT_TESTS=${PANDORT_TESTS} \
+	-DENABLE_WF4_TESTS=${WF4_TESTS} \
   -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
 	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
 	-DCMAKE_CXX_COMPILER=g++-12 \
@@ -150,6 +152,7 @@ cmake-smp:
   -DBUILD_TESTING=ON \
   -DBUILD_EXAMPLES=ON \
 	-DENABLE_PANDORT_TESTS=${PANDORT_TESTS} \
+	-DENABLE_WF4_TESTS=${WF4_TESTS} \
   -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
 	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
 	-DCMAKE_CXX_COMPILER=g++-12 \
@@ -167,6 +170,7 @@ cmake-drv:
 	-DBUILD_TESTING=ON \
 	-DBUILD_EXAMPLES=ON \
 	-DENABLE_PANDORT_TESTS=${PANDORT_TESTS} \
+	-DENABLE_WF4_TESTS=${WF4_TESTS} \
 	-DBUILD_DOCS=OFF \
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
@@ -199,6 +203,9 @@ run-tests-drv:
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests: run-tests-mpi
+
+smoke-tests:
+	@bash scripts/run.sh
 
 # this command is slow since hooks are not stored in the container image
 # this is mostly for CI use

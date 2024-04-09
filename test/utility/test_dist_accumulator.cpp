@@ -8,7 +8,7 @@
 #include <pando-rt/pando-rt.hpp>
 
 galois::DistArray<uint64_t> getDistributedWorkArray(uint64_t workItemsPerHost) {
-  galois::DistArray<uint64_t> work;
+  galois::DistArray<uint64_t> work{};
 
   int16_t pxns = pando::getPlaceDims().node.id;
   pando::Vector<galois::PlaceType> vec;
@@ -24,7 +24,7 @@ galois::DistArray<uint64_t> getDistributedWorkArray(uint64_t workItemsPerHost) {
 }
 
 TEST(DistAccumulator, Init) {
-  galois::DAccumulator<uint64_t> sum;
+  galois::DAccumulator<uint64_t> sum{};
   EXPECT_EQ(sum.initialize(), pando::Status::Success);
 }
 

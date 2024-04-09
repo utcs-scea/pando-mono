@@ -89,6 +89,45 @@ buildEdgeCountToSend(std::uint64_t numVirtualHosts,
   return sumArray;
 }
 
+/**
+ * @brief fills out the metadata for the VirtualToPhysical Host mapping.
+ */
+template <typename EdgeType>
+[[nodiscard]] pando::Expected<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>>
+buildEdgeCountToSend(std::uint64_t numVirtualHosts,
+                     galois::ThreadLocalVector<EdgeType> localEdges) {
+  pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> sumArray;
+  PANDO_CHECK_RETURN(sumArray.initialize(numVirtualHosts));
+
+  for (std::uint64_t i = 0; i < numVirtualHosts; i++) {
+    galois::Pair<std::uint64_t, std::uint64_t> p{0, i};
+    sumArray[i] = p;
+  }
+  galois::WaitGroup wg{};
+  PANDO_CHECK(wg.initialize(0));
+  auto wgh = wg.getHandle();
+
+  using UPair = galois::Pair<std::uint64_t, std::uint64_t>;
+  const uint64_t pairOffset = offsetof(UPair, first);
+
+  auto state = galois::make_tpl(wgh, sumArray);
+  PANDO_CHECK(galois::doAll(
+      wgh, state, localEdges, +[](decltype(state) state, pando::Vector<EdgeType> localEdges) {
+        auto [wgh, sumArray] = state;
+        PANDO_CHECK(galois::doAll(
+            wgh, sumArray, localEdges, +[](decltype(sumArray) counts, EdgeType localEdge) {
+              pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
+                  static_cast<pando::GlobalPtr<void>>(&counts[localEdge.src % counts.size()]));
+              toAdd += pairOffset;
+              pando::GlobalPtr<std::uint64_t> p = static_cast<pando::GlobalPtr<std::uint64_t>>(
+                  static_cast<pando::GlobalPtr<void>>(toAdd));
+              pando::atomicFetchAdd(p, 1, std::memory_order_relaxed);
+            }));
+      }));
+  PANDO_CHECK(wg.wait());
+  return sumArray;
+}
+
 [[nodiscard]] pando::Expected<
     galois::Pair<pando::Array<std::uint64_t>, galois::HostIndexedMap<std::uint64_t>>>
 buildVirtualToPhysicalMapping(
@@ -311,7 +350,7 @@ template <typename EdgeType>
  */
 template <typename EdgeType>
 [[nodiscard]] pando::Status partitionEdgesSerially(
-    galois::PerThreadVector<EdgeType> localEdges,
+    galois::ThreadLocalVector<EdgeType> localEdges,
     pando::Array<std::uint64_t> virtualToPhysicalMapping,
     galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
     galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
@@ -324,9 +363,8 @@ template <typename EdgeType>
     pando::Vector<EdgeType> threadLocalEdges = *localEdges.get(i);
     for (EdgeType edge : threadLocalEdges) {
       auto tgtHost = getPhysical(edge.src, virtualToPhysicalMapping);
-      pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> edges =
-          partitionedEdges.get(tgtHost);
-      PANDO_CHECK_RETURN(insertLocalEdgesPerThread(renamePerHost.get(tgtHost), edges, edge));
+      pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> edges = partitionedEdges[tgtHost];
+      PANDO_CHECK_RETURN(insertLocalEdgesPerThread(renamePerHost[tgtHost], edges, edge));
     }
   }
   return pando::Status::Success;
@@ -602,11 +640,11 @@ void loadEdgeFilePerThread(
 template <typename EdgeType>
 struct ImportState {
   ImportState() = default;
-  ImportState(galois::EdgeParser<EdgeType> parser_, galois::PerThreadVector<EdgeType> localEdges_)
+  ImportState(galois::EdgeParser<EdgeType> parser_, galois::ThreadLocalVector<EdgeType> localEdges_)
       : parser(parser_), localEdges(localEdges_) {}
 
   galois::EdgeParser<EdgeType> parser;
-  galois::PerThreadVector<EdgeType> localEdges;
+  galois::ThreadLocalVector<EdgeType> localEdges;
 };
 
 template <typename EdgeType>

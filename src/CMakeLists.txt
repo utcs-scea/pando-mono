@@ -41,7 +41,7 @@ if (PANDO_RT_BACKEND STREQUAL "DRVX")
     target_link_libraries(pando-lib-galois PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-rt::pando-rt>")
 else()
     target_link_libraries(pando-lib-galois
-    PUBLIC
-        pando-rt::pando-rt
-)
+        PUBLIC
+            pando-rt::pando-rt
+    )
 endif()

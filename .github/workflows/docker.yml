@@ -64,7 +64,7 @@ jobs:
         fi
         if [ ${{ matrix.build-type }} == 'Release' ]; then
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON" >> $GITHUB_ENV
+          echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON -e=WF4_TESTS=ON" >> $GITHUB_ENV
         fi
         echo ${{ runner.name }}
         if [ ${{ runner.name }} == 'zerberus-0' ]; then
@@ -99,7 +99,7 @@ jobs:
         PANDO_PREP_LOG_LEVEL: warning
       run: |
         mkdir -p data
-        CONTAINER_CMD="setarch `uname -m` -R bash -c 'export HOST_THREADS=8 && . ~/.profile && scripts/run.sh'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -c 'export HOST_THREADS=8 && . ~/.profile && make smoke-tests'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           make docker

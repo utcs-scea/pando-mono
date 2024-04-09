@@ -52,10 +52,10 @@ NewGraph Project(OldGraph&& oldGraph, Projection projection) {
   using NewVertexType = typename NewGraph::VertexData;
   using NewEdgeType = typename NewGraph::EdgeData;
 
-  galois::PerThreadVector<NewVertexType> projectedVertices;
-  galois::PerThreadVector<NewEdgeType> projectedEdges;
-  galois::PerThreadVector<uint64_t> projectedEdgeDestinations;
-  galois::PerThreadVector<uint64_t> projectedEdgeCounts;
+  galois::PerThreadVector<NewVertexType> projectedVertices{};
+  galois::PerThreadVector<NewEdgeType> projectedEdges{};
+  galois::PerThreadVector<uint64_t> projectedEdgeDestinations{};
+  galois::PerThreadVector<uint64_t> projectedEdgeCounts{};
   PANDO_CHECK(projectedVertices.initialize());
   PANDO_CHECK(projectedEdges.initialize());
   PANDO_CHECK(projectedEdgeDestinations.initialize());

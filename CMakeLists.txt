@@ -18,6 +18,7 @@ if(CMAKE_CXX_FLAGS)
 endif()
 
 option(ENABLE_PANDORT_TESTS "Enable pando-rt to run tests" OFF)
+option(ENABLE_WF4_TESTS "Enable wf4 to run tests" OFF)
 
 if (NOT ENABLE_PANDORT_TESTS)
   message("Not Enabling Pandort testing")
@@ -164,8 +165,8 @@ add_subdirectory(src)
 
 # tests
 option(BUILD_TESTING "Build tests." ON)
+include(cmake/PANDOTesting.cmake)
 if (BUILD_TESTING)
-    include(cmake/PANDOTesting.cmake)
     enable_testing()
     add_subdirectory(test)
 endif ()
@@ -181,3 +182,6 @@ option(BUILD_DOCS "Build documentation" ON)
 if (BUILD_DOCS)
     add_subdirectory(docs)
 endif ()
+
+# workflows
+add_subdirectory(workflows)

@@ -601,9 +601,8 @@ public:
     std::uint64_t numVHosts = numHosts * scale_factor;
 
     pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts;
-    pando::LocalStorageGuard labeledEdgeCountsGuard(labeledEdgeCounts, 1);
-    PANDO_CHECK_RETURN(galois::internal::buildEdgeCountToSend<EdgeType>(numVHosts, localEdges,
-                                                                        *labeledEdgeCounts));
+    labeledEdgeCounts =
+        PANDO_EXPECT_CHECK(galois::internal::buildEdgeCountToSend<EdgeType>(numVHosts, localEdges));
 
     auto [v2PM, numEdges] = PANDO_EXPECT_RETURN(
         galois::internal::buildVirtualToPhysicalMapping(hosts, *labeledEdgeCounts));
@@ -668,7 +667,8 @@ public:
     }
 
     PANDO_CHECK_RETURN(
-        initializeAfterGather(pHV, numVertices, partEdges, renamePerHost, numEdges, v2PM));
+        initializeAfterGather(pHV, numVertices, partEdges, renamePerHost, numEdges,
+                              PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM)))));
 #if FREE
     auto freeTheRest = +[](decltype(pHV) pHV, decltype(partEdges) partEdges,
                            decltype(renamePerHost) renamePerHost, decltype(numEdges) numEdges) {
@@ -700,7 +700,7 @@ public:
                               const uint64_t chunk_size = 10000, const uint64_t scale_factor = 8) {
     std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
     std::uint64_t numVHosts = numHosts * scale_factor;
-    galois::PerThreadVector<EdgeType> localEdges;
+    galois::ThreadLocalVector<EdgeType> localEdges{};
     PANDO_CHECK_RETURN(localEdges.initialize());
 
     for (galois::EdgeParser<EdgeType> parser : edgeParsers) {
@@ -716,12 +716,11 @@ public:
 
     edgeParsers.deinitialize();
 
-    pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts;
-    pando::LocalStorageGuard labeledEdgeCountsGuard(labeledEdgeCounts, 1);
-    galois::internal::buildEdgeCountToSend<EdgeType>(numVHosts, localEdges, *labeledEdgeCounts);
+    pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledEdgeCounts =
+        PANDO_EXPECT_CHECK(galois::internal::buildEdgeCountToSend<EdgeType>(numVHosts, localEdges));
 
     auto [v2PM, numEdges] = PANDO_EXPECT_RETURN(
-        galois::internal::buildVirtualToPhysicalMapping(numHosts, *labeledEdgeCounts));
+        galois::internal::buildVirtualToPhysicalMapping(numHosts, labeledEdgeCounts));
 
     galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
     PANDO_CHECK_RETURN(partEdges.initialize());
@@ -735,7 +734,7 @@ public:
 
     PANDO_CHECK_RETURN(galois::internal::partitionEdgesSerially<EdgeType>(
         localEdges, v2PM, partEdges, renamePerHost));
-    galois::HostIndexedMap<pando::Vector<VertexType>> pHV{};
+    galois::HostLocalStorage<pando::Vector<VertexType>> pHV{};
     PANDO_CHECK_RETURN(pHV.initialize());
 
     PANDO_CHECK_RETURN(galois::doAll(
@@ -743,7 +742,7 @@ public:
         +[](galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges,
             pando::GlobalRef<pando::Vector<VertexType>> pHV) {
           PANDO_CHECK(fmap(pHV, initialize, 0));
-          pando::Vector<pando::Vector<EdgeType>> localEdges = partEdges.getLocal();
+          pando::Vector<pando::Vector<EdgeType>> localEdges = partEdges.getLocalRef();
           for (pando::Vector<EdgeType> e : localEdges) {
             EdgeType e0 = e[0];
             VertexType v0 = VertexType(e0.src, e0.srcType);
@@ -755,7 +754,8 @@ public:
       srcVertices += hostVertices.size();
     }
 
-    return initializeAfterGather(pHV, srcVertices, partEdges, renamePerHost, numEdges, v2PM);
+    return initializeAfterGather(pHV, srcVertices, partEdges, renamePerHost, numEdges,
+                                 PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(v2PM))));
   }
 
   /**
@@ -768,6 +768,7 @@ public:
                                          pando::Vector<GenericEdge<EdgeType>> edges) {
     numVertices = vertices.size();
     numEdges = edges.size();
+    PANDO_CHECK_RETURN(arrayOfCSRs.initialize());
     pando::Array<std::uint64_t> v2PM;
     PANDO_CHECK_RETURN(v2PM.initialize(vertices.size()));
     std::uint64_t hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
@@ -792,11 +793,11 @@ public:
       }
       CSR currentCSR{};
       uint64_t numLocalEdges = edgesEnd - edgesStart;
-      PANDO_CHECK_RETURN(currentCSR.initializeTopologyMemory(
+      PANDO_CHECK(currentCSR.initializeTopologyMemory(
           vertex, numLocalEdges,
           pando::Place{pando::NodeIndex{(int16_t)host}, pando::anyPod, pando::anyCore},
           pando::MemoryType::Main));
-      PANDO_CHECK_RETURN(currentCSR.initializeDataMemory(
+      PANDO_CHECK(currentCSR.initializeDataMemory(
           vertex, numLocalEdges,
           pando::Place{pando::NodeIndex{(int16_t)host}, pando::anyPod, pando::anyCore},
           pando::MemoryType::Main));
@@ -814,7 +815,7 @@ public:
       }
       currentCSR.vertexEdgeOffsets[vertex] = Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
 
-      arrayOfCSRs.get(host) = currentCSR;
+      arrayOfCSRs[host] = currentCSR;
       edgesStart = edgesEnd;
     }
     edgeCounts.deinitialize();
@@ -822,7 +823,7 @@ public:
 
     edgesStart = 0;
     for (uint64_t host = 0; host < hosts; host++) {
-      CSR currentCSR = arrayOfCSRs.get(host);
+      CSR currentCSR = arrayOfCSRs[host];
 
       uint64_t lastLocalVertexIndex = verticesPerHost * (host + 1) - 1;
       if (lastLocalVertexIndex >= numVertices) {
@@ -835,7 +836,7 @@ public:
       for (; edgesStart + currLocalEdge < numEdges && currEdge.src <= lastLocalVertex;
            currLocalEdge++) {
         EdgeType data = currEdge.data;
-        HalfEdge edge;
+        HalfEdge edge{};
         edge.dst = getTopologyID(currEdge.dst);
         currentCSR.edgeDestinations[currLocalEdge] = edge;
         currentCSR.setEdgeData(&currentCSR.edgeDestinations[currLocalEdge], data);
@@ -844,7 +845,7 @@ public:
           currEdge = edges[edgesStart + currLocalEdge + 1];
         }
       }
-      arrayOfCSRs.get(host) = currentCSR;
+      arrayOfCSRs[host] = currentCSR;
 
       edgesStart += currLocalEdge;
     }
@@ -868,7 +869,7 @@ public:
                                          galois::PerThreadVector<uint64_t> edgeCounts) {
     numVertices = vertices.sizeAll();
     numEdges = edges.sizeAll();
-    pando::Array<std::uint64_t> oldV2PM = oldGraph.virtualToPhysicalMap.getLocal();
+    pando::Array<std::uint64_t> oldV2PM = oldGraph.virtualToPhysicalMap.getLocalRef();
     pando::Array<std::uint64_t> v2PM;
     PANDO_CHECK_RETURN(v2PM.initialize(oldV2PM.size()));
     for (uint64_t i = 0; i < oldV2PM.size(); i++) {
@@ -915,7 +916,7 @@ public:
           }
           currentCSR.vertexEdgeOffsets[currLocalVertex] =
               Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
-          state.arrayOfCSRs.getLocal() = currentCSR;
+          state.arrayOfCSRs.getLocalRef() = currentCSR;
         });
     arrayOfCSRs = state.arrayOfCSRs;
 
@@ -923,7 +924,7 @@ public:
     galois::onEach(
         state2, +[](InitializeEdgeState& state, uint64_t thread, uint64_t) {
           uint64_t host = static_cast<std::uint64_t>(pando::getCurrentNode().id);
-          CSR currentCSR = state.dlcsr.arrayOfCSRs.get(host);
+          CSR currentCSR = state.dlcsr.arrayOfCSRs[host];
 
           uint64_t hostOffset;
           PANDO_CHECK(state.edges.currentHostIndexOffset(hostOffset));
@@ -942,7 +943,7 @@ public:
                                    data);
             currLocalEdge++;
           }
-          state.dlcsr.arrayOfCSRs.getLocal() = currentCSR;
+          state.dlcsr.arrayOfCSRs.getLocalRef() = currentCSR;
         });
     *this = state2.dlcsr;
 
@@ -952,10 +953,10 @@ public:
   pando::Status initialize(pando::Vector<galois::VertexParser<VertexType>>&& vertexParsers,
                            pando::Vector<galois::EdgeParser<EdgeType>>&& edgeParsers) {
     std::uint64_t numThreads = 32;
-    galois::PerThreadVector<pando::Vector<EdgeType>> localEdges;
+    galois::PerThreadVector<pando::Vector<EdgeType>> localEdges{};
     PANDO_CHECK_RETURN(localEdges.initialize());
 
-    galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename;
+    galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename{};
     PANDO_CHECK(perThreadRename.initialize());
 
     for (auto hashRef : perThreadRename) {
@@ -963,7 +964,7 @@ public:
       PANDO_CHECK(fmap(hashRef, initialize, 0));
     }
 
-    galois::PerThreadVector<VertexType> localVertices;
+    galois::PerThreadVector<VertexType> localVertices{};
     PANDO_CHECK_RETURN(localVertices.initialize());
 
     for (VertexParser<VertexType> vertexParser : vertexParsers) {
@@ -1066,7 +1067,7 @@ public:
    */
   pando::GlobalRef<CSR> getLocalCSR() {
     std::uint64_t nodeIdx = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
-    return arrayOfCSRs.get(nodeIdx);
+    return arrayOfCSRs[nodeIdx];
   }
 
 private:

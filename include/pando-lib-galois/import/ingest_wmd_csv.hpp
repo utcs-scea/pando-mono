@@ -78,7 +78,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
   PANDO_CHECK(wg.initialize(numThreads));
   auto wgh = wg.getHandle();
 
-  galois::DAccumulator<std::uint64_t> totVerts;
+  galois::DAccumulator<std::uint64_t> totVerts{};
   PANDO_CHECK(totVerts.initialize());
 
   galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename{};

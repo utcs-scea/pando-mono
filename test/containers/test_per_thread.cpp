@@ -381,7 +381,7 @@ TEST(PerThreadVector, ClearCompute) {
   EXPECT_EQ(wg.wait(), pando::Status::Success);
   EXPECT_EQ(sum.reduce(), ((workItems - 1) + 0) * (workItems / 2));
 
-  galois::DistArray<uint64_t> copy;
+  galois::DistArray<uint64_t> copy{};
   EXPECT_EQ(perThreadVec.assign(copy), pando::Status::Success);
   EXPECT_EQ(copy.size(), workItems);
   uint64_t copy_sum = 0;
