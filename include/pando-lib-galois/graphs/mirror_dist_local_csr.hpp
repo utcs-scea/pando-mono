@@ -313,7 +313,7 @@ public:
         std::uint64_t index = getIndex(vertex, getLocalMirrorRange());
         pando::GlobalRef<pando::Array<bool>> mirrorBitSet = mirrorBitSets.getLocalRef();
         fmap(mirrorBitSet, get, index) = true;
-      } else if (isMirror(vertex)) {
+      } else if (isMaster(vertex)) {
         std::uint64_t index = getIndex(vertex, getLocalMasterRange());
         pando::GlobalRef<pando::Array<bool>> masterBitSet = masterBitSets.getLocalRef();
         fmap(masterBitSet, get, index) = true;
