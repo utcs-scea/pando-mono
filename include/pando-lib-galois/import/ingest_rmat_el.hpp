@@ -90,15 +90,14 @@ galois::DistArrayCSR<VertexType, EdgeType> initializeELDACSR(pando::Array<char> 
   pando::Vector<pando::Vector<ELEdge>> edgeList = reduceLocalEdges(localReadEdges, numVertices);
 
 #ifdef FREE
-  auto freePerThreadRename =
-      +[](galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>>
-              perThreadRename) {
-        for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
-          hash.deinitialize();
-        }
-      };
-  PANDO_CHECK(pando::executeOn(pando::anyPlace, freePerThreadRename, perThreadRename));
-  perThreadRename.deinitialize();
+  galois::WaitGroup freeWaiter;
+  PANDO_CHECK(freeWaiter.initialize(0));
+  auto freeWGH = freeWaiter.getHandle();
+  galois::doAll(
+      freeWGH, perThreadRename, +[](galois::HashTable<std::uint64_t, std::uint64_t> hash) {
+        hash.deinitialize();
+      });
+  freeWaiter.deinitialize();
 #endif
 
   using Graph = galois::DistArrayCSR<VertexType, EdgeType>;
