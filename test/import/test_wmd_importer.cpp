@@ -250,6 +250,16 @@ TEST_P(DLCSRInitEdgeList, initializeEL) {
       EXPECT_EQ(eData.src, numVertices);
       EXPECT_EQ(eData.dst, numVertices);
     }
+
+    // Check edge lists are sorted when read from RMAT
+    auto src_edges = graph.edges(vert);
+    auto end_ptr = src_edges.end();
+    end_ptr--;
+    for (auto it = src_edges.begin(); it != end_ptr && it != src_edges.end(); it++) {
+      typename Graph::VertexTopologyID dst0 = graph.getEdgeDst(*it);
+      typename Graph::VertexTopologyID dst1 = graph.getEdgeDst(*(it + 1));
+      EXPECT_LE(graph.getTokenID(dst0), graph.getTokenID(dst1));
+    }
   }
   graph.deinitialize();
 }
