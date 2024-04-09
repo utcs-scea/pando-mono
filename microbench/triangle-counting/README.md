@@ -28,6 +28,6 @@ make run-tests
 ```bash
 # On PREP:
 PANDO_PREP_MAIN_NODE=17179869184 PANDO_PREP_NUM_CORES=2 \
-gasnetrun_mpi -n 2 ./dockerbuild/microbench/triangle-counting/tc -i \
+gasnetrun_mpi -n 2 ./dockerbuild/microbench/triangle-counting/src/tc -i \
 graphs/rmat_571919_seed1_scale5_nV32_nE153.el -v 32
 ```

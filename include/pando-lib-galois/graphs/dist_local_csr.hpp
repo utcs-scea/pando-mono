@@ -1078,7 +1078,7 @@ public:
   /**
    * @brief Get the local csr
    */
-  pando::GlobalRef<CSR> getLocalCSR() {
+  pando::GlobalPtr<CSR> getLocalCSR() {
     std::uint64_t nodeIdx = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
     return arrayOfCSRs.get(nodeIdx);
   }
