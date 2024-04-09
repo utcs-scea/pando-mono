@@ -566,6 +566,7 @@ public:
       this->numEdges += numEdges[i];
     }
     PANDO_CHECK_RETURN(wg.wait());
+    PANDO_CHECK_RETURN(generateCache());
     wgh.add(numHosts);
 
     auto fillCSRFuncs =
@@ -612,7 +613,6 @@ public:
     }
 
     PANDO_CHECK_RETURN(wg.wait());
-    PANDO_CHECK_RETURN(generateCache());
     wg.deinitialize();
 
     return pando::Status::Success;
