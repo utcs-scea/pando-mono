@@ -325,8 +325,8 @@ template <typename EdgeType>
 [[nodiscard]] pando::Status partitionEdgesSerially(
     galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
     pando::Array<std::uint64_t> virtualToPhysicalMapping,
-    galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
-    galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
+    galois::HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
+    galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
   for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
     galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
     PANDO_CHECK_RETURN(hash.initialize(0));
@@ -352,8 +352,8 @@ template <typename EdgeType>
 [[nodiscard]] pando::Status partitionEdgesSerially(
     galois::ThreadLocalVector<EdgeType> localEdges,
     pando::Array<std::uint64_t> virtualToPhysicalMapping,
-    galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
-    galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
+    galois::HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
+    galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
   for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
     galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
     PANDO_CHECK_RETURN(hash.initialize(0));

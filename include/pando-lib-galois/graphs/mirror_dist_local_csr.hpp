@@ -308,8 +308,8 @@ public:
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
       galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
-      galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
-      galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
+      galois::HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
+      galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
       galois::HostIndexedMap<std::uint64_t> numEdges,
       HostLocalStorage<pando::Array<std::uint64_t>> virtualToPhysical) {
     std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
@@ -323,7 +323,7 @@ public:
     PANDO_CHECK(mirrorRange.initialize());
     PANDO_CHECK(localMirrorToRemoteMasterOrderedTable.initialize());
 
-    auto mirrorAttach = +[](galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData,
+    auto mirrorAttach = +[](HostLocalStorage<pando::Vector<ReadVertexType>> vertexData,
                             HostLocalStorage<pando::Vector<VertexTokenID>> mirrorList,
                             std::uint64_t i, galois::WaitGroup::HandleType wgh) {
       pando::Vector<ReadVertexType> curVertexData = vertexData[i];
