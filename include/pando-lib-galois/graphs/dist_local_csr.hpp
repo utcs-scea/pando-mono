@@ -32,7 +32,7 @@ struct DLCSR_InitializeState {
   using CSR = LCSR<VertexType, EdgeType>;
 
   DLCSR_InitializeState() = default;
-  DLCSR_InitializeState(galois::HostIndexedMap<CSR> arrayOfCSRs_,
+  DLCSR_InitializeState(HostLocalStorage<HostIndexedMap<CSR>> arrayOfCSRs_,
                         galois::PerThreadVector<VertexType> vertices_,
                         galois::PerThreadVector<EdgeType> edges_,
                         galois::PerThreadVector<uint64_t> edgeCounts_)
@@ -1024,7 +1024,7 @@ public:
     galois::onEach(
         state2, +[](InitializeEdgeState& state, uint64_t thread, uint64_t) {
           uint64_t host = static_cast<std::uint64_t>(pando::getCurrentNode().id);
-          CSR currentCSR = state.dlcsr.arrayOfCSRs[host];
+          CSR currentCSR = state.dlcsr.getCSR(host);
 
           uint64_t hostOffset;
           PANDO_CHECK(state.edges.currentHostIndexOffset(hostOffset));
