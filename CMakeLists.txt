@@ -137,7 +137,7 @@ set(PUBLIC_HEADERS
 # library properties
 set_target_properties(pando-lib-galois
     PROPERTIES
-        CXX_STANDARD                17
+        CXX_STANDARD                23
         CXX_STANDARD_REQUIRED       ON
         CXX_EXTENSIONS              OFF
         CXX_VISIBILITY_PRESET       hidden

@@ -27,13 +27,16 @@ struct Pair {
 
   Pair() noexcept = default;
 
-  Pair<T0, T1>(const Pair<T0, T1>&) = default;
-  Pair<T0, T1>(Pair<T0, T1>&&) = default;
+  constexpr Pair<T0, T1>(const T0& t0, const T1& t1) : first(t0), second(t1) {}
+  constexpr Pair<T0, T1>(T0&& t0, T1&& t1) : first(t0), second(t1) {}
 
-  ~Pair<T0, T1>() = default;
+  constexpr Pair<T0, T1>(const Pair<T0, T1>&) = default;
+  constexpr Pair<T0, T1>(Pair<T0, T1>&&) = default;
 
-  Pair<T0, T1>& operator=(const Pair<T0, T1>&) = default;
-  Pair<T0, T1>& operator=(Pair<T0, T1>&&) = default;
+  ~Pair() = default;
+
+  constexpr Pair<T0, T1>& operator=(const Pair<T0, T1>&) = default;
+  constexpr Pair<T0, T1>& operator=(Pair<T0, T1>&&) = default;
 
   template <std::uint64_t index>
   auto get() {

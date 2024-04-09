@@ -60,7 +60,7 @@ target_include_directories(pando-wf4-galois
 # library properties
 set_target_properties(pando-wf4-galois
     PROPERTIES
-        CXX_STANDARD                17
+        CXX_STANDARD                23
         CXX_STANDARD_REQUIRED       ON
         CXX_EXTENSIONS              OFF
         CXX_VISIBILITY_PRESET       hidden
@@ -88,6 +88,6 @@ add_subdirectory(src)
 
 # tests
 option(BUILD_TESTING "Build tests." ON)
-if (BUILD_TESTING AND ENABLE_PANDORT_TESTS)
+if (BUILD_TESTING AND ENABLE_WF4_TESTS)
     add_subdirectory(test)
 endif ()

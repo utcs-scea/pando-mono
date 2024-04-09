@@ -355,7 +355,7 @@ public:
                                 std::uint64_t i, galois::WaitGroup::HandleType wgh) {
       pando::Vector<std::uint64_t> localMirrorList = mirrorList[i];
       uint64_t mirror_size = lift(localMirrorList, size);
-      CSR csrCurr = dlcsr.arrayOfCSRs[i];
+      CSR csrCurr = dlcsr.getCSR(i);
 
       LocalVertexRange _masterRange = mdlcsr.masterRange.getLocalRef();
       _masterRange = LocalVertexRange(lift(csrCurr, vertexEdgeOffsets.begin),
