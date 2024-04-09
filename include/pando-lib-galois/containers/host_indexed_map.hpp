@@ -43,14 +43,17 @@ public:
     return getNumHosts();
   }
 
-  [[nodiscard]] pando::Status initialize() {
-    auto expect =
-        pando::allocateMemory<T>(getNumHosts(), pando::getCurrentPlace(), pando::MemoryType::Main);
+  [[nodiscard]] pando::Status initialize(pando::Place place, pando::MemoryType memory) {
+    auto expect = pando::allocateMemory<T>(getNumHosts(), place, memory);
     if (!expect.hasValue()) {
       return expect.error();
     }
     m_items = expect.value();
     return pando::Status::Success;
+  }
+
+  [[nodiscard]] pando::Status initialize() {
+    return initialize(pando::getCurrentPlace(), pando::MemoryType::Main);
   }
 
   void deinitialize() {

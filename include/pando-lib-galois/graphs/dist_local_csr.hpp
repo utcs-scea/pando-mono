@@ -915,15 +915,19 @@ public:
       }
       currentCSR.vertexEdgeOffsets[vertex] = Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
 
-      arrayOfCSRs[host] = currentCSR;
+      PANDO_CHECK(fmap(arrayOfCSRs[host], initialize,
+                       pando::Place{pando::NodeIndex{(int16_t)host}, pando::anyPod, pando::anyCore},
+                       pando::MemoryType::Main));
+      fmap(arrayOfCSRs[host], operator[], host) = currentCSR;
       edgesStart = edgesEnd;
     }
     edgeCounts.deinitialize();
+    PANDO_CHECK_RETURN(generateCache());
     virtualToPhysicalMap = PANDO_EXPECT_RETURN(galois::copyToAllHosts(std::move(v2PM)));
 
     edgesStart = 0;
     for (uint64_t host = 0; host < hosts; host++) {
-      CSR currentCSR = arrayOfCSRs[host];
+      CSR currentCSR = fmap(arrayOfCSRs[host], operator[], host);
 
       uint64_t lastLocalVertexIndex = verticesPerHost * (host + 1) - 1;
       if (lastLocalVertexIndex >= numVertices) {
@@ -945,10 +949,11 @@ public:
           currEdge = edges[edgesStart + currLocalEdge + 1];
         }
       }
-      arrayOfCSRs[host] = currentCSR;
+      fmap(arrayOfCSRs[host], operator[], host) = currentCSR;
 
       edgesStart += currLocalEdge;
     }
+    PANDO_CHECK_RETURN(generateCache());
     return pando::Status::Success;
   }
 
@@ -1016,9 +1021,11 @@ public:
           }
           currentCSR.vertexEdgeOffsets[currLocalVertex] =
               Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
+          PANDO_CHECK(lift(state.arrayOfCSRs.getLocalRef(), initialize));
           lift(state.arrayOfCSRs.getLocalRef(), getLocalRef) = currentCSR;
         });
     arrayOfCSRs = state.arrayOfCSRs;
+    PANDO_CHECK_RETURN(generateCache());
 
     InitializeEdgeState state2(*this, edges, edgeDsts);
     galois::onEach(
