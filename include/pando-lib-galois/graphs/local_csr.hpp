@@ -457,11 +457,37 @@ public:
   VertexRange vertices() {
     return VertexRange(vertexEdgeOffsets.begin(), vertexEdgeOffsets.size() - 1);
   }
+
+  VertexRange vertices(uint64_t offset_st, uint64_t window_sz) {
+    auto beg = vertexEdgeOffsets.begin() + offset_st;
+    auto end = vertexEdgeOffsets.end();
+    if (beg > end)
+      return VertexRange(vertexEdgeOffsets.begin(), 0);
+    if (beg + window_sz <= end)
+      return VertexRange(beg, window_sz);
+    return VertexRange(beg, end - beg);
+  }
+
   static EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr) {
     Vertex v = *vPtr;
     Vertex v1 = *(vPtr + 1);
     return EdgeRange(v.edgeBegin, v1.edgeBegin - v.edgeBegin);
   }
+
+  static EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr, uint64_t offset_st,
+                         uint64_t window_sz) {
+    Vertex v = *vPtr;
+    Vertex v1 = *(vPtr + 1);
+
+    auto beg = v.edgeBegin + offset_st;
+    if (beg > v1.edgeBegin)
+      return EdgeRange(v.edgeBegin, 0);
+    if (beg + window_sz <= v1.edgeBegin)
+      return EdgeRange(beg, window_sz);
+
+    return EdgeRange(beg, v1.edgeBegin - beg);
+  }
+
   VertexDataRange vertexDataRange() noexcept {
     return VertexDataRange(vertexData.begin(), vertexData.size() - 1);
   }

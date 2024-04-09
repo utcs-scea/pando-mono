@@ -6,103 +6,12 @@
 // #####################################################################
 //                        TC IMPLEMENTATIONS
 // #####################################################################
-// /**
-//  * @brief Runs BSP Triangle Counting Algorithm on DistLocalCSRs (GraphDL)
-//  *
-//  * @param[in] graph_ptr Pointer to the in-memory graph
-//  * @param[in] final_tri_count Thread-safe counter
-//  */
-// void TC_Algo_BSP(pando::GlobalPtr<GraphDL> graph_ptr,
-//                      galois::DAccumulator<uint64_t> final_tri_count) {
-//   GraphDL graph = *graph_ptr;
-//   uint64_t query_sz = 1;
-//   uint64_t iters = 0;
+// void TC_Algo_Chunk_Vertices(pando::GlobalPtr<GraphDL> graph_ptr, galois::DAccumulator<uint64_t>
+// final_tri_count){
+//   // Get local vertices
+//   uint16_t host_id = 0;
+//   auto host_csr = graph_ptr->getLocalCSR(host_id);
 
-//   galois::DAccumulator<uint64_t> work_remaining{};
-//   PANDO_CHECK(work_remaining.initialize());
-
-//   // Create communication mechanism for BSP
-//   using TokensVector = pando::Vector<typename GraphDL::VertexTokenID>;
-//   using QueriesMap = galois::HashTable<typename GraphDL::VertexTopologyID, TokensVector>;
-//   // QueriesMap queries_base;
-//   // PANDO_CHECK(queries_base.initialize());
-//   // auto sync_queries = PANDO_EXPECT_CHECK(galois::copyToAllHosts(std::move(queries_base)));
-
-//   // auto clear_query = +[](pando::GlobalRef<QueriesMap> hm_ref) {
-//   //   QueriesMap hm = hm_ref;
-//   //   for (typename QueriesMap::Entry entry : hm) {
-//   //     TokensVector tokens = entry.value;
-//   //     tokens.deinitialize();
-//   //     entry.value = tokens;
-//   //   }
-//   //   hm_ref = hm;
-//   // };
-
-//   // Assumption: ELVertex iterator_offset = 0
-//   do {
-//     work_remaining.reset();
-//     /* PHASE 1: Build queries
-//     Queries: v0.edges in [cbeg, cend]
-//     Add cend into cbeg list
-//     1->2
-
-//     <SYNC>
-//     for v0: // 0
-//       v1 = e.dst
-//       v1_queries = sync.lookup[v1] // {2}
-
-//       // Find v1_queries in v0_EL
-//     */
-
-//     auto state = galois::make_tpl(graph_ptr, work_remaining, query_sz, final_tri_count);
-//     galois::doAll(
-//         state, graph.vertices(),
-//         +[](decltype(state) state, typename GraphDL::VertexTopologyID vert) {
-//           auto [graph_ptr, work_remaining, query_sz, final_tri_count] = state;
-//           GraphDL g = *graph_ptr;
-//           uint64_t vert_numEdges = fmap(g, getNumEdges, vert);
-//           if (vert_numEdges < (TC_EMBEDDING_SZ - 1))
-//             return;
-
-//           // Each vertex stores a bookmark where they left off
-//           // We modify DistLocalCSR (GraphDL) to allow us to capture a subset of the edgeRange
-//           uint64_t current_offset = vert->iterator_offset;
-//           auto curr_edge_range = fmap(g, edges, vert, current_offset, query_sz);
-//           auto local_work_remaining = curr_edge_range.size();
-
-//           galois::WaitGroup wg;
-//           PANDO_CHECK(wg.initialize(local_work_remaining));
-//           auto wgh = wg.getHandle();
-
-//           auto inner_state = galois::make_tpl(graph_ptr, vert, wgh, final_tri_count);
-//           galois::doAll(
-//               inner_state, curr_edge_range,
-//               +[](decltype(inner_state) inner_state, typename GraphDL::EdgeHandle eh) {
-//                 auto [graph_ptr, v0, wgh, final_tri_count] = inner_state;
-
-//                 GraphDL g = *graph_ptr;
-//                 typename GraphDL::VertexTopologyID v1 = fmap(g, getEdgeDst, eh);
-//                 bool v0_higher_degree = fmap(g, getNumEdges, v0) >= fmap(g, getNumEdges, v1);
-//                 pando::Place locality = v0_higher_degree ? fmap(g, getLocalityVertex, v0)
-//                                                          : fmap(g, getLocalityVertex, v1);
-//                 PANDO_CHECK(pando::executeOn(locality, &intersect_dag_merge<GraphDL>, wgh,
-//                                              graph_ptr, v0, v1, final_tri_count));
-//               });
-//           PANDO_CHECK(wg.wait());
-
-//           // Move bookmark forward and flag if this vertex is not yet done
-//           vert->iterator_offset += local_work_remaining;
-//           if (vert->iterator_offset < vert_numEdges)
-//             work_remaining.increment();
-//         });
-
-//     uint64_t current_count = final_tri_count.reduce();
-//     std::cout << "After Iter " << iters << " found " << current_count << " triangles.\n";
-//     final_tri_count.reset();
-//     final_tri_count.add(current_count);
-//     iters++;
-//     query_sz <<= 1;
-//   } while (work_remaining.reduce());
 // }
 
 /**
