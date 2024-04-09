@@ -289,7 +289,6 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
   using VT = galois::ELVertex;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
   galois::HostLocalStorageHeap::HeapInit();
-
   const std::string elFile = std::get<0>(GetParam());
   const std::uint64_t numVertices = std::get<1>(GetParam());
 
@@ -319,10 +318,17 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
     typename Graph::VertexData vertexData = graph.getData(vert);
     EXPECT_EQ(srcTok, vertexData.id);
 
-    VT dumbVertex = VT{numVertices};
-    graph.setData(vert, dumbVertex);
-    vertexData = graph.getData(vert);
-    EXPECT_EQ(vertexData.id, numVertices);
+    /*
+    It is not valid to set data on remote side's mirror.
+    It only need to write data only on local, or remote side's master.
+    Currently there is no command to check if master on remote, such that only write data on local
+    */
+    if (graph.isLocal(vert)) {
+      VT dumbVertex = VT{numVertices};
+      graph.setData(vert, dumbVertex);
+      vertexData = graph.getData(vert);
+      EXPECT_EQ(vertexData.id, numVertices);
+    }
 
     // Iterate over edges
     EXPECT_NE(goldenTable.find(srcTok), goldenTable.end())
