@@ -459,13 +459,18 @@ public:
   }
 
   VertexRange vertices(uint64_t offset_st, uint64_t window_sz) {
-    auto beg = vertexEdgeOffsets.begin() + offset_st;
-    auto end = vertexEdgeOffsets.end();
-    if (beg > end)
-      return VertexRange(vertexEdgeOffsets.begin(), 0);
-    if (beg + window_sz <= end)
-      return VertexRange(beg, window_sz);
-    return VertexRange(beg, end - beg);
+    (void)offset_st;
+    (void)window_sz;
+    // auto beg = vertexEdgeOffsets.begin() + offset_st;
+    // if (offset_st >= size())
+    //   return VertexRange(vertexEdgeOffsets.begin(), 0);
+    // if (offset_st + window_sz <= size())
+    //   return VertexRange(beg, window_sz);
+
+    return VertexRange(vertexEdgeOffsets.begin(), vertexEdgeOffsets.end() - 1, size());
+
+    // return VertexRange(vertexEdgeOffsets.begin(), vertexEdgeOffsets.size() -
+    // 1);//VertexRange(beg, size() - offset_st);
   }
 
   static EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr) {

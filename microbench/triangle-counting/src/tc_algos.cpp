@@ -4,13 +4,41 @@
 #include <tc_algos.hpp>
 
 // #####################################################################
+//                            TC UTILS
+// #####################################################################
+template <typename Graph>
+void edge_tc_counting(pando::GlobalPtr<Graph> graph_ptr, typename Graph::VertexTopologyID v0,
+                      typename Graph::EdgeRange edge_range,
+                      galois::DAccumulator<uint64_t> final_tri_count) {
+  galois::WaitGroup wg;
+  auto wgh = wg.getHandle();
+  auto inner_state = galois::make_tpl(graph_ptr, v0, wgh, final_tri_count);
+  galois::doAll(
+      inner_state, edge_range,
+      +[](decltype(inner_state) inner_state, typename Graph::EdgeHandle eh) {
+        auto [graph_ptr, v0, wgh, final_tri_count] = inner_state;
+
+        Graph g = *graph_ptr;
+        wgh.addOne();
+        typename Graph::VertexTopologyID v1 = fmap(g, getEdgeDst, eh);
+        bool v0_higher_degree = fmap(g, getNumEdges, v0) >= fmap(g, getNumEdges, v1);
+        pando::Place locality =
+            v0_higher_degree ? fmap(g, getLocalityVertex, v0) : fmap(g, getLocalityVertex, v1);
+        PANDO_CHECK(pando::executeOn(locality, &intersect_dag_merge<Graph>, wgh, graph_ptr, v0, v1,
+                                     final_tri_count));
+      });
+  PANDO_CHECK(wg.wait());
+}
+
+// #####################################################################
 //                        TC IMPLEMENTATIONS
 // #####################################################################
 void TC_Algo_Chunk_Vertices(pando::GlobalPtr<GraphDL> graph_ptr,
                             galois::DAccumulator<uint64_t> final_tri_count) {
   GraphDL graph = *graph_ptr;
-  uint64_t query_sz = 10000;
+  uint64_t query_sz = 1;
   uint64_t iters = 0;
+  std::uint64_t num_hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
 
   galois::DAccumulator<uint64_t> work_remaining{};
   PANDO_CHECK(work_remaining.initialize());
@@ -18,27 +46,32 @@ void TC_Algo_Chunk_Vertices(pando::GlobalPtr<GraphDL> graph_ptr,
   // Initialize vertexlist offsets to 0
   galois::HostIndexedMap<uint64_t> per_host_iterator_offsets{};
   PANDO_CHECK(per_host_iterator_offsets.initialize());
-  galois::doAll(
-      per_host_iterator_offsets, +[](uint64_t host_iter_offset) {
-        host_iter_offset = 0;
-      });
+
+  for (std::uint64_t i = 0; i < num_hosts; i++) {
+    per_host_iterator_offsets[i] = 0;
+  }
 
   do {
     work_remaining.reset();
     auto state = galois::make_tpl(graph_ptr, work_remaining, query_sz, final_tri_count);
-    galois::doAll(
-        state, per_host_iterator_offsets, +[](decltype(state) state, uint64_t host_iter_offset) {
-          auto [graph_ptr, work_remaining, query_sz, final_tri_count] = state;
+
+    auto fn_per_host_embedding =
+        +[](galois::WaitGroup::HandleType outer_wgh,
+            galois::HostIndexedMap<uint64_t> per_host_iterator_offsets,
+            pando::GlobalPtr<GraphDL> graph_ptr, galois::DAccumulator<uint64_t> work_remaining,
+            uint64_t query_sz, galois::DAccumulator<uint64_t> final_tri_count) {
+          uint64_t host_iter_offset = per_host_iterator_offsets.getLocalRef();
           GraphDL graph = *graph_ptr;
           auto local_csr_ptr = graph.getLocalCSR();
           auto local_csr = *local_csr_ptr;
           uint64_t local_num_vertices = fmap(local_csr, size);
-          auto curr_vertex_range = fmap(local_csr, vertices, host_iter_offset, query_sz);
-          auto local_work_remaining = curr_vertex_range.size();
+          auto curr_vertex_range =
+              fmap(local_csr, vertices); // local_csr.vertices(); // , host_iter_offset, query_sz
+          auto local_work_remaining = local_num_vertices; // curr_vertex_range.size();
 
           for (typename GraphDL::VertexTopologyID v0 : curr_vertex_range) {
             // Degree Filtering Optimization
-            uint64_t v0_degree = fmap(graph, getNumEdges, v0);
+            uint64_t v0_degree = graph.getNumEdges(v0);
             if (v0_degree < (TC_EMBEDDING_SZ - 1))
               return;
 
@@ -73,7 +106,24 @@ void TC_Algo_Chunk_Vertices(pando::GlobalPtr<GraphDL> graph_ptr,
           host_iter_offset += local_work_remaining;
           if (host_iter_offset < local_num_vertices)
             work_remaining.increment();
-        });
+
+          per_host_iterator_offsets.getLocalRef() = host_iter_offset;
+          outer_wgh.done();
+        };
+
+    galois::WaitGroup outer_wg;
+    PANDO_CHECK(outer_wg.initialize(num_hosts));
+    auto outer_wgh = outer_wg.getHandle();
+
+    // Execute kernels
+    for (uint64_t i = 0; i < num_hosts; i++) {
+      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
+                                        pando::anyPod, pando::anyCore};
+      PANDO_CHECK(pando::executeOn(place, fn_per_host_embedding, outer_wgh,
+                                   per_host_iterator_offsets, graph_ptr, work_remaining, query_sz,
+                                   final_tri_count));
+    }
+    PANDO_CHECK(outer_wg.wait());
 
     uint64_t current_count = final_tri_count.reduce();
     std::cout << "After Iter " << iters << " found " << current_count << " triangles.\n";
@@ -82,6 +132,8 @@ void TC_Algo_Chunk_Vertices(pando::GlobalPtr<GraphDL> graph_ptr,
     iters++;
     // query_sz <<= 1;
   } while (work_remaining.reduce());
+
+  per_host_iterator_offsets.deinitialize();
 }
 
 /**
@@ -104,43 +156,26 @@ void TC_Algo_Chunked(pando::GlobalPtr<GraphDL> graph_ptr,
     work_remaining.reset();
     auto state = galois::make_tpl(graph_ptr, work_remaining, query_sz, final_tri_count);
     galois::doAll(
-        state, graph.vertices(),
-        +[](decltype(state) state, typename GraphDL::VertexTopologyID vert) {
+        state, graph.vertices(), +[](decltype(state) state, typename GraphDL::VertexTopologyID v0) {
           auto [graph_ptr, work_remaining, query_sz, final_tri_count] = state;
           GraphDL g = *graph_ptr;
-          uint64_t vert_numEdges = fmap(g, getNumEdges, vert);
-          if (vert_numEdges < (TC_EMBEDDING_SZ - 1))
+
+          // DF Optimization
+          uint64_t v0_numEdges = fmap(g, getNumEdges, v0);
+          if (v0_numEdges < (TC_EMBEDDING_SZ - 1))
             return;
 
           // Each vertex stores a bookmark where they left off
           // We modify DistLocalCSR (GraphDL) to allow us to capture a subset of the edgeRange
-          uint64_t current_offset = vert->iterator_offset;
-          auto curr_edge_range = fmap(g, edges, vert, current_offset, query_sz);
+          uint64_t current_offset = v0->iterator_offset;
+          auto curr_edge_range = fmap(g, edges, v0, current_offset, query_sz);
           auto local_work_remaining = curr_edge_range.size();
 
-          galois::WaitGroup wg;
-          PANDO_CHECK(wg.initialize(local_work_remaining));
-          auto wgh = wg.getHandle();
-
-          auto inner_state = galois::make_tpl(graph_ptr, vert, wgh, final_tri_count);
-          galois::doAll(
-              inner_state, curr_edge_range,
-              +[](decltype(inner_state) inner_state, typename GraphDL::EdgeHandle eh) {
-                auto [graph_ptr, v0, wgh, final_tri_count] = inner_state;
-
-                GraphDL g = *graph_ptr;
-                typename GraphDL::VertexTopologyID v1 = fmap(g, getEdgeDst, eh);
-                bool v0_higher_degree = fmap(g, getNumEdges, v0) >= fmap(g, getNumEdges, v1);
-                pando::Place locality = v0_higher_degree ? fmap(g, getLocalityVertex, v0)
-                                                         : fmap(g, getLocalityVertex, v1);
-                PANDO_CHECK(pando::executeOn(locality, &intersect_dag_merge<GraphDL>, wgh,
-                                             graph_ptr, v0, v1, final_tri_count));
-              });
-          PANDO_CHECK(wg.wait());
+          edge_tc_counting<GraphDL>(graph_ptr, v0, curr_edge_range, final_tri_count);
 
           // Move bookmark forward and flag if this vertex is not yet done
-          vert->iterator_offset += local_work_remaining;
-          if (vert->iterator_offset < vert_numEdges)
+          v0->iterator_offset += local_work_remaining;
+          if (v0->iterator_offset < v0_numEdges)
             work_remaining.increment();
         });
 
@@ -174,31 +209,7 @@ void TC_Algo(pando::GlobalPtr<GraphType> graph_ptr,
         if (v0_degree < (TC_EMBEDDING_SZ - 1))
           return;
 
-        galois::WaitGroup wg;
-        PANDO_CHECK(wg.initialize(v0_degree));
-        auto wgh = wg.getHandle();
-
-        // Declare state the galois::doAll loop should capture
-        auto inner_state = galois::make_tpl(graph_ptr, v0, v0_degree, wgh, final_tri_count);
-        galois::doAll(
-            inner_state, graph.edges(v0),
-            +[](decltype(inner_state) inner_state, typename GraphType::EdgeHandle eh) {
-              auto [graph_ptr, v0, v0_degree, wgh, final_tri_count] = inner_state;
-              GraphType g = *graph_ptr;
-              typename GraphType::VertexTopologyID v1 = fmap(g, getEdgeDst, eh);
-
-              bool v0_higher_degree = v0_degree >= fmap(g, getNumEdges, v1);
-              pando::Place place_to_execute = v0_higher_degree ? fmap(g, getLocalityVertex, v0)
-                                                               : fmap(g, getLocalityVertex, v1);
-
-              // Adds |N(v0) and N(v1)| to the final_tri_count
-              // Executes on v_max_degree to minimize number of remote references
-              PANDO_CHECK(pando::executeOn(place_to_execute, &intersect_dag_merge<GraphType>, wgh,
-                                           graph_ptr, v0, v1, final_tri_count));
-            });
-
-        // Waits for all the created threads to terminate
-        PANDO_CHECK(wg.wait());
+        edge_tc_counting<GraphType>(graph_ptr, v0, graph.edges(v0), final_tri_count);
       });
 }
 
