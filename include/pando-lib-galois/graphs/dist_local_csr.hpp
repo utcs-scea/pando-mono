@@ -518,8 +518,8 @@ public:
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
       galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
-      galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
-      galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
+      galois::HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
+      galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
       galois::HostIndexedMap<std::uint64_t> numEdges,
       HostLocalStorage<pando::Array<std::uint64_t>> virtualToPhysical) {
     this->virtualToPhysicalMap = virtualToPhysical;
@@ -574,8 +574,8 @@ public:
 
     auto fillCSRFuncs =
         +[](DistLocalCSR<VertexType, EdgeType> dlcsr,
-            galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
-            galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
+            galois::HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
+            galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
             galois::HostIndexedMap<std::uint64_t> numVerticesPerHost, std::uint64_t i,
             galois::WaitGroup::HandleType wgh) {
           CSR currentCSR = dlcsr.arrayOfCSRs[i];
