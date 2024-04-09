@@ -82,7 +82,8 @@ void getVerticesAndEdgesEL(const std::string& filename, std::uint64_t numVertice
 template <typename T>
 bool isInVector(T element, pando::GlobalRef<pando::Vector<T>> vec) {
   for (std::uint64_t i = 0; i < lift(vec, size); i++) {
-    if (fmap(vec, get, i) == element) {
+    T comp = fmap(vec, operator[], i);
+    if (comp == element) {
       return true;
     }
   }
