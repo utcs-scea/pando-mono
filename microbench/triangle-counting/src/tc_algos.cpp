@@ -51,46 +51,65 @@ void tc_chunk_vertices(pando::GlobalPtr<GraphDL> graph_ptr,
                        galois::DAccumulator<uint64_t> final_tri_count) {
   GraphDL graph = *graph_ptr;
   uint64_t num_hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+  uint64_t query_sz = 1;
+  uint64_t iters = 0;
+
+  galois::DAccumulator<uint64_t> work_remaining{};
+  PANDO_CHECK(work_remaining.initialize());
 
   // Initialize vertexlist offsets to 0
   galois::HostIndexedMap<uint64_t> per_host_iterator_offsets{};
   PANDO_CHECK(per_host_iterator_offsets.initialize());
-  for (std::uint64_t i = 0; i < num_hosts; i++)
-    per_host_iterator_offsets[i] = 0;
+  galois::doAll(
+      per_host_iterator_offsets, +[](pando::GlobalRef<std::uint64_t> host_vertex_iter_offset_ref) {
+        host_vertex_iter_offset_ref = 0;
+      });
 
-  auto fn_per_host_embedding =
-      +[](galois::WaitGroup::HandleType wgh, pando::GlobalPtr<GraphDL> graph_ptr,
-          galois::DAccumulator<uint64_t> final_tri_count) {
-        GraphDL graph = *graph_ptr;
-        auto lcsr_ptr = graph.getLocalCSR();
-        auto lcsr = *lcsr_ptr;
-        auto state = galois::make_tpl(graph_ptr, final_tri_count);
-        galois::doAll(
-            state, fmap(lcsr, vertices),
-            +[](decltype(state) state, typename GraphDL::VertexTopologyID v0) {
-              auto [graph_ptr, final_tri_count] = state;
-              GraphDL graph = *graph_ptr;
+  do {
+    work_remaining.reset();
+    auto state = galois::make_tpl(graph_ptr, query_sz, work_remaining, final_tri_count);
+    galois::doAll(
+        state, per_host_iterator_offsets,
+        +[](decltype(state) state, pando::GlobalRef<std::uint64_t> host_vertex_iter_offset_ref) {
+          auto [graph_ptr, query_sz, work_remaining, final_tri_count] = state;
+          GraphDL graph = *graph_ptr;
+          auto lcsr_ptr = graph.getLocalCSR();
+          auto lcsr = *lcsr_ptr;
+          uint64_t host_vertex_iter_offset = host_vertex_iter_offset_ref;
 
-              // Degree Filtering Optimization
-              uint64_t v0_degree = graph.getNumEdges(v0);
-              if (v0_degree < (TC_EMBEDDING_SZ - 1))
-                return;
+          auto inner_state = galois::make_tpl(graph_ptr, final_tri_count);
+          galois::doAll(
+              inner_state, fmap(lcsr, vertices, host_vertex_iter_offset, query_sz),
+              +[](decltype(inner_state) inner_state, typename GraphDL::VertexTopologyID v0) {
+                auto [graph_ptr, final_tri_count] = inner_state;
+                GraphDL graph = *graph_ptr;
 
-              edge_tc_counting<GraphDL>(graph_ptr, v0, graph.edges(v0), final_tri_count);
-            });
+                // Degree Filtering Optimization
+                uint64_t v0_degree = graph.getNumEdges(v0);
+                if (v0_degree < (TC_EMBEDDING_SZ - 1))
+                  return;
 
-        wgh.done();
-      };
+                edge_tc_counting<GraphDL>(graph_ptr, v0, graph.edges(v0), final_tri_count);
+              });
 
-  galois::WaitGroup wg;
-  PANDO_CHECK(wg.initialize(num_hosts));
-  auto wgh = wg.getHandle();
-  for (uint64_t i = 0; i < num_hosts; i++) {
-    pando::Place place =
-        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
-    PANDO_CHECK(pando::executeOn(place, fn_per_host_embedding, wgh, graph_ptr, final_tri_count));
-  }
-  PANDO_CHECK(wg.wait());
+          // Move iter offset
+          uint64_t lcsr_num_vertices = fmap(lcsr, size);
+          host_vertex_iter_offset += query_sz;
+          if (host_vertex_iter_offset < lcsr_num_vertices)
+            work_remaining.increment();
+          host_vertex_iter_offset_ref = host_vertex_iter_offset;
+        });
+
+    uint64_t current_count = final_tri_count.reduce();
+    std::cout << "After Iter " << iters << " found " << current_count << " triangles.\n";
+    final_tri_count.reset();
+    final_tri_count.add(current_count);
+    iters++;
+    query_sz <<= 1;
+  } while (work_remaining.reduce());
+
+  work_remaining.deinitialize();
+  per_host_iterator_offsets.deinitialize();
 }
 
 /**
@@ -143,6 +162,7 @@ void tc_chunk_edges(pando::GlobalPtr<GraphDL> graph_ptr,
     iters++;
     query_sz <<= 1;
   } while (work_remaining.reduce());
+  work_remaining.deinitialize();
 }
 
 /**
