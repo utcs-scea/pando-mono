@@ -473,7 +473,7 @@ TEST(PartitionEdgesSerially, Serially) {
     v2PM[i] = i % numHosts;
   }
 
-  galois::HostIndexedMap<pando::Vector<pando::Vector<galois::WMDEdge>>> partitionedEdges{};
+  galois::HostLocalStorage<pando::Vector<pando::Vector<galois::WMDEdge>>> partitionedEdges{};
   err = partitionedEdges.initialize();
   EXPECT_EQ(err, pando::Status::Success);
   for (pando::GlobalRef<pando::Vector<pando::Vector<galois::WMDEdge>>> vvec : partitionedEdges) {
@@ -481,7 +481,7 @@ TEST(PartitionEdgesSerially, Serially) {
     EXPECT_EQ(err, pando::Status::Success);
   }
 
-  galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> perHostRename{};
+  galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perHostRename{};
   err = perHostRename.initialize();
   EXPECT_EQ(err, pando::Status::Success);
 

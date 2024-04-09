@@ -157,15 +157,15 @@ uint64_t combiner(B f, B s) {
  * grouped by Vertex, along with a rename set of Vertices
  */
 template <typename EdgeType, typename VertexType>
-[[nodiscard]] Pair<HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>>,
-                   HostIndexedMap<HashTable<std::uint64_t, std::uint64_t>>>
+[[nodiscard]] Pair<HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>>,
+                   HostLocalStorage<HashTable<std::uint64_t, std::uint64_t>>>
 partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedVertices,
                         ThreadLocalVector<pando::Vector<EdgeType>>&& localReadEdges,
                         HostLocalStorage<pando::Array<std::uint64_t>> v2PM) {
-  HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
+  HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
   PANDO_CHECK(partEdges.initialize());
 
-  HostIndexedMap<HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
+  HostLocalStorage<HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
   PANDO_CHECK(renamePerHost.initialize());
 
   // Initialize hashmap
@@ -206,8 +206,8 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
 
   const std::uint64_t numThreads = static_cast<std::uint64_t>(localReadEdges.size());
   std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
-  DistArray<HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>>> perThreadEdges;
-  PANDO_CHECK(perThreadEdges.initialize(numThreads));
+  ThreadLocalStorage<HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>>> perThreadEdges;
+  PANDO_CHECK(perThreadEdges.initialize());
   for (uint64_t i = 0; i < numThreads; i++) {
     PANDO_CHECK(lift(perThreadEdges[i], initialize));
     HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> pVec = perThreadEdges[i];
@@ -325,8 +325,8 @@ template <typename EdgeType>
 [[nodiscard]] pando::Status partitionEdgesSerially(
     galois::PerThreadVector<pando::Vector<EdgeType>> localEdges,
     pando::Array<std::uint64_t> virtualToPhysicalMapping,
-    galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
-    galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
+    galois::HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
+    galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
   for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
     galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
     PANDO_CHECK_RETURN(hash.initialize(0));
@@ -352,8 +352,8 @@ template <typename EdgeType>
 [[nodiscard]] pando::Status partitionEdgesSerially(
     galois::ThreadLocalVector<EdgeType> localEdges,
     pando::Array<std::uint64_t> virtualToPhysicalMapping,
-    galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
-    galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
+    galois::HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partitionedEdges,
+    galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost) {
   for (pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef : renamePerHost) {
     galois::HashTable<std::uint64_t, std::uint64_t> hash(.8);
     PANDO_CHECK_RETURN(hash.initialize(0));

@@ -522,8 +522,8 @@ public:
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
       galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
-      galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
-      galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
+      galois::HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
+      galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
       galois::HostIndexedMap<std::uint64_t> numEdges,
       HostLocalStorage<pando::Array<std::uint64_t>> virtualToPhysical) {
     this->virtualToPhysicalMap = virtualToPhysical;
@@ -578,8 +578,8 @@ public:
 
     auto fillCSRFuncs =
         +[](DistLocalCSR<VertexType, EdgeType> dlcsr,
-            galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
-            galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
+            galois::HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
+            galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
             galois::HostIndexedMap<std::uint64_t> numVerticesPerHost, std::uint64_t i,
             galois::WaitGroup::HandleType wgh) {
           CSR currentCSR = dlcsr.arrayOfCSRs[i];
@@ -733,41 +733,40 @@ public:
    */
   template <typename ReadEdgeType>
   HostLocalStorage<pando::Vector<std::uint64_t>> getMirrorList(
-      galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
+      HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
       HostLocalStorage<pando::Array<std::uint64_t>> V2PM) {
     HostLocalStorage<pando::Vector<std::uint64_t>> mirrorList;
     PANDO_CHECK(mirrorList.initialize());
-    auto createMirrors =
-        +[](galois::HostIndexedMap<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
-            HostLocalStorage<pando::Vector<std::uint64_t>> mirrorList,
-            HostLocalStorage<pando::Array<std::uint64_t>> V2PM, std::uint64_t i,
-            galois::WaitGroup::HandleType wgh) {
-          pando::Vector<uint64_t> mirrors;
-          PANDO_CHECK(mirrors.initialize(0));
+    auto createMirrors = +[](HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> partEdges,
+                             HostLocalStorage<pando::Vector<std::uint64_t>> mirrorList,
+                             HostLocalStorage<pando::Array<std::uint64_t>> V2PM, std::uint64_t i,
+                             galois::WaitGroup::HandleType wgh) {
+      pando::Vector<uint64_t> mirrors;
+      PANDO_CHECK(mirrors.initialize(0));
 
-          // Populating the mirror list in a hashtable to avoid duplicates
-          galois::HashTable<uint64_t, bool> mirrorMap;
-          // initialize hashtable to size 1?
-          PANDO_CHECK(mirrorMap.initialize(1));
-          pando::Array<uint64_t> localV2PM = V2PM.getLocalRef();
-          for (std::uint64_t k = 0; k < lift(partEdges.getLocalRef(), size); k++) {
-            pando::Vector<ReadEdgeType> currentEdge = fmap(partEdges.getLocalRef(), get, k);
-            for (ReadEdgeType tmp : currentEdge) {
-              std::uint64_t dstVHost = tmp.dst % localV2PM.size();
-              std::uint64_t dstPHost = fmap(localV2PM, get, dstVHost);
-              if (dstPHost != i) {
-                // not in mirror list yet
-                if (mirrorMap.contains(tmp.dst) == false) {
-                  mirrorMap.put(tmp.dst, true);
-                  PANDO_CHECK(mirrors.pushBack(tmp.dst));
-                }
-              }
+      // Populating the mirror list in a hashtable to avoid duplicates
+      galois::HashTable<uint64_t, bool> mirrorMap;
+      // initialize hashtable to size 1?
+      PANDO_CHECK(mirrorMap.initialize(1));
+      pando::Array<uint64_t> localV2PM = V2PM.getLocalRef();
+      for (std::uint64_t k = 0; k < lift(partEdges.getLocalRef(), size); k++) {
+        pando::Vector<ReadEdgeType> currentEdge = fmap(partEdges.getLocalRef(), get, k);
+        for (ReadEdgeType tmp : currentEdge) {
+          std::uint64_t dstVHost = tmp.dst % localV2PM.size();
+          std::uint64_t dstPHost = fmap(localV2PM, get, dstVHost);
+          if (dstPHost != i) {
+            // not in mirror list yet
+            if (mirrorMap.contains(tmp.dst) == false) {
+              mirrorMap.put(tmp.dst, true);
+              PANDO_CHECK(mirrors.pushBack(tmp.dst));
             }
           }
+        }
+      }
 
-          mirrorList.getLocalRef() = mirrors;
-          wgh.done();
-        };
+      mirrorList.getLocalRef() = mirrors;
+      wgh.done();
+    };
 
     std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
     galois::WaitGroup wg;
@@ -811,14 +810,14 @@ public:
     auto [v2PM, numEdges] = PANDO_EXPECT_RETURN(
         galois::internal::buildVirtualToPhysicalMapping(numHosts, labeledEdgeCounts));
 
-    galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
+    galois::HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
     PANDO_CHECK_RETURN(partEdges.initialize());
 
     for (pando::GlobalRef<pando::Vector<pando::Vector<EdgeType>>> vvec : partEdges) {
       PANDO_CHECK_RETURN(fmap(vvec, initialize, 0));
     }
 
-    galois::HostIndexedMap<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
+    galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> renamePerHost{};
     PANDO_CHECK_RETURN(renamePerHost.initialize());
 
     PANDO_CHECK_RETURN(galois::internal::partitionEdgesSerially<EdgeType>(
@@ -828,7 +827,7 @@ public:
 
     PANDO_CHECK_RETURN(galois::doAll(
         partEdges, pHV,
-        +[](galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges,
+        +[](HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partEdges,
             pando::GlobalRef<pando::Vector<VertexType>> pHV) {
           PANDO_CHECK(fmap(pHV, initialize, 0));
           pando::Vector<pando::Vector<EdgeType>> localEdges = partEdges.getLocalRef();
