@@ -128,7 +128,7 @@ void wf4::internal::RemoveReachableSetWithInfluentialNode(
     for (wf4::NetworkGraph::VertexTokenID reachable_node_gid : reachability_set) {
       wf4::NetworkNode node_data =
           state.graph.getData(state.graph.getTopologyID(reachable_node_gid));
-      pando::atomicDecrement(node_data.frequency_, 1, std::memory_order::memory_order_relaxed);
+      pando::atomicDecrement(node_data.frequency_, 1, std::memory_order_relaxed);
     }
     reachability_set.deinitialize();
     reachability_set_ref = reachability_set;
@@ -202,7 +202,7 @@ void wf4::internal::GenerateRandomReversibleReachableSet(wf4::internal::RRRState
     PANDO_CHECK(frontier.pop(node_gid));
     wf4::NetworkGraph::VertexTopologyID node_lid = state.graph.getTopologyID(node_gid);
     wf4::NetworkNode node = state.graph.getData(node_lid);
-    pando::atomicIncrement(node.frequency_, 1, std::memory_order::memory_order_relaxed);
+    pando::atomicIncrement(node.frequency_, 1, std::memory_order_relaxed);
     for (auto edge : state.graph.edges(node_lid)) {
       wf4::NetworkEdge edge_data = state.graph.getEdgeData(edge);
       if (dist_bfs(generator) <= edge_data.weight_) {
