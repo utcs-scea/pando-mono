@@ -88,6 +88,6 @@ add_subdirectory(src)
 
 # tests
 option(BUILD_TESTING "Build tests." ON)
-if (BUILD_TESTING AND ENABLE_PANDORT_TESTS)
+if (BUILD_TESTING AND ENABLE_WF4_TESTS)
     add_subdirectory(test)
 endif ()
