@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
-#define PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#ifndef PANDO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#define PANDO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
 
 #include <getopt.h>
 #include <pando-rt/export.h>
@@ -188,4 +188,4 @@ void vertexset_intersection(pando::GlobalPtr<GraphType> graph_ptr,
 #endif
 }
 
-#endif // PANDO_MONO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#endif // PANDO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
