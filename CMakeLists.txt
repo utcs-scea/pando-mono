@@ -171,6 +171,13 @@ if (BUILD_TESTING)
     add_subdirectory(test)
 endif ()
 
+# Microbencharmks
+option(BUILD_MICROBENCH "Build Microbenchmarks" ON)
+option(MICROBENCH_TESTING "Testing for microbenchmarks" ON)
+if (BUILD_MICROBENCH)
+  add_subdirectory(microbench)
+endif()
+
 # examples
 option(BUILD_EXAMPLES "Build examples" ON)
 if (BUILD_EXAMPLES)
