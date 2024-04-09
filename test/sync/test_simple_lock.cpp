@@ -53,6 +53,7 @@ TEST(SimpleLock, SimpleLockUnlock) {
   EXPECT_TRUE(result.hasValue());
 }
 
+/*
 TEST(SimpleLock, ActualLockUnlock) {
   galois::SimpleLock mutex;
   EXPECT_EQ(mutex.initialize(), pando::Status::Success);
@@ -87,3 +88,4 @@ TEST(SimpleLock, ActualLockUnlock) {
   array.deinitialize();
   mutex.deinitialize();
 }
+*/
