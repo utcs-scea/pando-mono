@@ -8,7 +8,6 @@
 
 #include <utility>
 
-#include "pando-rt/sync/mutex.hpp"
 #include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-lib-galois/containers/host_indexed_map.hpp>
 #include <pando-lib-galois/containers/host_local_storage.hpp>
@@ -17,7 +16,10 @@
 #include <pando-lib-galois/graphs/local_csr.hpp>
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
+#include <pando-lib-galois/sync/global_barrier.hpp>
+#include <pando-lib-galois/sync/simple_lock.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
+#include <pando-lib-galois/utility/tuple.hpp>
 #include <pando-rt/containers/array.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
@@ -132,6 +134,10 @@ public:
     VertexTopologyID getMaster() {
       return master;
     }
+
+    bool operator==(const MirrorToMasterMap& a) noexcept {
+      return a.mirror == mirror && a.master == master;
+    }
   };
 
   /** Vertex Manipulation **/
@@ -239,18 +245,12 @@ public:
   }
 
   /** Host Information **/
+  std::uint64_t getVirtualHostID(VertexTokenID tid) {
+    return dlcsr.getVirtualHostID(tid);
+  }
   std::uint64_t getPhysicalHostID(VertexTokenID tid) {
     return dlcsr.getPhysicalHostID(tid);
   }
-
-  /** Sync **/
-  // TODO(Ying-Wei):
-  // write a sync function that reduces mirror values and then broadcasts master values
-  // return a bitmap of modified vertices
-  //
-  // template <typename Func>
-  // pando::Array<bool> sync(Func func, pando::Array<bool>) {
-  //}
 
   /**
    * @brief get vertex local dense ID
@@ -303,8 +303,6 @@ public:
     return dlcsr.getLocalCSR();
   }
 
-  // TODO(Jeageun):
-  // write a initialize function that calls initializeAfterGather function of DistLocalCSR dlcsr
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
       galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
@@ -390,48 +388,71 @@ public:
       numVertices += lift(mirrorList[i], size);
     }
     PANDO_CHECK(wg.wait());
+
+    PANDO_CHECK_RETURN(setupCommunication());
+
     return pando::Status::Success;
   }
 
-  // TODO(Ying-Wei):
-  // uses doAll to send remoteMasterToLocalMirrorMap to corresponding remote hosts
-  // no need to use executeON
-  // just push to the localMasterToRemoteMirrorOrderedTable vector
-  // make sure to use the spin lock in pando-rt
   /**
-   * @brief Get the local mutex
+   * @brief Exchanges the mirror to master mapping from the mirror side to the maser side
    */
-  pando::GlobalRef<pando::Mutex> getLocalMutex(std::uint64_t host_id) {
-    return hostMutex[host_id];
-  }
-
   pando::Status setupCommunication() {
+    auto dims = pando::getPlaceDims();
+
+    // initialize localMirrorToRemoteMasterOrderedTable
     PANDO_CHECK_RETURN(localMasterToRemoteMirrorTable.initialize());
+    for (std::int16_t i = 0; i < dims.node.id; i++) {
+      pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>>
+          localMasterToRemoteMirrorMap = localMasterToRemoteMirrorTable[i];
+      PANDO_CHECK_RETURN(fmap(localMasterToRemoteMirrorMap, initialize, dims.node.id));
+      for (std::int16_t i = 0; i < dims.node.id; i++) {
+        pando::GlobalRef<pando::Vector<MirrorToMasterMap>> mapVectorFromHost =
+            fmap(localMasterToRemoteMirrorMap, get, i);
+        PANDO_CHECK_RETURN(fmap(mapVectorFromHost, initialize, 0));
+      }
+    }
 
-    PANDO_CHECK_RETURN(hostMutex.initialize());
+    auto thisCSR = *this;
+    auto state = galois::make_tpl(thisCSR, localMasterToRemoteMirrorTable);
 
-    PANDO_CHECK_RETURN(galois::doAll(
-        localMirrorToRemoteMasterOrderedTable, localMasterToRemoteMirrorTable,
-        +[](galois::HostLocalStorage<pando::Array<MirrorToMasterMap>>
-                localMirrorToRemoteMasterOrderedTable,
-            pando::GlobalRef<pando::Vector<EdgeHandle>> localMasterToRemoteMirrorTable) {
-          PANDO_CHECK(fmap(localMirrorToRemoteMasterOrderedTable, initialize, 0));
-          pando::Array<MirrorToMasterMap> remoteMasterToLocalMirrorMap =
-              localMirrorToRemoteMasterOrderedTable.getLocal();
-          for (MirrorToMasterMap m : remoteMasterToLocalMirrorMap) {
-            VertexTopologyID masterTopologyID = m.master;
-            VertexTokenID masterTokenID = getTokenID(masterTopologyID);
-            std::uint64_t physicalHost = getPhysicalHostID(masterTokenID);
-            pando::Mutex mutex = getLocalMutex(physicalHost);
+    // push style
+    // each host traverses its own localMirrorToRemoteMasterOrderedTable and send out the mapping to
+    // the corresponding remote host append to the vector of vector where each vector is the mapping
+    // from a specific host
+    galois::doAll(
+        state, localMirrorToRemoteMasterOrderedTable,
+        +[](decltype(state) state,
+            pando::GlobalRef<pando::Array<MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap) {
+          auto [object, localMasterToRemoteMirrorTable] = state;
+          for (std::uint64_t i = 0ul; i < lift(localMirrorToRemoteMasterOrderedMap, size); i++) {
+            MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, get, i);
+            VertexTopologyID masterTopologyID = m.getMaster();
+            VertexTokenID masterTokenID = object.getTokenID(masterTopologyID);
+            std::uint64_t physicalHost = object.getPhysicalHostID(masterTokenID);
 
-            // Lock mutex to ensure atomic append to the vector
-            mutex.lock();
-            PANDO_CHECK(fmap(localMasterToRemoteMirrorTable, pushBack, m));
-            mutex.unlock();
+            pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>>
+                localMasterToRemoteMirrorMap = localMasterToRemoteMirrorTable[physicalHost];
+            pando::GlobalRef<pando::Vector<MirrorToMasterMap>> mapVectorFromHost =
+                fmap(localMasterToRemoteMirrorMap, get, pando::getCurrentPlace().node.id);
+
+            PANDO_CHECK(fmap(mapVectorFromHost, pushBack, m));
           }
-        }));
+        });
 
     return pando::Status::Success;
+  }
+
+  /**
+   * @brief For testing only
+   */
+  pando::GlobalRef<pando::Array<MirrorToMasterMap>> getLocalMirrorToRemoteMasterOrderedMap(
+      int16_t hostId) {
+    return localMirrorToRemoteMasterOrderedTable[hostId];
+  }
+  pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>> getLocalMasterToRemoteMirrorMap(
+      uint64_t hostId) {
+    return localMasterToRemoteMirrorTable[hostId];
   }
 
 private:
@@ -440,12 +461,8 @@ private:
   galois::HostLocalStorage<LocalVertexRange> masterRange;
   galois::HostLocalStorage<LocalVertexRange> mirrorRange;
   galois::HostLocalStorage<pando::Array<MirrorToMasterMap>> localMirrorToRemoteMasterOrderedTable;
-
-  // TODO(Ying-Wei):
-  // generate the following
-  galois::HostLocalStorage<pando::Mutex> hostMutex;
-  galois::HostLocalStorage<pando::Vector<EdgeHandle>> localMasterToRemoteMirrorTable;
-  // galois::GlobalBarrier barrier;
+  galois::HostLocalStorage<pando::Vector<pando::Vector<MirrorToMasterMap>>>
+      localMasterToRemoteMirrorTable;
 };
 
 static_assert(graph_checker<MirrorDistLocalCSR<std::uint64_t, std::uint64_t>>::value);

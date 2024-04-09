@@ -487,10 +487,14 @@ public:
   }
 
   /** Host Information **/
-  std::uint64_t getPhysicalHostID(VertexTokenID tid) {
+  std::uint64_t getVirtualHostID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
-    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
-    return physicalHost;
+    return virtualHostID;
+  }
+  std::uint64_t getPhysicalHostID(VertexTokenID tid) {
+    std::uint64_t virtualHostID = this->getVirtualHostID(tid);
+    std::uint64_t physicalHostID = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
+    return physicalHostID;
   }
 
   /** Topology Modifications **/
