@@ -64,7 +64,7 @@ jobs:
         fi
         if [ ${{ matrix.build-type }} == 'Release' ]; then
           echo "PANDO_BUILD_DOCS=OFF" >> $GITHUB_ENV
-          echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON" >> $GITHUB_ENV
+          echo "PANDO_CONTAINER_ENV=-e=PANDORT_TESTS=ON -e=WF4_TESTS=ON" >> $GITHUB_ENV
         fi
         echo ${{ runner.name }}
         if [ ${{ runner.name }} == 'zerberus-0' ]; then
