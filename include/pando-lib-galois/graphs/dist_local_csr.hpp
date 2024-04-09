@@ -38,7 +38,7 @@ struct DLCSR_InitializeState {
                         galois::PerThreadVector<uint64_t> edgeCounts_)
       : arrayOfCSRs(arrayOfCSRs_), vertices(vertices_), edges(edges_), edgeCounts(edgeCounts_) {}
 
-  galois::HostIndexedMap<CSR> arrayOfCSRs;
+  HostLocalStorage<HostIndexedMap<CSR>> arrayOfCSRs;
   galois::PerThreadVector<VertexType> vertices;
   galois::PerThreadVector<EdgeType> edges;
   galois::PerThreadVector<uint64_t> edgeCounts;
@@ -1016,7 +1016,7 @@ public:
           }
           currentCSR.vertexEdgeOffsets[currLocalVertex] =
               Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
-          state.arrayOfCSRs.getLocalRef() = currentCSR;
+          lift(state.arrayOfCSRs.getLocalRef(), getLocalRef) = currentCSR;
         });
     arrayOfCSRs = state.arrayOfCSRs;
 
@@ -1043,9 +1043,10 @@ public:
                                    data);
             currLocalEdge++;
           }
-          state.dlcsr.arrayOfCSRs.getLocalRef() = currentCSR;
+          lift(state.dlcsr.arrayOfCSRs.getLocalRef(), getLocalRef) = currentCSR;
         });
     *this = state2.dlcsr;
+    PANDO_CHECK_RETURN(generateCache());
 
     return pando::Status::Success;
   }
