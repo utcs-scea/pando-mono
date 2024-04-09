@@ -601,9 +601,8 @@ public:
     std::uint64_t numVHosts = numHosts * scale_factor;
 
     pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts;
-    pando::LocalStorageGuard labeledEdgeCountsGuard(labeledEdgeCounts, 1);
-    PANDO_CHECK_RETURN(galois::internal::buildEdgeCountToSend<EdgeType>(numVHosts, localEdges,
-                                                                        *labeledEdgeCounts));
+    labeledEdgeCounts =
+        PANDO_EXPECT_CHECK(galois::internal::buildEdgeCountToSend<EdgeType>(numVHosts, localEdges));
 
     auto [v2PM, numEdges] = PANDO_EXPECT_RETURN(
         galois::internal::buildVirtualToPhysicalMapping(hosts, *labeledEdgeCounts));
@@ -701,7 +700,7 @@ public:
                               const uint64_t chunk_size = 10000, const uint64_t scale_factor = 8) {
     std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
     std::uint64_t numVHosts = numHosts * scale_factor;
-    galois::PerThreadVector<EdgeType> localEdges{};
+    galois::ThreadLocalVector<EdgeType> localEdges{};
     PANDO_CHECK_RETURN(localEdges.initialize());
 
     for (galois::EdgeParser<EdgeType> parser : edgeParsers) {
@@ -717,12 +716,11 @@ public:
 
     edgeParsers.deinitialize();
 
-    pando::GlobalPtr<pando::Array<galois::Pair<std::uint64_t, std::uint64_t>>> labeledEdgeCounts;
-    pando::LocalStorageGuard labeledEdgeCountsGuard(labeledEdgeCounts, 1);
-    galois::internal::buildEdgeCountToSend<EdgeType>(numVHosts, localEdges, *labeledEdgeCounts);
+    pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> labeledEdgeCounts =
+        PANDO_EXPECT_CHECK(galois::internal::buildEdgeCountToSend<EdgeType>(numVHosts, localEdges));
 
     auto [v2PM, numEdges] = PANDO_EXPECT_RETURN(
-        galois::internal::buildVirtualToPhysicalMapping(numHosts, *labeledEdgeCounts));
+        galois::internal::buildVirtualToPhysicalMapping(numHosts, labeledEdgeCounts));
 
     galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>> partEdges{};
     PANDO_CHECK_RETURN(partEdges.initialize());
@@ -736,7 +734,7 @@ public:
 
     PANDO_CHECK_RETURN(galois::internal::partitionEdgesSerially<EdgeType>(
         localEdges, v2PM, partEdges, renamePerHost));
-    galois::HostIndexedMap<pando::Vector<VertexType>> pHV{};
+    galois::HostLocalStorage<pando::Vector<VertexType>> pHV{};
     PANDO_CHECK_RETURN(pHV.initialize());
 
     PANDO_CHECK_RETURN(galois::doAll(
