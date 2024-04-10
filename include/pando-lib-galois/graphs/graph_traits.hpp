@@ -217,11 +217,25 @@ struct gluon_graph {
   VertexTopologyID getGlobalTopologyID(VertexTokenID token);
 
   /** Range **/
-  VertexRange getMasterRange();
-  VertexRange getMirrorRange();
+  VertexRange getLocalMasterRange();
+  VertexRange getLocalMirrorRange();
+
+  /** Vertex Property **/
+  bool isLocal(VertexTopologyID vertex);
+  bool isOwned(VertexTopologyID vertex);
+  bool isMirror(VertexTopologyID vertex);
+  bool isMaster(VertexTopologyID vertex);
+
+  /** Bit Set **/
+  pando::Array<bool> getLocalMirrorBitSet();
+  pando::Array<bool> getLocalMasterBitSet();
+  void resetLocalMirrorBitSet();
+  void resetLocalMasterBitSet();
+  void setBitSet(VertexTopologyID vertex);
 
   /** Sync **/
-  // template <typename Func> pando::Array<bool> sync(Func func, pando::Array<bool>);
+  template <typename Func>
+  void sync(Func func);
 };
 } // namespace galois
 #endif // PANDO_LIB_GALOIS_GRAPHS_GRAPH_TRAITS_HPP_
