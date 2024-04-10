@@ -148,7 +148,7 @@ USER ${UNAME}
 WORKDIR /home/${UNAME}
 ENV BUILD_DIR=${BUILD_DIR}
 
-RUN pip3 install compdb pre-commit cpplint "clang-format>=12.0.1"
+RUN pip3 install compdb pre-commit cpplint "clang-format>=14.0.0,<17.0.0"
 
 ARG GCC_VERSION=12.3.0
 ARG QTHEADS_VERSION=1.16
