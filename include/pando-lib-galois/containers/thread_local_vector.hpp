@@ -2,6 +2,7 @@
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 #ifndef PANDO_LIB_GALOIS_CONTAINERS_THREAD_LOCAL_VECTOR_HPP_
 #define PANDO_LIB_GALOIS_CONTAINERS_THREAD_LOCAL_VECTOR_HPP_
+#include <cassert>
 #include <cstdint>
 #include <iterator>
 #include <utility>
@@ -141,11 +142,12 @@ public:
     using SRC_Val = pando::Vector<T>;
     using DST_Val = uint64_t;
 
-    galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute, scan_op, combiner, galois::Array>
+    galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, transmute, scan_op, combiner,
+                      galois::HostIndexedMap>
         prefixSum(m_data, m_indices);
     PANDO_CHECK_RETURN(prefixSum.initialize(pando::getPlaceDims().node.id));
 
-    prefixSum.computePrefixSum(m_indices.size());
+    prefixSum.computePrefixSumPasteLocality(m_indices.size());
     indicesComputed = true;
 
     prefixSum.deinitialize();
