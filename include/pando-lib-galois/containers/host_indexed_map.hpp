@@ -6,6 +6,8 @@
 
 #include <pando-rt/export.h>
 
+#include <cassert>
+
 #include <pando-rt/containers/array.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
 
@@ -54,6 +56,17 @@ public:
 
   [[nodiscard]] pando::Status initialize() {
     return initialize(pando::getCurrentPlace(), pando::MemoryType::Main);
+  }
+
+  [[nodiscard]] pando::Status initialize([[maybe_unused]] std::uint64_t numNodes) {
+    assert(size() == numNodes);
+    return initialize();
+  }
+
+  [[nodiscard]] pando::Status initialize([[maybe_unused]] std::uint64_t numNodes,
+                                         pando::Place place, pando::MemoryType memory) {
+    assert(size() == numNodes);
+    return initialize(place, memory);
   }
 
   void deinitialize() {
