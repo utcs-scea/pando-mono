@@ -246,20 +246,6 @@ public:
   LocalVertexRange getLocalMirrorRange() {
     return mirrorRange.getLocalRef();
   }
-  pando::GlobalRef<LocalVertexRange> getMasterRange(int16_t hostId) {
-    return masterRange[hostId];
-  }
-  pando::GlobalRef<LocalVertexRange> getMirrorRange(int16_t hostId) {
-    return mirrorRange[hostId];
-  }
-
-  /** Host Information **/
-  std::uint64_t getVirtualHostID(VertexTokenID tid) {
-    return dlcsr.getVirtualHostID(tid);
-  }
-  std::uint64_t getPhysicalHostID(VertexTokenID tid) {
-    return dlcsr.getPhysicalHostID(tid);
-  }
 
   /** Vertex Property **/
   bool isLocal(VertexTopologyID vertex) {
@@ -384,6 +370,18 @@ public:
    */
   pando::Vector<pando::Vector<MirrorToMasterMap>> getLocalMasterToMirrorMap() {
     return localMasterToRemoteMirrorTable.getLocalRef();
+  }
+  /**
+   * @brief Get the virtual host ID
+   */
+  std::uint64_t getVirtualHostID(VertexTokenID tid) {
+    return dlcsr.getVirtualHostID(tid);
+  }
+  /**
+   * @brief Get the physical host ID
+   */
+  std::uint64_t getPhysicalHostID(VertexTokenID tid) {
+    return dlcsr.getPhysicalHostID(tid);
   }
 
   /** Sync **/
@@ -684,6 +682,12 @@ public:
   }
   galois::HostLocalStorage<pando::Array<bool>> getMirrorBitSets() {
     return mirrorBitSets;
+  }
+  pando::GlobalRef<LocalVertexRange> getMasterRange(int16_t hostId) {
+    return masterRange[hostId];
+  }
+  pando::GlobalRef<LocalVertexRange> getMirrorRange(int16_t hostId) {
+    return mirrorRange[hostId];
   }
 
 private:
