@@ -66,7 +66,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
     }
   }
 }
-/*
+
 void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVertices,
                   pando::Array<char>&& filename) {
 #ifdef PRINTS
@@ -77,8 +77,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   using ET = std::uint64_t;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
 
-  galois::HostLocalStorageHeap::HeapInit();
-   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
+  Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
 #ifdef PRINTS
@@ -111,8 +110,13 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
     }
   }
 }
-*/
+
 int pandoMain(int argc, char** argv) {
+  if (pando::getCurrentPlace().node.id == 0) {
+    galois::HostLocalStorageHeap::HeapInit();
+    galois::PodLocalStorageHeap::HeapInit();
+  }
+
   auto place = pando::getCurrentPlace();
   if (place.node.id == 0) {
     enum GraphMode { DLCSR, MDLCSR } graphMode{MDLCSR};
@@ -172,7 +176,7 @@ int pandoMain(int argc, char** argv) {
     if (graphMode == DLCSR) {
       HBMainDLCSR(srcVertices, numVertices, std::move(filename));
     } else {
-      // HBMainMDLCSR(srcVertices, numVertices, std::move(filename));
+      HBMainMDLCSR(srcVertices, numVertices, std::move(filename));
     }
   }
   pando::waitAll();
