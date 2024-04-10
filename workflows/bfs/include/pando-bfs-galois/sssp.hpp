@@ -166,7 +166,7 @@ pando::Status SSSP(
   wg.deinitialize();
   return pando::Status::Success;
 }
-/*
+
 template <typename G>
 pando::Status MirroredSSSP(
     G& graph, std::uint64_t src, PerThreadVector<typename graph_traits<G>::VertexTopologyID>& next,
@@ -209,7 +209,7 @@ pando::Status MirroredSSSP(
 
     PANDO_CHECK_RETURN(galois::doAll(wgh, state, phbfs, &BFSPerHostLoop<G>));
     PANDO_CHECK_RETURN(wg.wait());
-    state.graph.sync();
+    // state.graph.sync();
     PANDO_MEM_STAT_NEW_KERNEL("BFS Scatter End");
 
     for (pando::GlobalRef<pando::Vector<typename graph_traits<G>::VertexTopologyID>> vec : phbfs) {
@@ -233,6 +233,6 @@ pando::Status MirroredSSSP(
   wg.deinitialize();
   return pando::Status::Success;
 }
-*/
+
 };     // namespace galois
 #endif // PANDO_BFS_GALOIS_SSSP_HPP_
