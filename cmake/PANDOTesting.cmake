@@ -169,7 +169,7 @@ function(pando_add_bin_python_test TARGET ARGS INPUTFILE PYTHONFILE)
     set(NUM_CORES 4)
 
     add_test(NAME ${TARGET}-${INPUTFILE}-pythonvalidate
-      COMMAND bash -c "${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE} | python3 ${PYTHONFILE}")
+      COMMAND bash -c "${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE} | python3 ${PYTHONFILE}  ${NUM_PXNS}")
 
   else()
 
@@ -183,7 +183,7 @@ function(pando_add_bin_python_test TARGET ARGS INPUTFILE PYTHONFILE)
 
     add_test(NAME ${TARGET}-${INPUTFILE}-pythonvalidate
       COMMAND bash -c "LAUNCH_DIR=${CMAKE_SOURCE_DIR} ${DRIVER_SCRIPT} -p ${NUM_HTHREADS} -n ${NUM_PXNS} -c ${NUM_CORES} \
-      ${CMAKE_CURRENT_BINARY_DIR}/lib${FNAME}.so ${ARGS} ${INPUTFILE} | python3 ${PYTHONFILE}")
+      ${CMAKE_CURRENT_BINARY_DIR}/lib${FNAME}.so ${ARGS} ${INPUTFILE} | python3 ${PYTHONFILE} ${NUM_PXNS}")
 
   endif()
 endfunction()
