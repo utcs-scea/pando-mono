@@ -16,7 +16,7 @@ target_include_directories(pando-triangle-counting
 target_sources(pando-triangle-counting
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/utils.cpp
-        #${CMAKE_CURRENT_LIST_DIR}/tc_algos.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/tc_algos.cpp
 )
 
 target_link_libraries(pando-triangle-counting
@@ -42,6 +42,5 @@ function(tc_add_executable TARGET)
 endfunction()
 
 tc_add_executable(bench_remote_access ${CMAKE_CURRENT_SOURCE_DIR}/bench_remote_access.cpp)
-#tc_add_executable(tc ${CMAKE_CURRENT_SOURCE_DIR}/tc.cpp)
-#tc_add_executable(graph_compare ${CMAKE_CURRENT_SOURCE_DIR}/graph_compare.cpp)
-#tc_add_executable(tc_naive ${CMAKE_CURRENT_SOURCE_DIR}/tc_naive.cpp)
+tc_add_executable(tc ${CMAKE_CURRENT_SOURCE_DIR}/tc.cpp)
+tc_add_executable(graph_compare ${CMAKE_CURRENT_SOURCE_DIR}/graph_compare.cpp)
