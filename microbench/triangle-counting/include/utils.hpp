@@ -34,7 +34,7 @@ using VT = galois::ELVertex;
 using GraphDL = galois::DistLocalCSR<VT, ET>;
 using GraphDA = galois::DistArrayCSR<VT, ET>;
 
-enum TC_CHUNK { NO_CHUNK = 0, CHUNK_EDGES = 1, CHUNK_VERTICES = 2 };
+enum TC_CHUNK { NO_CHUNK = 0, CHUNK_VERTICES = 1, CHUNK_EDGES = 2 };
 
 struct CommandLineOptions {
   std::string elFile;

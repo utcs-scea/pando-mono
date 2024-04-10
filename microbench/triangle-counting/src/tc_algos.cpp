@@ -66,6 +66,62 @@ void tc_no_chunk(pando::GlobalPtr<GraphType> graph_ptr,
       });
 }
 
+/**
+ * @brief Runs Chunked Edges Triangle Counting Algorithm on DistLocalCSRs (GraphDL)
+ *
+ * @param[in] graph_ptr Pointer to the in-memory graph
+ * @param[in] final_tri_count Thread-safe counter
+ */
+void tc_chunk_edges(pando::GlobalPtr<GraphDL> graph_ptr,
+                    galois::DAccumulator<uint64_t> final_tri_count) {
+  GraphDL graph = *graph_ptr;
+  uint64_t query_sz = 1;
+  uint64_t iters = 0;
+
+  galois::DAccumulator<uint64_t> work_remaining{};
+  PANDO_CHECK(work_remaining.initialize());
+
+  // Assumption: ELVertex iterator_offset = 0
+  do {
+    work_remaining.reset();
+    auto state = galois::make_tpl(graph_ptr, work_remaining, query_sz, final_tri_count);
+    galois::doAll(
+        state, graph.vertices(), +[](decltype(state) state, typename GraphDL::VertexTopologyID v0) {
+          auto [graph_ptr, work_remaining, query_sz, final_tri_count] = state;
+          GraphDL g = *graph_ptr;
+
+          // DF Optimization
+          uint64_t v0_numEdges = fmap(g, getNumEdges, v0);
+          if (v0_numEdges < (TC_EMBEDDING_SZ - 1))
+            return;
+
+          // Each vertex stores a bookmark where they left off
+          // We modify DistLocalCSR (GraphDL) to allow us to capture a subset of the edgeRange
+          uint64_t current_offset = v0->iterator_offset;
+          auto curr_edge_range = fmap(g, edges, v0, current_offset, query_sz);
+          auto local_work_remaining = curr_edge_range.size();
+
+          edge_tc_counting<GraphDL>(graph_ptr, v0, curr_edge_range, final_tri_count);
+
+          // Move bookmark forward and flag if this vertex is not yet done
+          v0->iterator_offset += local_work_remaining;
+          if (v0->iterator_offset < v0_numEdges)
+            work_remaining.increment();
+        });
+
+    uint64_t current_count = final_tri_count.reduce();
+    std::cout << "After Iter " << iters << " found " << current_count << " triangles.\n";
+    final_tri_count.reset();
+    final_tri_count.add(current_count);
+    iters++;
+    query_sz <<= 1;
+  } while (work_remaining.reduce());
+  work_remaining.deinitialize();
+}
+
+// #####################################################################
+//                        TC GRAPH HBMAINS
+// #####################################################################
 void HBGraphDL(pando::Place thisPlace, pando::Array<char> filename, int64_t num_vertices,
                TC_CHUNK tc_chunk, galois::DAccumulator<uint64_t> final_tri_count) {
 #if BENCHMARK
@@ -95,9 +151,9 @@ void HBGraphDL(pando::Place thisPlace, pando::Array<char> filename, int64_t num_
   PANDO_MEM_STAT_NEW_KERNEL("TC_DFS_Algo Start");
 
   switch (tc_chunk) {
-    // case TC_CHUNK::CHUNK_EDGES:
-    //   tc_chunk_edges(graph_ptr, final_tri_count);
-    //   break;
+    case TC_CHUNK::CHUNK_EDGES:
+      tc_chunk_edges(graph_ptr, final_tri_count);
+      break;
     // case TC_CHUNK::CHUNK_VERTICES:
     //   tc_chunk_vertices(graph_ptr, final_tri_count);
     //   break;
