@@ -19,6 +19,7 @@ endif()
 
 option(ENABLE_PANDORT_TESTS "Enable pando-rt to run tests" OFF)
 option(ENABLE_WF4_TESTS "Enable wf4 to run tests" OFF)
+option(ENABLE_BFS_TESTS "Enable bfs to run tests" OFF)
 
 if (NOT ENABLE_PANDORT_TESTS)
   message("Not Enabling Pandort testing")
