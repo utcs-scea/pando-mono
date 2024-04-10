@@ -21,6 +21,20 @@ struct ELVertex {
   constexpr operator std::uint64_t() {
     return id;
   }
+
+  bool operator==(const ELVertex& a) noexcept {
+    return id == a.id;
+  }
+  bool operator!=(const ELVertex& a) noexcept {
+    return id != a.id;
+  }
+
+  constexpr std::uint64_t get() noexcept {
+    return id;
+  }
+  constexpr void set(std::uint64_t value) noexcept {
+    id = value;
+  }
 };
 
 struct ELEdge {

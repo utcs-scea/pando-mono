@@ -289,7 +289,6 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
   using VT = galois::ELVertex;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
   galois::HostLocalStorageHeap::HeapInit();
-
   const std::string elFile = std::get<0>(GetParam());
   const std::uint64_t numVertices = std::get<1>(GetParam());
 
@@ -319,10 +318,17 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
     typename Graph::VertexData vertexData = graph.getData(vert);
     EXPECT_EQ(srcTok, vertexData.id);
 
-    VT dumbVertex = VT{numVertices};
-    graph.setData(vert, dumbVertex);
-    vertexData = graph.getData(vert);
-    EXPECT_EQ(vertexData.id, numVertices);
+    /*
+    It is not valid to set data on remote side's mirror.
+    It only need to write data only on local, or remote side's master.
+    Currently there is no command to check if master on remote, such that only write data on local
+    */
+    if (graph.isLocal(vert)) {
+      VT dumbVertex = VT{numVertices};
+      graph.setData(vert, dumbVertex);
+      vertexData = graph.getData(vert);
+      EXPECT_EQ(vertexData.id, numVertices);
+    }
 
     // Iterate over edges
     EXPECT_NE(goldenTable.find(srcTok), goldenTable.end())
@@ -345,14 +351,14 @@ TEST_P(MirrorDLCSRInitEdgeList, initializeEL) {
         ASSERT_TRUE(graph.isLocal(mirrorTopology));
         ASSERT_TRUE(!graph.isLocal(masterTopology));
         // Mirror must exist in mirror range.
-        auto it = graph.getMirrorRange();
+        auto it = graph.getLocalMirrorRange();
         ASSERT_TRUE(*it.begin() <= mirrorTopology && mirrorTopology < *it.end());
       } else {
         // If I don't have mirror, that could be because it is in local, or never be a destination
         // from me.
         if (graph.isLocal(masterTopology)) {
           // If it is from me, it is in my master range.
-          auto it = graph.getMasterRange();
+          auto it = graph.getLocalMasterRange();
           ASSERT_TRUE(*it.begin() <= masterTopology && masterTopology < *it.end());
           // In mirror to master, this should never exist
         }

@@ -84,7 +84,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
         galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
     // Iterate over vertices
     std::uint64_t vid = 0;
-    auto mirror_master_array = graph.getLocalMirrorToRemoteMasterOrderedTable();
+    auto mirror_master_array = graph.getLocalMirrorToMasterMap();
     for (auto elem : mirror_master_array) {
       std::cout << "SET, " << lift(elem, getMirror).address << ", " << lift(elem, getMaster).address
                 << std::endl;

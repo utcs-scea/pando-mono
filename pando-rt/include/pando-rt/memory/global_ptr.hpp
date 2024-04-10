@@ -895,7 +895,11 @@ public:
   template <typename T, typename U>                  \
   auto operator op(const T& x, GlobalRef<U> y) {     \
     return x op static_cast<U>(y);                   \
-  }
+  }                                                  \
+  template <typename T, typename U>                  \
+  auto operator op(GlobalRef<T> x, U& y) {     \
+    return static_cast<T>(x) op y;                   \
+  }                                                  \
 
 // assignment operators
 

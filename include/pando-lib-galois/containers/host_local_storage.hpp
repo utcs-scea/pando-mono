@@ -18,7 +18,7 @@ namespace galois {
 
 namespace HostLocalStorageHeap {
 
-constexpr std::uint64_t Size = 1 << 20;
+constexpr std::uint64_t Size = 1 << 25;
 constexpr std::uint64_t Granule = 128;
 struct ModestArray {
   std::byte arr[Size];
