@@ -32,10 +32,17 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
             opts_ptr->tc_chunk = NO_CHUNK;
             break;
           case 1:
+<<<<<<< HEAD
             opts_ptr->tc_chunk = CHUNK_VERTICES;
             break;
           case 2:
             opts_ptr->tc_chunk = CHUNK_EDGES;
+=======
+            opts_ptr->tc_chunk = CHUNK_EDGES;
+            break;
+          case 2:
+            opts_ptr->tc_chunk = CHUNK_VERTICES;
+>>>>>>> d43bc0b (Add TC-non-chunking and basic test)
             break;
           default:
             printUsageExit(argv[0]);
