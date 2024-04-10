@@ -375,8 +375,6 @@ template <typename VertexType>
 [[nodiscard]] galois::HostLocalStorage<pando::Vector<VertexType>> partitionVerticesParallel(
     galois::ThreadLocalVector<VertexType>&& localReadVertices,
     HostLocalStorage<pando::Array<std::uint64_t>> v2PM) {
-  for (uint64_t i = 0; i < localReadVertices.size(); i++) {}
-
   const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
   const std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
 
