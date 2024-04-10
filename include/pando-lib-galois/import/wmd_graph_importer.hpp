@@ -253,6 +253,7 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
   using DST = galois::Array<uint64_t>;
   using SRC_Val = uint64_t;
   using DST_Val = uint64_t;
+
   for (uint64_t i = 0; i < numHosts; i++) {
     galois::Array<uint64_t> arr = numEdgesPerHostPerThread[i];
     galois::Array<uint64_t> prefixArr = prefixArrayPerHostPerThread[i];
@@ -374,26 +375,35 @@ template <typename VertexType>
 [[nodiscard]] galois::HostLocalStorage<pando::Vector<VertexType>> partitionVerticesParallel(
     galois::ThreadLocalVector<VertexType>&& localReadVertices,
     HostLocalStorage<pando::Array<std::uint64_t>> v2PM) {
-  ThreadLocalStorage<HostIndexedMap<pando::Vector<VertexType>>> perThreadVerticesPartition;
-  PANDO_CHECK(perThreadVerticesPartition.initialize());
-  std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
-  for (uint64_t i = 0; i < localReadVertices.size(); i++) {
-    PANDO_CHECK(lift(perThreadVerticesPartition[i], initialize));
-    HostIndexedMap<pando::Vector<VertexType>> pVec = perThreadVerticesPartition[i];
-    for (uint64_t j = 0; j < numHosts; j++) {
-      PANDO_CHECK(fmap(pVec[j], initialize, 0));
-    }
-  }
+  const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
 
-  const std::uint64_t numThreads = localReadVertices.size();
-  HostIndexedMap<galois::Array<std::uint64_t>> numVerticesPerHostPerThread{};
-  HostIndexedMap<galois::Array<std::uint64_t>> prefixArrPerHostPerThread{};
+  ThreadLocalStorage<HostIndexedMap<pando::Vector<VertexType>>> perThreadVerticesPartition{};
+  HostLocalStorage<galois::Array<std::uint64_t>> numVerticesPerHostPerThread{};
+  HostLocalStorage<galois::Array<std::uint64_t>> prefixArrPerHostPerThread{};
+  PANDO_CHECK(perThreadVerticesPartition.initialize());
   PANDO_CHECK(numVerticesPerHostPerThread.initialize());
   PANDO_CHECK(prefixArrPerHostPerThread.initialize());
-  for (std::uint64_t i = 0; i < numHosts; i++) {
-    PANDO_CHECK(fmap(numVerticesPerHostPerThread[i], initialize, numThreads));
-    PANDO_CHECK(fmap(prefixArrPerHostPerThread[i], initialize, numThreads));
-  }
+
+  auto tpl = galois::make_tpl(numVerticesPerHostPerThread, prefixArrPerHostPerThread,
+                              perThreadVerticesPartition);
+  galois::doAll(
+      tpl, perThreadVerticesPartition,
+      +[](decltype(tpl) tpl,
+          pando::GlobalRef<HostIndexedMap<pando::Vector<VertexType>>> perThreadVerticesPartition) {
+        auto [numVerts, prefixArr, vertPart] = tpl;
+        PANDO_CHECK(lift(perThreadVerticesPartition, initialize));
+        const std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+        HostIndexedMap<pando::Vector<VertexType>> pVec = perThreadVerticesPartition;
+        for (uint64_t j = 0; j < numHosts; j++) {
+          PANDO_CHECK(fmap(pVec[j], initialize, 0));
+        }
+        const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
+        const std::uint64_t host = pando::getCurrentPlace().node.id;
+        if (&perThreadVerticesPartition == vertPart.get(host * vertPart.getThreadsPerHost())) {
+          PANDO_CHECK(fmap(numVerts[host], initialize, numThreads));
+          PANDO_CHECK(fmap(prefixArr[host], initialize, numThreads));
+        }
+      });
 
   auto newVec =
       make_tpl(perThreadVerticesPartition, localReadVertices, v2PM, numVerticesPerHostPerThread);
@@ -422,24 +432,41 @@ template <typename VertexType>
   using SRC_Val = uint64_t;
   using DST_Val = uint64_t;
 
-  for (uint64_t i = 0; i < numHosts; i++) {
-    galois::Array<uint64_t> arr = numVerticesPerHostPerThread[i];
-    galois::Array<uint64_t> prefixArr = prefixArrPerHostPerThread[i];
-    galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, galois::internal::transmute<uint64_t>,
-                      galois::internal::scan_op<SRC_Val, DST_Val>,
-                      galois::internal::combiner<DST_Val>, galois::Array>
-        prefixSum(arr, prefixArr);
-    PANDO_CHECK(prefixSum.initialize(pando::getPlaceDims().core.x * pando::getPlaceDims().core.y));
-    prefixSum.computePrefixSum(numThreads);
-  }
+  PANDO_CHECK(galois::doAll(
+      numVerticesPerHostPerThread, prefixArrPerHostPerThread,
+      +[](HostLocalStorage<Array<std::uint64_t>> numVerticesPerHostPerThread,
+          Array<std::uint64_t> prefixArr) {
+        const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
+        const std::uint64_t host = pando::getCurrentPlace().node.id;
+        Array<uint64_t> arr = numVerticesPerHostPerThread[host];
+        galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, galois::internal::transmute<uint64_t>,
+                          galois::internal::scan_op<SRC_Val, DST_Val>,
+                          galois::internal::combiner<DST_Val>, galois::Array>
+            prefixSum(arr, prefixArr);
+        PANDO_CHECK(
+            prefixSum.initialize(pando::getPlaceDims().core.x * pando::getPlaceDims().core.y));
+        prefixSum.computePrefixSumPasteLocality(numThreads);
+      }));
+
+#if FREE
+  WaitGroup freeWaiter;
+  PANDO_CHECK(freeWaiter.initialize());
+  auto freeWGH = freeWaiter.getHandle();
+  PANDO_CHECK(doAll(
+      freeWGH, numVerticesPerHostPerThread, +[](galois::Array<std::uint64_t> arr) {
+        arr.deinitialize();
+      }));
+#endif
 
   galois::HostLocalStorage<pando::Vector<VertexType>> pHV{};
   PANDO_CHECK(pHV.initialize());
 
-  for (uint64_t i = 0; i < numHosts; i++) {
-    galois::Array<uint64_t> prefixArr = prefixArrPerHostPerThread[i];
-    PANDO_CHECK(fmap(pHV[i], initialize, prefixArr[numThreads - 1]));
-  }
+  PANDO_CHECK(doAll(
+      pHV, prefixArrPerHostPerThread, +[](decltype(pHV) pHV, galois::Array<uint64_t> prefixArr) {
+        const std::uint64_t nodeIdx = pando::getCurrentPlace().node.id;
+        const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
+        PANDO_CHECK(fmap(pHV[nodeIdx], initialize, prefixArr[numThreads - 1]));
+      }));
 
   auto phVec = make_tpl(pHV, prefixArrPerHostPerThread, perThreadVerticesPartition);
   galois::doAllEvenlyPartition(
@@ -464,6 +491,32 @@ template <typename VertexType>
           }
         }
       });
+
+#if FREE
+  auto tpl = galois::make_tpl(prefixArrPerHostPerThread, perThreadVerticesPartition);
+  galois::doAll(
+      freeWGH, tpl, perThreadVerticesPartition,
+      +[](decltype(tpl) tpl,
+          pando::GlobalRef<HostIndexedMap<pando::Vector<VertexType>>> perThreadVerticesPartition) {
+        auto [numVerts, prefixArr, vertPart] = tpl;
+        const std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
+        HostIndexedMap<pando::Vector<VertexType>> pVec = perThreadVerticesPartition;
+        for (uint64_t j = 0; j < numHosts; j++) {
+          liftVoid(pVec[j], deinitialize);
+        }
+        liftVoid(perThreadVerticesPartition, deinitialize);
+        const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
+        const std::uint64_t host = pando::getCurrentPlace().node.id;
+        if (&perThreadVerticesPartition == vertPart.get(host * vertPart.getThreadsPerHost())) {
+          liftVoid(prefixArr[host], deinitialize);
+        }
+      });
+  PANDO_CHECK(freeWaiter.wait());
+  freeWaiter.deinitialize();
+  perThreadVerticesPartition.deinitialize();
+  numVerticesPerHostPerThread.deinitialize();
+  prefixArrPerHostPerThread.deinitialize();
+#endif
   return pHV;
 }
 
