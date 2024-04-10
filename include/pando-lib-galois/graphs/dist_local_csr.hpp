@@ -502,8 +502,8 @@ public:
   }
 
   VertexDataRange vertexDataRange() noexcept {
-    return VertexDataRange{arrayOfCSRs, lift(arrayOfCSRs[0], vertexData.begin),
-                           lift(arrayOfCSRs[arrayOfCSRs.size() - 1], vertexData.end), numVertices};
+    return VertexDataRange{arrayOfCSRs, lift(getCSR(0), vertexData.begin),
+                           lift(getCSR(arrayOfCSRs.size() - 1), vertexData.end), numVertices};
   }
   EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
     return fmap(getCSR(vertex), edgeDataRange, vertex);

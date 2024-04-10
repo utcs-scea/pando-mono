@@ -9,15 +9,17 @@
 
 #include <pando-rt/export.h>
 
+#include <fstream>
 #include <utility>
 
 #include <pando-lib-galois/containers/dist_array.hpp>
-#include <pando-lib-galois/containers/per_host.hpp>
+#include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/containers/per_thread.hpp>
 #include <pando-lib-galois/graphs/graph_traits.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
+#include <pando-rt/sync/atomic.hpp>
 
 namespace galois {
 
@@ -58,8 +60,7 @@ CountEdges<COUNT_EDGE> countEdges;
 
 template <typename G>
 struct BFSState {
-  using TopID = typename graph_traits<G>::VertexTopologyID;
-  PerThreadVector<TopID> next;
+  PerThreadVector<typename graph_traits<G>::VertexTopologyID> next;
   std::uint64_t dist;
   G graph;
 };
@@ -71,7 +72,7 @@ void BFSOuterLoop(BFSState<G> state,
     countEdges.countEdge();
     typename graph_traits<G>::VertexTopologyID dst = state.graph.getEdgeDst(eh);
     uint64_t dst_data = state.graph.getData(dst);
-    if (dst_data == UINT64_MAX) {
+    if (dst_data == UINT64_MAX) { // why not dst_data > state.dist?
       state.graph.setData(dst, state.dist);
       PANDO_CHECK(state.next.pushBack(dst));
     }
@@ -82,16 +83,17 @@ template <typename G>
 void BFSPerHostLoop(
     BFSState<G> state,
     pando::GlobalRef<pando::Vector<typename graph_traits<G>::VertexTopologyID>> vecRef) {
-  using TopID = typename graph_traits<G>::VertexTopologyID;
-  pando::Vector<TopID> vec = vecRef;
-  const auto err = galois::doAll(state, vec, &BFSOuterLoop<G>, [](BFSState<G> state, TopID tid) {
-    return state.graph.getLocalityVertex(tid);
-  });
+  pando::Vector<typename graph_traits<G>::VertexTopologyID> vec = vecRef;
+  const auto err =
+      galois::doAll(state, vec, &BFSOuterLoop<G>,
+                    [](BFSState<G> state, typename graph_traits<G>::VertexTopologyID tid) {
+                      return state.graph.getLocalityVertex(tid);
+                    });
   PANDO_CHECK(err);
 }
 
 template <typename T>
-bool IsNextIterationEmpty(galois::PerHost<pando::Vector<T>> phbfs) {
+bool IsNextIterationEmpty(galois::HostLocalStorage<pando::Vector<T>> phbfs) {
   for (pando::Vector<T> vecBFS : phbfs) {
     if (vecBFS.size() != 0)
       return false;
@@ -102,12 +104,10 @@ bool IsNextIterationEmpty(galois::PerHost<pando::Vector<T>> phbfs) {
 template <typename G>
 pando::Status SSSP(
     G& graph, std::uint64_t src, PerThreadVector<typename graph_traits<G>::VertexTopologyID>& next,
-    galois::PerHost<pando::Vector<typename graph_traits<G>::VertexTopologyID>>& phbfs) {
+    galois::HostLocalStorage<pando::Vector<typename graph_traits<G>::VertexTopologyID>>& phbfs) {
 #ifdef DPRINTS
   std::cout << "Got into SSSP" << std::endl;
 #endif
-
-  using TopID = typename graph_traits<G>::VertexTopologyID;
 
   galois::WaitGroup wg{};
   PANDO_CHECK_RETURN(wg.initialize(0));
@@ -123,7 +123,7 @@ pando::Status SSSP(
 
   graph.setData(srcID, 0);
 
-  PANDO_CHECK_RETURN(fmap(phbfs.getLocal(), pushBack, graph.getTopologyID(src)));
+  PANDO_CHECK_RETURN(fmap(phbfs.getLocalRef(), pushBack, graph.getTopologyID(src)));
 
   BFSState<G> state;
   state.graph = graph;
@@ -145,7 +145,7 @@ pando::Status SSSP(
     PANDO_CHECK_RETURN(wg.wait());
     PANDO_MEM_STAT_NEW_KERNEL("BFS Scatter End");
 
-    for (pando::GlobalRef<pando::Vector<TopID>> vec : phbfs) {
+    for (pando::GlobalRef<pando::Vector<typename graph_traits<G>::VertexTopologyID>> vec : phbfs) {
       liftVoid(vec, clear);
     }
     PANDO_CHECK_RETURN(state.next.hostFlattenAppend(phbfs));
@@ -158,7 +158,7 @@ pando::Status SSSP(
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
-        phbfs, +[](pando::Vector<TopID>) {
+        phbfs, +[](pando::Vector<typename graph_traits<G>::VertexTopologyID>) {
           countEdges.printEdges();
           countEdges.resetCount();
         });
@@ -166,17 +166,14 @@ pando::Status SSSP(
   wg.deinitialize();
   return pando::Status::Success;
 }
-
-template <typename G, typename S>
+/*
+template <typename G>
 pando::Status MirroredSSSP(
-    G& graph, S& syncSubstrate, std::uint64_t src,
-    PerThreadVector<typename graph_traits<G>::VertexTopologyID>& next,
-    galois::PerHost<pando::Vector<typename graph_traits<G>::VertexTopologyID>>& phbfs) {
+    G& graph, std::uint64_t src, PerThreadVector<typename graph_traits<G>::VertexTopologyID>& next,
+    galois::HostLocalStorage<pando::Vector<typename graph_traits<G>::VertexTopologyID>>& phbfs) {
 #ifdef DPRINTS
   std::cout << "Got into SSSP" << std::endl;
 #endif
-
-  using TopID = typename graph_traits<G>::VertexTopologyID;
 
   galois::WaitGroup wg{};
   PANDO_CHECK_RETURN(wg.initialize(0));
@@ -192,7 +189,7 @@ pando::Status MirroredSSSP(
 
   graph.setData(srcID, 0);
 
-  PANDO_CHECK_RETURN(fmap(phbfs.getLocal(), pushBack, graph.getTopologyID(src)));
+  PANDO_CHECK_RETURN(fmap(phbfs.getLocalRef(), pushBack, graph.getTopologyID(src)));
 
   BFSState<G> state;
   state.graph = graph;
@@ -212,10 +209,10 @@ pando::Status MirroredSSSP(
 
     PANDO_CHECK_RETURN(galois::doAll(wgh, state, phbfs, &BFSPerHostLoop<G>));
     PANDO_CHECK_RETURN(wg.wait());
-    syncSubstrate.sync(state);
+    state.graph.sync();
     PANDO_MEM_STAT_NEW_KERNEL("BFS Scatter End");
 
-    for (pando::GlobalRef<pando::Vector<TopID>> vec : phbfs) {
+    for (pando::GlobalRef<pando::Vector<typename graph_traits<G>::VertexTopologyID>> vec : phbfs) {
       liftVoid(vec, clear);
     }
     PANDO_CHECK_RETURN(state.next.hostFlattenAppend(phbfs));
@@ -228,7 +225,7 @@ pando::Status MirroredSSSP(
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
-        phbfs, +[](pando::Vector<TopID>) {
+        phbfs, +[](pando::Vector<typename graph_traits<G>::VertexTopologyID>) {
           countEdges.printEdges();
           countEdges.resetCount();
         });
@@ -236,5 +233,6 @@ pando::Status MirroredSSSP(
   wg.deinitialize();
   return pando::Status::Success;
 }
+*/
 };     // namespace galois
 #endif // PANDO_BFS_GALOIS_SSSP_HPP_
