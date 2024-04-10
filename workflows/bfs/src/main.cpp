@@ -8,10 +8,9 @@
 #include <utility>
 
 #include <pando-bfs-galois/sssp.hpp>
-#include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
-#include <pando-lib-galois/graphs/gluon_substrate.hpp>
+#include <pando-lib-galois/graphs/mirror_dist_local_csr.hpp>
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
@@ -24,84 +23,33 @@ void printUsageExit(char* argv0) {
   std::exit(EXIT_FAILURE);
 }
 
-void HBMainDACSR(pando::Vector<std::uint64_t> srcVertices,
-                 pando::GlobalPtr<pando::Vector<pando::Vector<std::uint64_t>>> edgeListPtr) {
-#ifdef PRINTS
-  std::cerr << "Construct Graph Begin" << std::endl;
-#endif
-
-  using Graph = galois::DistArrayCSR<std::uint64_t, std::uint64_t>;
-  Graph graph;
-
-  {
-    pando::Vector<pando::Vector<std::uint64_t>> edgeList = *edgeListPtr;
-    // Create a DistArrayCSR
-    graph.initialize(edgeList);
-    // Free EdgeList
-    galois::doAll(
-        edgeList, +[](pando::GlobalRef<pando::Vector<std::uint64_t>> edgesRef) {
-          pando::Vector<std::uint64_t> edges = edgesRef;
-          edges.deinitialize();
-        });
-    edgeList.deinitialize();
-  }
-
-#ifdef PRINTS
-  std::cerr << "Construct Graph End" << std::endl;
-#endif
-
-  using TopID = typename galois::graph_traits<Graph>::VertexTopologyID;
-  using LoopStructure = galois::PerHost<pando::Vector<TopID>>;
-  LoopStructure phbfs{};
-  PANDO_CHECK(phbfs.initialize());
-
-  PANDO_CHECK(galois::doAll(
-      phbfs, +[](pando::GlobalRef<pando::Vector<TopID>> vecRef) {
-        PANDO_CHECK(fmap(vecRef, initialize, 2));
-        liftVoid(vecRef, clear);
-      }));
-  galois::PerThreadVector<TopID> next;
-
-  PANDO_CHECK(next.initialize());
-
-  // Run BFS
-  for (std::uint64_t srcVertex : srcVertices) {
-    std::cout << "Source Vertex is " << srcVertex << std::endl;
-
-    PANDO_CHECK(galois::SSSP(graph, srcVertex, next, phbfs));
-
-    // Print Result
-    for (pando::GlobalRef<std::uint64_t> val : graph.vertexDataRange()) {
-      std::cout << val << std::endl;
-    }
-  }
-}
-
 void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVertices,
                  pando::Array<char>&& filename) {
 #ifdef PRINTS
   std::cerr << "Construct Graph Begin" << std::endl;
 #endif
 
-  using Graph = galois::DistLocalCSR<std::uint64_t, std::uint64_t>;
-  Graph graph = galois::initializeELDLCSR<std::uint64_t, std::uint64_t>(filename, numVertices);
+  using VT = std::uint64_t;
+  using ET = std::uint64_t;
+  using Graph = galois::DistLocalCSR<VT, ET>;
+
+  Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
 #ifdef PRINTS
   std::cerr << "Construct Graph End" << std::endl;
 #endif
 
-  using TopID = typename galois::graph_traits<Graph>::VertexTopologyID;
-  using LoopStructure = galois::PerHost<pando::Vector<TopID>>;
-  LoopStructure phbfs{};
+  using VertexTopologyID = typename galois::graph_traits<Graph>::VertexTopologyID;
+  galois::HostLocalStorage<pando::Vector<VertexTopologyID>> phbfs{};
   PANDO_CHECK(phbfs.initialize());
 
   PANDO_CHECK(galois::doAll(
-      phbfs, +[](pando::GlobalRef<pando::Vector<TopID>> vecRef) {
+      phbfs, +[](pando::GlobalRef<pando::Vector<VertexTopologyID>> vecRef) {
         PANDO_CHECK(fmap(vecRef, initialize, 2));
         liftVoid(vecRef, clear);
       }));
-  galois::PerThreadVector<TopID> next;
+  galois::PerThreadVector<VertexTopologyID> next;
 
   PANDO_CHECK(next.initialize());
 
@@ -118,34 +66,35 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
     }
   }
 }
-
+/*
 void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVertices,
                   pando::Array<char>&& filename) {
 #ifdef PRINTS
   std::cerr << "Construct Graph Begin" << std::endl;
 #endif
 
-  using Graph = galois::MirroredDistLocalCSR<std::uint64_t, std::uint64_t>;
-  Graph graph = galois::initializeELMDLCSR<std::uint64_t, std::uint64_t>(filename, numVertices);
+  using VT = std::uint64_t;
+  using ET = std::uint64_t;
+  using Graph = galois::MirrorDistLocalCSR<VT, ET>;
+
+  galois::HostLocalStorageHeap::HeapInit();
+   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
-  using Substrate = galois::GluonSubstrate<Graph>;
-  Substrate syncSubstrate{graph};
 
 #ifdef PRINTS
   std::cerr << "Construct Graph End" << std::endl;
 #endif
 
-  using TopID = typename galois::graph_traits<Graph>::VertexTopologyID;
-  using LoopStructure = galois::PerHost<pando::Vector<TopID>>;
-  LoopStructure phbfs{};
+  using VertexTopologyID = typename galois::graph_traits<Graph>::VertexTopologyID;
+  galois::HostLocalStorage<pando::Vector<VertexTopologyID>> phbfs{};
   PANDO_CHECK(phbfs.initialize());
 
   PANDO_CHECK(galois::doAll(
-      phbfs, +[](pando::GlobalRef<pando::Vector<TopID>> vecRef) {
+      phbfs, +[](pando::GlobalRef<pando::Vector<VertexTopologyID>> vecRef) {
         PANDO_CHECK(fmap(vecRef, initialize, 2));
         liftVoid(vecRef, clear);
       }));
-  galois::PerThreadVector<TopID> next;
+  galois::PerThreadVector<VertexTopologyID> next;
 
   PANDO_CHECK(next.initialize());
 
@@ -153,7 +102,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   for (std::uint64_t srcVertex : srcVertices) {
     std::cout << "Source Vertex is " << srcVertex << std::endl;
 
-    PANDO_CHECK(galois::MirroredSSSP(graph, syncSubstrate, srcVertex, next, phbfs));
+    PANDO_CHECK(galois::MirroredSSSP(graph, srcVertex, next, phbfs));
 
     // Print Result
     for (std::uint64_t i = 0; i < numVertices; i++) {
@@ -162,11 +111,11 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
     }
   }
 }
-
+*/
 int pandoMain(int argc, char** argv) {
   auto place = pando::getCurrentPlace();
   if (place.node.id == 0) {
-    enum GraphMode { DACSR, DLCSR, MDLCSR } graphMode{DACSR};
+    enum GraphMode { DLCSR, MDLCSR } graphMode{MDLCSR};
     std::uint64_t numVertices = 0;
     std::uint64_t srcVertex = 0;
     pando::Vector<std::uint64_t> srcVertices;
@@ -213,25 +162,17 @@ int pandoMain(int argc, char** argv) {
       printUsageExit(argv[0]);
     }
 
-    if (graphMode == DACSR) {
-      pando::GlobalPtr<pando::Vector<pando::Vector<std::uint64_t>>> edgeListPtr =
-          static_cast<decltype(edgeListPtr)>(pando::getDefaultMainMemoryResource()->allocate(
-              sizeof(pando::Vector<pando::Vector<std::uint64_t>>)));
+    std::uint64_t size = strlen(filePath) + 1;
+    pando::Array<char> filename;
+    PANDO_CHECK(filename.initialize(size));
+    for (std::uint64_t i = 0; i < size; i++) {
+      filename[i] = filePath[i];
+    }
 
-      PANDO_CHECK(galois::importELFile(numVertices, filePath, *edgeListPtr));
-      HBMainDACSR(srcVertices, edgeListPtr);
+    if (graphMode == DLCSR) {
+      HBMainDLCSR(srcVertices, numVertices, std::move(filename));
     } else {
-      std::uint64_t size = strlen(filePath) + 1;
-      pando::Array<char> filename;
-      PANDO_CHECK(filename.initialize(size));
-      for (std::uint64_t i = 0; i < size; i++) {
-        filename[i] = filePath[i];
-      }
-      if (graphMode == DLCSR) {
-        HBMainDLCSR(srcVertices, numVertices, std::move(filename));
-      } else {
-        HBMainMDLCSR(srcVertices, numVertices, std::move(filename));
-      }
+      // HBMainMDLCSR(srcVertices, numVertices, std::move(filename));
     }
   }
   pando::waitAll();
