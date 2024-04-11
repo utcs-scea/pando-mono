@@ -308,5 +308,5 @@ pando::Status SSSP_MDLCSR(
   return pando::Status::Success;
 }
 
-};     // namespace galois
+}; // namespace galois
 #endif // PANDO_BFS_GALOIS_SSSP_HPP_

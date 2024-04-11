@@ -61,7 +61,7 @@ target_include_directories(pando-bfs-galois
 # library properties
 set_target_properties(pando-bfs-galois
     PROPERTIES
-        CXX_STANDARD                17
+        CXX_STANDARD                23
         CXX_STANDARD_REQUIRED       ON
         CXX_EXTENSIONS              OFF
         CXX_VISIBILITY_PRESET       hidden
@@ -88,7 +88,8 @@ set_target_properties(pando-bfs-galois
 add_subdirectory(src)
 
 # tests
-option(BUILD_TESTING "Build tests." ON)
-if (BUILD_TESTING AND ENABLE_BFS_TESTS)
+option(MICROBENCH_TESTING "Build microbench tests." ON)
+option(BFS_TESTING "Build bfs tests." ON)
+if (MICROBENCH_TESTING AND BFS_TESTING)
     add_subdirectory(test)
 endif ()
