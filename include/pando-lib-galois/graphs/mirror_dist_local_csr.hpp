@@ -587,8 +587,7 @@ public:
             bool dirty = fmap(mirrorBitSet, operator[], i);
             if (dirty) {
               // obtain the local mirror vertex data
-              LocalVertexRange localMirrorRange = object.getLocalMirrorRange();
-              VertexTopologyID mirrorTopologyID = *localMirrorRange.begin() + i;
+              VertexTopologyID mirrorTopologyID = object.getMirrorTopologyIDFromIndex(i);
               // a copy
               VertexData mirrorData = object.getData(mirrorTopologyID);
 
