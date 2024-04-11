@@ -12,8 +12,8 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
 
   int32_t flag = 0;
   int32_t num_vertices = 0;
-  int32_t rt_algo = BASIC;
-  while ((flag = getopt(argc, argv, "v:i:a:l")) != -1) {
+  int32_t tc_chunk = NO_CHUNK;
+  while ((flag = getopt(argc, argv, "v:i:c:l")) != -1) {
     switch (flag) {
       case 'v':
         sscanf(optarg, "%d", &num_vertices);
@@ -25,17 +25,17 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
       case 'l':
         opts_ptr->load_balanced_graph = true;
         break;
-      case 'a':
-        sscanf(optarg, "%d", &rt_algo);
-        switch (rt_algo) {
+      case 'c':
+        sscanf(optarg, "%d", &tc_chunk);
+        switch (tc_chunk) {
           case 0:
-            opts_ptr->rt_algo = BASIC;
+            opts_ptr->tc_chunk = NO_CHUNK;
             break;
           case 1:
-            opts_ptr->rt_algo = BASP;
+            opts_ptr->tc_chunk = CHUNK_EDGES;
             break;
           case 2:
-            opts_ptr->rt_algo = BSP;
+            opts_ptr->tc_chunk = CHUNK_VERTICES;
             break;
           default:
             printUsageExit(argv[0]);
@@ -45,7 +45,7 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
         printUsage(argv[0]);
         std::exit(0);
       case '?':
-        if (optopt == 'v' || optopt == 'i' || optopt == 'a')
+        if (optopt == 'v' || optopt == 'i' || optopt == 'c')
           fprintf(stderr, "Option -%c requires an argument.\n", optopt);
         else if (isprint(optopt))
           fprintf(stderr, "Unknown option `-%c'.\n", optopt);
@@ -63,8 +63,8 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
 
 void printUsage(char* argv0) {
   std::cerr << "Usage: " << argv0 << " -i filepath -v numVertices" << std::endl;
-  std::cerr
-      << "\n Can specify runtime algorithm with -a. Valid options: [0 (ASP), 1 (BASP), 2 (BSP)]\n";
+  std::cerr << "\n Can specify runtime algorithm with -c. Valid options: [0 (NO_CHUNK), 1 "
+               "(CHUNK_EDGES), 2 (CHUNK_VERTICES)]\n";
 }
 
 void printUsageExit(char* argv0) {
