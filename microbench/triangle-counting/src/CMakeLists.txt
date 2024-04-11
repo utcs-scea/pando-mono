@@ -22,15 +22,6 @@ target_sources(pando-triangle-counting
 target_link_libraries(pando-triangle-counting
     PUBLIC pando-lib-galois::pando-lib-galois)
 
-#if (PANDO_RT_BACKEND STREQUAL "DRVX")
-#    target_link_libraries(pando-triangle-counting PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-rt::pando-rt>")
-#else()
-#    target_link_libraries(pando-triangle-counting
-#    PUBLIC
-#        pando-rt::pando-rt
-#)
-#endif()
-
 # target
 function(tc_add_executable TARGET)
     if (PANDO_RT_BACKEND STREQUAL "DRVX")
