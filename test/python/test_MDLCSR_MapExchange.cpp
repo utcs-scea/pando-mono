@@ -71,8 +71,8 @@ int pandoMain(int argc, char** argv) {
 }
 
 void runTest(const char* elFile, std::uint64_t numVertices) {
-  using ET = galois::ELEdge;
-  using VT = galois::ELVertex;
+  using VT = std::uint64_t;
+  using ET = std::uint64_t;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
   pando::Array<char> filename;
   std::size_t length = strlen(elFile);
@@ -83,8 +83,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
   filename[length] = '\0'; // Ensure the string is null-terminated
 
   if (pando::getCurrentPlace().node.id == 0) {
-    Graph graph =
-        galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
+    Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
 
     auto dims = pando::getPlaceDims();
 
@@ -92,7 +91,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
       pando::GlobalRef<pando::Array<Graph::MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
           graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);
       for (std::uint64_t i = 0ul; i < lift(localMirrorToRemoteMasterOrderedMap, size); i++) {
-        Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, get, i);
+        Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, operator[], i);
         Graph::VertexTopologyID mirrorTopologyID = m.getMirror();
         Graph::VertexTopologyID masterTopologyID = m.getMaster();
         Graph::VertexTokenID masterTokenID = graph.getTokenID(masterTopologyID);
@@ -107,9 +106,9 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
           localMasterToRemoteMirrorMap = graph.getLocalMasterToRemoteMirrorMap(nodeId);
       for (std::int16_t fromId = 0; fromId < dims.node.id; fromId++) {
         pando::GlobalRef<pando::Vector<Graph::MirrorToMasterMap>> mapVectorFromHost =
-            fmap(localMasterToRemoteMirrorMap, get, fromId);
+            fmap(localMasterToRemoteMirrorMap, operator[], fromId);
         for (std::uint64_t i = 0ul; i < lift(mapVectorFromHost, size); i++) {
-          Graph::MirrorToMasterMap m = fmap(mapVectorFromHost, get, i);
+          Graph::MirrorToMasterMap m = fmap(mapVectorFromHost, operator[], i);
           Graph::VertexTopologyID mirrorTopologyID = m.getMirror();
           Graph::VertexTopologyID masterTopologyID = m.getMaster();
           std::cout << "(Master) Host " << nodeId << " fromHost: " << fromId

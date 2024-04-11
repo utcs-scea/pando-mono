@@ -71,8 +71,8 @@ int pandoMain(int argc, char** argv) {
 }
 
 void runTest(const char* elFile, std::uint64_t numVertices) {
-  using ET = galois::ELEdge;
-  using VT = galois::ELVertex;
+  using VT = std::uint64_t;
+  using ET = std::uint64_t;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
   pando::Array<char> filename;
   std::size_t length = strlen(elFile);
@@ -83,8 +83,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
   filename[length] = '\0'; // Ensure the string is null-terminated
 
   if (pando::getCurrentPlace().node.id == 0) {
-    Graph graph =
-        galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
+    Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
 
     auto dims = pando::getPlaceDims();
 
@@ -110,7 +109,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
       for (Graph::VertexTopologyID masterTopologyID = *lift(masterRange, begin);
            masterTopologyID < *lift(masterRange, end); masterTopologyID++) {
         pando::GlobalRef<Graph::VertexData> masterData = graph.getData(masterTopologyID);
-        fmapVoid(masterData, set, lift(masterData, get) + 1);
+        masterData = masterData + 1;
       }
     }
 
@@ -121,13 +120,13 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
       pando::GlobalRef<pando::Array<Graph::MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
           graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);
       for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
-        Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, get, i);
+        Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, operator[], i);
         Graph::VertexTopologyID mirrorTopologyID = m.getMirror();
         Graph::VertexTokenID mirrorTokenID = graph.getTokenID(mirrorTopologyID);
         Graph::VertexData mirrorData = graph.getData(mirrorTopologyID);
-        bool bit = fmap(mirrorBitSet, get, i);
+        bool bit = fmap(mirrorBitSet, operator[], i);
         std::cout << "(Mirror) Host " << nodeId << " LocalMirrorTokenID: " << mirrorTokenID
-                  << " MirrorData: " << mirrorData.id << " Bit: " << bit << std::endl;
+                  << " MirrorData: " << mirrorData << " Bit: " << bit << std::endl;
       }
     }
 

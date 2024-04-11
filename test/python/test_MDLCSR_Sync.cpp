@@ -70,13 +70,15 @@ int pandoMain(int argc, char** argv) {
   return 0;
 }
 
-void TestFunc(galois::ELVertex mirror, pando::GlobalRef<galois::ELVertex> master) {
-  fmapVoid(master, set, mirror.get() + 1);
+template <typename Graph>
+void TestFunc(typename Graph::VertexData mirrorData,
+              pando::GlobalRef<typename Graph::VertexData> masterData) {
+  masterData = mirrorData + 1;
 }
 
 void runTest(const char* elFile, std::uint64_t numVertices) {
-  using ET = galois::ELEdge;
-  using VT = galois::ELVertex;
+  using VT = std::uint64_t;
+  using ET = std::uint64_t;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
   pando::Array<char> filename;
   std::size_t length = strlen(elFile);
@@ -87,8 +89,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
   filename[length] = '\0'; // Ensure the string is null-terminated
 
   if (pando::getCurrentPlace().node.id == 0) {
-    Graph graph =
-        galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
+    Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
 
     auto dims = pando::getPlaceDims();
 
@@ -114,23 +115,23 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
       for (Graph::VertexTopologyID mirrorTopologyID = *lift(mirrorRange, begin);
            mirrorTopologyID < *lift(mirrorRange, end); mirrorTopologyID++) {
         pando::GlobalRef<Graph::VertexData> mirrorData = graph.getData(mirrorTopologyID);
-        fmapVoid(mirrorData, set, lift(mirrorData, get) + 1);
+        mirrorData = mirrorData + 1;
       }
     }
 
-    graph.sync(TestFunc);
+    graph.sync(TestFunc<Graph>);
 
     for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
       pando::GlobalRef<pando::Array<bool>> mirrorBitSet = graph.getMirrorBitSet(nodeId);
       pando::GlobalRef<pando::Array<Graph::MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
           graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);
       for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
-        Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, get, i);
+        Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, operator[], i);
         Graph::VertexTopologyID mirrorTopologyID = m.getMirror();
         Graph::VertexTokenID mirrorTokenID = graph.getTokenID(mirrorTopologyID);
         Graph::VertexData mirrorData = graph.getData(mirrorTopologyID);
         std::cout << "(Mirror) Host " << nodeId << " LocalMirrorTokenID: " << mirrorTokenID
-                  << " MirrorData: " << mirrorData.id << std::endl;
+                  << " MirrorData: " << mirrorData << std::endl;
       }
     }
 
