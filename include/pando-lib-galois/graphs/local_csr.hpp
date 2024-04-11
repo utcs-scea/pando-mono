@@ -431,7 +431,7 @@ public:
   VertexTopologyID getTopologyID(VertexTokenID token) {
     pando::GlobalPtr<Vertex> ret;
     if (!tokenToTopology.get(token, ret)) {
-      std::cout << "In the host " << pando::getCurrentPlace().node.id
+      std::cerr << "In the host " << pando::getCurrentPlace().node.id
                 << "can't find token:" << token << std::endl;
       PANDO_ABORT("FAILURE TO FIND TOKENID");
     }

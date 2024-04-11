@@ -158,6 +158,7 @@ pando::Status SSSP_DLCSR(
           countEdges.resetCount();
         });
   }
+  active = state.active;
   wg.deinitialize();
   return pando::Status::Success;
 }
@@ -304,6 +305,7 @@ pando::Status SSSP_MDLCSR(
           countEdges.resetCount();
         });
   }
+  active = state.active;
   wg.deinitialize();
   return pando::Status::Success;
 }

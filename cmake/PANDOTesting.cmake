@@ -155,6 +155,40 @@ function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
   endif()
 endfunction()
 
+function(pando_add_bin_tag_test TAG TARGET ARGS INPUTFILE OKFILE)
+  if (NOT PANDO_RT_BACKEND STREQUAL "DRVX")
+    if (${GASNet_CONDUIT} STREQUAL "smp")
+      set(DRIVER_SCRIPT ${pando-lib-galois_SOURCE_DIR}/scripts/preprun.sh)
+    elseif (${GASNet_CONDUIT} STREQUAL "mpi")
+      set(DRIVER_SCRIPT ${pando-lib-galois_SOURCE_DIR}/scripts/preprun_mpi.sh)
+    else ()
+      message(FATAL_ERROR "No runner script for GASNet conduit ${GASNet_CONDUIT}")
+    endif ()
+
+    set(NUM_PXNS 2)
+    set(NUM_CORES 4)
+
+    add_test(NAME ${TAG}-${TARGET}-${INPUTFILE}-${OKFILE}
+      COMMAND bash -c "diff -Z <(${DRIVER_SCRIPT} -n ${NUM_PXNS} -c ${NUM_CORES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET} ${ARGS} ${INPUTFILE}) ${OKFILE}")
+  else()
+
+    set(DRIVER_SCRIPT ${pando-lib-galois_SOURCE_DIR}/scripts/run-drv.sh)
+
+    set(NUM_PXNS 2)
+    set(NUM_CORES 4)
+    set(NUM_HTHREADS 1)
+
+    get_filename_component(FNAME ${TARGET} NAME)
+
+    add_test(NAME ${TARGET}-${INPUTFILE}-${OKFILE}
+      COMMAND bash -c "diff -Z <(LAUNCH_DIR=${CMAKE_SOURCE_DIR} ${DRIVER_SCRIPT} -p ${NUM_HTHREADS} -n ${NUM_PXNS} -c ${NUM_CORES} \
+      ${CMAKE_CURRENT_BINARY_DIR}/lib${FNAME}.so ${ARGS} ${INPUTFILE} \
+      | grep -v 'memBackendConverter:' |grep -v 'PANDOHammerDrvX:' |grep -v 'Simulation is complete, simulated time:' | tail -n +3) \
+      ${OKFILE}")
+
+  endif()
+endfunction()
+
 function(pando_add_bin_python_test TARGET ARGS INPUTFILE PYTHONFILE)
   if (NOT PANDO_RT_BACKEND STREQUAL "DRVX")
     if (${GASNet_CONDUIT} STREQUAL "smp")

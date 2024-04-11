@@ -9,16 +9,16 @@ include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOCompilerOptions.cmake)
 # pando-bfs-galois target
 #
 
-target_sources(pando-bfs-galois
+target_sources(pando-bfs
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/main.cpp
 )
 
 # link pando-lib-galois
-target_include_directories(pando-bfs-galois
+target_include_directories(pando-bfs
     PUBLIC
-        ${CMAKE_CURRENT_BINARY_DIR}/../../../pando-rt/include
-        ${CMAKE_CURRENT_BINARY_DIR}/../../../include
+        ${pando-lib-galois_BINARY_DIR}/pando-rt/include
+        ${pando-lib-galois_BINARY_DIR}/include
 )
 
 pando_add_executable(bfs ${CMAKE_CURRENT_LIST_DIR}/main.cpp)
@@ -31,11 +31,11 @@ target_include_directories(bfs
 if (PANDO_RT_BACKEND STREQUAL "DRVX")
     target_link_libraries(bfs
         PUBLIC
-            "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-bfs-galois::pando-bfs-galois>"
+            "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-bfs::pando-bfs>"
     )
 else()
     target_link_libraries(bfs
         PUBLIC
-            pando-bfs-galois::pando-bfs-galois
+            pando-bfs::pando-bfs
     )
 endif()
