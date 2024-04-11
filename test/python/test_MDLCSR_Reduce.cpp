@@ -70,13 +70,15 @@ int pandoMain(int argc, char** argv) {
   return 0;
 }
 
-void TestFunc(galois::ELVertex mirror, pando::GlobalRef<galois::ELVertex> master) {
-  fmapVoid(master, set, mirror.get() + 1);
+template <typename Graph>
+void TestFunc(typename Graph::VertexData mirrorData,
+              pando::GlobalRef<typename Graph::VertexData> masterData) {
+  masterData = mirrorData + 1;
 }
 
 void runTest(const char* elFile, std::uint64_t numVertices) {
-  using ET = galois::ELEdge;
-  using VT = galois::ELVertex;
+  using VT = std::uint64_t;
+  using ET = std::uint64_t;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
   pando::Array<char> filename;
   std::size_t length = strlen(elFile);
@@ -87,8 +89,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
   filename[length] = '\0'; // Ensure the string is null-terminated
 
   if (pando::getCurrentPlace().node.id == 0) {
-    Graph graph =
-        galois::initializeELDLCSR<Graph, galois::ELVertex, galois::ELEdge>(filename, numVertices);
+    Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
 
     auto dims = pando::getPlaceDims();
 
@@ -109,14 +110,14 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
     }
     PANDO_CHECK(barrier.wait());
 
-    graph.reduce(TestFunc);
+    graph.reduce(TestFunc<Graph>);
 
     for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
       pando::GlobalRef<pando::Array<bool>> mirrorBitSet = graph.getMirrorBitSet(nodeId);
       pando::GlobalRef<pando::Array<Graph::MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
           graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);
       for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
-        Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, get, i);
+        Graph::MirrorToMasterMap m = fmap(localMirrorToRemoteMasterOrderedMap, operator[], i);
         Graph::VertexTopologyID mirrorTopologyID = m.getMirror();
         Graph::VertexTopologyID masterTopologyID = m.getMaster();
         Graph::VertexTokenID masterTokenID = graph.getTokenID(masterTopologyID);
@@ -130,13 +131,13 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
       pando::GlobalRef<pando::Array<bool>> masterBitSet = graph.getMasterBitSet(nodeId);
       pando::GlobalRef<Graph::LocalVertexRange> masterRange = graph.getMasterRange(nodeId);
       for (std::uint64_t i = 0ul; i < lift(masterBitSet, size); i++) {
-        bool bit = fmap(masterBitSet, get, i);
+        bool bit = fmap(masterBitSet, operator[], i);
         Graph::VertexTopologyID masterTopologyID = *lift(masterRange, begin) + i;
         Graph::VertexTokenID masterTokenID = graph.getTokenID(masterTopologyID);
         Graph::VertexData masterData = graph.getData(masterTopologyID);
         std::cout << "(Master) Host " << nodeId
                   << " LocalMasterTopologyID: " << masterTopologyID.address
-                  << " LocalMasterTokenID: " << masterTokenID << " MasterData: " << masterData.id
+                  << " LocalMasterTokenID: " << masterTokenID << " MasterData: " << masterData
                   << " Bit: " << bit << std::endl;
       }
     }
