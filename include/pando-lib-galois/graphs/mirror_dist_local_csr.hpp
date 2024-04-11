@@ -164,6 +164,9 @@ public:
   EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr) {
     return dlcsr.edges(vPtr);
   }
+  EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr, uint64_t offset_st, uint64_t window_sz) {
+    return dlcsr.edges(vPtr, offset_st, window_sz);
+  }
   VertexDataRange vertexDataRange() noexcept {
     return dlcsr.vertexDataRange();
   }

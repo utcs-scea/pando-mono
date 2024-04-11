@@ -16,6 +16,7 @@
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
+#include <pando-lib-galois/graphs/mirror_dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
@@ -25,34 +26,39 @@
 #define COORDINATOR_ID    0
 #define DEBUG             0
 #define BENCHMARK         1
-#define SORTED_EDGES      1
 #define TC_EMBEDDING_SZ   3
 #define OVERDECOMPOSITION 0
+#define SORTED_EDGES      1
 
 using ET = galois::ELEdge;
 using VT = galois::ELVertex;
+struct MirroredVT : VT {
+  galois::HashTable<uint64_t, uint64_t> queries; // Stores tokenId
+};
 using GraphDL = galois::DistLocalCSR<VT, ET>;
+using GraphMDL = galois::MirrorDistLocalCSR<MirroredVT, ET>;
 using GraphDA = galois::DistArrayCSR<VT, ET>;
 
 enum TC_CHUNK { NO_CHUNK = 0, CHUNK_VERTICES = 1, CHUNK_EDGES = 2 };
+enum GRAPH_TYPE { DLCSR = 0, MDLCSR = 1, DACSR = 2 };
 
 struct CommandLineOptions {
   std::string elFile;
   int64_t num_vertices = 0;
-  bool load_balanced_graph = false;
   TC_CHUNK tc_chunk = TC_CHUNK::NO_CHUNK;
+  GRAPH_TYPE graph_type = GRAPH_TYPE::DLCSR;
 
   void print() {
     printf("******** CommandLineOptions ******** \n");
     std::cout << "elFile = " << elFile << '\n';
     std::cout << "num_vertices = " << num_vertices << '\n';
-    std::cout << "load_balanced_graph = " << load_balanced_graph << '\n';
     std::cout << "tc_chunk = " << tc_chunk << '\n';
+    std::cout << "graph_type = " << graph_type << '\n';
     printf("******** END CommandLineOptions ******** \n");
   }
 
   CommandLineOptions()
-      : elFile(""), num_vertices(0), load_balanced_graph(false), tc_chunk(TC_CHUNK::NO_CHUNK) {}
+      : elFile(""), num_vertices(0), tc_chunk(TC_CHUNK::NO_CHUNK), graph_type(GRAPH_TYPE::DLCSR) {}
 };
 
 std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv);

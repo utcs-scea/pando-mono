@@ -17,9 +17,12 @@ void show_graph(pando::GlobalPtr<GraphType> graph_ptr) {
 
 template <typename GraphType>
 pando::Status generate_graph_stats(pando::GlobalPtr<GraphType> graph_ptr,
-                                   bool load_balanced_graph) {
+                                   GRAPH_TYPE graph_type_enum) {
   std::ofstream stat_file;
-  std::string graph_type = (load_balanced_graph ? "DistLocalCSR" : "DistArrayCSR");
+  std::string graph_type = (graph_type_enum == GRAPH_TYPE::DLCSR)    ? "DistLocalCSR"
+                           : (graph_type_enum == GRAPH_TYPE::DACSR)  ? "DistArrayCSR"
+                           : (graph_type_enum == GRAPH_TYPE::MDLCSR) ? "MirroredDistLocalCSR"
+                                                                     : "Invalid";
   std::string path = "data/graph_stats_" + graph_type + ".csv";
 
   stat_file.open(path, std::ios::trunc);
@@ -70,28 +73,34 @@ pando::Status generate_graph_stats(pando::GlobalPtr<GraphType> graph_ptr,
 }
 
 void HBMainGraphCompare(pando::Notification::HandleType hb_done, pando::Array<char> filename,
-                        int64_t num_vertices, bool load_balanced_graph) {
-  if (load_balanced_graph) {
-    GraphDL graph = galois::initializeELDLCSR<GraphDL, galois::ELVertex, galois::ELEdge>(
-        filename, num_vertices);
-    pando::GlobalPtr<GraphDL> graph_ptr = static_cast<pando::GlobalPtr<GraphDL>>(
-        pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphDL)));
-    *graph_ptr = graph;
-    std::cout << "Collecting Graph Stats ...\n";
-    PANDO_CHECK(generate_graph_stats(graph_ptr, load_balanced_graph));
-    pando::deallocateMemory(graph_ptr, 1);
-    graph.deinitialize();
-
-  } else {
-    GraphDA graph = galois::initializeELDACSR<GraphDA, galois::ELVertex, galois::ELEdge>(
-        filename, num_vertices);
-    pando::GlobalPtr<GraphDA> graph_ptr = static_cast<pando::GlobalPtr<GraphDA>>(
-        pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphDA)));
-    *graph_ptr = graph;
-    std::cout << "Collecting Graph Stats ...\n";
-    PANDO_CHECK(generate_graph_stats(graph_ptr, load_balanced_graph)); //
-    pando::deallocateMemory(graph_ptr, 1);
-    graph.deinitialize();
+                        int64_t num_vertices, GRAPH_TYPE graph_type) {
+  switch (graph_type) {
+    case GRAPH_TYPE::MDLCSR:
+      break;
+    case GRAPH_TYPE::DACSR: {
+      GraphDA graph = galois::initializeELDACSR<GraphDA, galois::ELVertex, galois::ELEdge>(
+          filename, num_vertices);
+      pando::GlobalPtr<GraphDA> graph_ptr = static_cast<pando::GlobalPtr<GraphDA>>(
+          pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphDA)));
+      *graph_ptr = graph;
+      std::cout << "Collecting Graph Stats ...\n";
+      PANDO_CHECK(generate_graph_stats(graph_ptr, graph_type));
+      pando::deallocateMemory(graph_ptr, 1);
+      graph.deinitialize();
+      break;
+    }
+    default: {
+      GraphDL graph = galois::initializeELDLCSR<GraphDL, galois::ELVertex, galois::ELEdge>(
+          filename, num_vertices);
+      pando::GlobalPtr<GraphDL> graph_ptr = static_cast<pando::GlobalPtr<GraphDL>>(
+          pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphDL)));
+      *graph_ptr = graph;
+      std::cout << "Collecting Graph Stats ...\n";
+      PANDO_CHECK(generate_graph_stats(graph_ptr, graph_type));
+      pando::deallocateMemory(graph_ptr, 1);
+      graph.deinitialize();
+      break;
+    }
   }
   hb_done.notify();
 }
@@ -113,7 +122,7 @@ int pandoMain(int argc, char** argv) {
     PANDO_CHECK(necessary.init());
     PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
                                  &HBMainGraphCompare, necessary.getHandle(), filename,
-                                 opts->num_vertices, opts->load_balanced_graph));
+                                 opts->num_vertices, opts->graph_type));
     necessary.wait();
 
     filename.deinitialize();
