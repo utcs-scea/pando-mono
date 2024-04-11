@@ -6,6 +6,8 @@
 
 #include <pando-rt/export.h>
 
+#include <algorithm>
+
 #include <pando-lib-galois/containers/hashtable.hpp>
 #include <pando-lib-galois/graphs/graph_traits.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
@@ -475,11 +477,35 @@ public:
   VertexRange vertices() {
     return VertexRange(vertexEdgeOffsets.begin(), vertexEdgeOffsets.size() - 1);
   }
+
+  VertexRange vertices(uint64_t offset_st, uint64_t window_sz) {
+    auto beg = vertexEdgeOffsets.begin() + offset_st;
+    auto sz = vertexEdgeOffsets.size() - 1;
+    if (offset_st >= sz)
+      return VertexRange(vertexEdgeOffsets.begin(), 0);
+
+    return VertexRange(beg, std::min(window_sz, vertexEdgeOffsets.size() - 1 - offset_st));
+  }
+
   static EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr) {
     Vertex v = *vPtr;
     Vertex v1 = *(vPtr + 1);
     return EdgeRange(v.edgeBegin, v1.edgeBegin - v.edgeBegin);
   }
+
+  static EdgeRange edges(pando::GlobalPtr<galois::Vertex> vPtr, uint64_t offset_st,
+                         uint64_t window_sz) {
+    Vertex v = *vPtr;
+    Vertex v1 = *(vPtr + 1);
+
+    auto beg = v.edgeBegin + offset_st;
+    if (beg > v1.edgeBegin)
+      return EdgeRange(v.edgeBegin, 0);
+
+    auto clipped_window_sz = std::min(window_sz, (uint64_t)(v1.edgeBegin - beg));
+    return EdgeRange(beg, clipped_window_sz);
+  }
+
   VertexDataRange vertexDataRange() noexcept {
     return VertexDataRange(vertexData.begin(), vertexData.size() - 1);
   }
