@@ -8,6 +8,8 @@
 #include <utility>
 
 #include <pando-bfs-galois/sssp.hpp>
+#include <pando-lib-galois/containers/host_local_storage.hpp>
+#include <pando-lib-galois/containers/thread_local_vector.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
 #include <pando-lib-galois/graphs/mirror_dist_local_csr.hpp>
@@ -54,7 +56,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
         PANDO_CHECK(fmap(vecRef, initialize, 2));
         liftVoid(vecRef, clear);
       }));
-  galois::PerThreadVector<VertexTopologyID> next;
+  galois::ThreadLocalVector<VertexTopologyID> next;
 
   PANDO_CHECK(next.initialize());
 
@@ -103,7 +105,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
         PANDO_CHECK(fmap(vecRef, initialize, 2));
         liftVoid(vecRef, clear);
       }));
-  galois::PerThreadVector<VertexTopologyID> next;
+  galois::ThreadLocalVector<VertexTopologyID> next;
 
   PANDO_CHECK(next.initialize());
 

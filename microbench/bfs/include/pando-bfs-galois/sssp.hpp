@@ -14,7 +14,7 @@
 
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/containers/host_local_storage.hpp>
-#include <pando-lib-galois/containers/per_thread.hpp>
+#include <pando-lib-galois/containers/thread_local_vector.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
@@ -59,7 +59,7 @@ CountEdges<COUNT_EDGE> countEdges;
 
 template <typename G>
 struct BFSState {
-  PerThreadVector<typename G::VertexTopologyID> active;
+  ThreadLocalVector<typename G::VertexTopologyID> active;
   std::uint64_t dist;
   G graph;
 };
@@ -99,7 +99,7 @@ void BFSPerHostLoop_DLCSR(BFSState<G> state,
 
 template <typename G>
 pando::Status SSSP_DLCSR(
-    G& graph, std::uint64_t src, PerThreadVector<typename G::VertexTopologyID>& active,
+    G& graph, std::uint64_t src, ThreadLocalVector<typename G::VertexTopologyID>& active,
     galois::HostLocalStorage<pando::Vector<typename G::VertexTopologyID>>& phbfs) {
 #ifdef DPRINTS
   std::cout << "Got into SSSP" << std::endl;
@@ -228,7 +228,7 @@ void updateActive(BFSState<G> state) {
 
 template <typename G>
 pando::Status SSSP_MDLCSR(
-    G& graph, std::uint64_t src, PerThreadVector<typename G::VertexTopologyID>& active,
+    G& graph, std::uint64_t src, ThreadLocalVector<typename G::VertexTopologyID>& active,
     galois::HostLocalStorage<pando::Vector<typename G::VertexTopologyID>>& phbfs) {
 #ifdef DPRINTS
   std::cout << "Got into SSSP" << std::endl;

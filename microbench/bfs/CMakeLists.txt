@@ -52,7 +52,8 @@ generate_export_header(pando-bfs-galois EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_
 target_include_directories(pando-bfs-galois
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pando-bfs-galois>"
+        "$<BUILD_INTERFACE:${pando-lib-galois_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${pando-rt_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:include>"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
