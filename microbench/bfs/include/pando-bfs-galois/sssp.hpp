@@ -262,19 +262,7 @@ pando::Status SSSP_MDLCSR(
 #ifdef DPRINTS
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
 #endif
-    /*
-        for (std::int16_t nodeId = 0; nodeId < pando::getPlaceDims().node.id; nodeId++) {
-          std::cout << "Host " << nodeId << ":" << std::endl;
-          std::cout << "masters" << std::endl;
-          pando::GlobalRef<typename G::LocalVertexRange> masterRange =
-       state.graph.getMasterRange(nodeId); for (typename G::VertexTopologyID masterTopologyID =
-       *lift(masterRange, begin); masterTopologyID < *lift(masterRange, end); masterTopologyID++) {
-            typename G::VertexTokenID masterTokenID = graph.getTokenID(masterTopologyID);
-            typename G::VertexData masterData = graph.getData(masterTopologyID);
-            std::cout << "token ID = " << masterTokenID << ", data = " << masterData << std::endl;
-          }
-        }
-    */
+
     // Take care of last loop
     state.dist++;
     state.active.clear();
@@ -310,5 +298,5 @@ pando::Status SSSP_MDLCSR(
   return pando::Status::Success;
 }
 
-}; // namespace galois
+};     // namespace galois
 #endif // PANDO_BFS_GALOIS_SSSP_HPP_
