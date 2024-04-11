@@ -38,12 +38,11 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
+#ifdef PRINTS
   for (std::uint64_t i = 0; i < numVertices; i++) {
     std::uint64_t host = graph.getPhysicalHostID(i);
-    std::cout << "token ID = " << i << ", host = " << host << std::endl;
+    std::cerr << "token ID = " << i << ", host = " << host << std::endl;
   }
-
-#ifdef PRINTS
   std::cerr << "Construct Graph End" << std::endl;
 #endif
 
@@ -87,12 +86,12 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
+#ifdef PRINTS
   for (std::uint64_t i = 0; i < numVertices; i++) {
     std::uint64_t host = graph.getPhysicalHostID(i);
-    std::cout << "token ID = " << i << ", host = " << host << std::endl;
+    std::cerr << "token ID = " << i << ", host = " << host << std::endl;
   }
 
-#ifdef PRINTS
   std::cerr << "Construct Graph End" << std::endl;
 #endif
 
@@ -124,13 +123,11 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
 }
 
 int pandoMain(int argc, char** argv) {
-  if (pando::getCurrentPlace().node.id == 0) {
+  auto place = pando::getCurrentPlace();
+
+  if (place.node.id == 0) {
     galois::HostLocalStorageHeap::HeapInit();
     galois::PodLocalStorageHeap::HeapInit();
-  }
-
-  auto place = pando::getCurrentPlace();
-  if (place.node.id == 0) {
     enum GraphMode { DLCSR, MDLCSR } graphMode{MDLCSR};
     std::uint64_t numVertices = 0;
     std::uint64_t srcVertex = 0;

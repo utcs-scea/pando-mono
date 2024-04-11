@@ -43,13 +43,13 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif ()
 
 # target
-pando_add_library(pando-bfs-galois)
+pando_add_library(pando-bfs)
 
 # headers
 include(GenerateExportHeader)
-generate_export_header(pando-bfs-galois EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/include/pando-bfs-galois/export.h)
+generate_export_header(pando-bfs EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/include/pando-bfs/export.h)
 
-target_include_directories(pando-bfs-galois
+target_include_directories(pando-bfs
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<BUILD_INTERFACE:${pando-lib-galois_SOURCE_DIR}/include>"
@@ -60,7 +60,7 @@ target_include_directories(pando-bfs-galois
 )
 
 # library properties
-set_target_properties(pando-bfs-galois
+set_target_properties(pando-bfs
     PROPERTIES
         CXX_STANDARD                23
         CXX_STANDARD_REQUIRED       ON
@@ -70,8 +70,8 @@ set_target_properties(pando-bfs-galois
         POSITION_INDEPENDENT_CODE   ON
         VERSION                     "${PROJECT_VERSION}"
         SOVERSION                   "${PROJECT_VERSION_MAJOR}"
-        EXPORT_NAME                 pando-bfs-galois
-        OUTPUT_NAME                 pando-bfs-galois
+        EXPORT_NAME                 pando-bfs
+        OUTPUT_NAME                 pando-bfs
         PUBLIC_HEADER               "${PUBLIC_HEADERS}"
         # enable RPATH during both build and installation; use relative RPATH as well
         SKIP_BUILD_RPATH            FALSE
@@ -92,5 +92,7 @@ add_subdirectory(src)
 option(MICROBENCH_TESTING "Build microbench tests." ON)
 option(BFS_TESTING "Build bfs tests." ON)
 if (MICROBENCH_TESTING AND BFS_TESTING)
+    include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOTesting.cmake)
+    enable_testing()
     add_subdirectory(test)
 endif ()
