@@ -177,7 +177,7 @@ function(pando_add_bin_tag_test TAG TARGET ARGS INPUTFILE OKFILE)
     set(NUM_PXNS 2)
     set(NUM_CORES 4)
     set(NUM_HTHREADS 1)
-
+    
     add_test(NAME ${TAG}-${TARGET}-${INPUTFILE}-${OKFILE}
       COMMAND bash -c "diff -Z <(LAUNCH_DIR=${CMAKE_SOURCE_DIR} ${DRIVER_SCRIPT} -p ${NUM_HTHREADS} -n ${NUM_PXNS} -c ${NUM_CORES} \
       $<TARGET_FILE:${TARGET}> ${ARGS} ${INPUTFILE} \
