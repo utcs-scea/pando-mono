@@ -176,7 +176,6 @@ void updateData(std::uint64_t val, pando::GlobalRef<std::uint64_t> ref) {
 template <typename G>
 void BFSOuterLoop_MDLCSR(BFSState<G> state,
                          pando::GlobalRef<typename G::VertexTopologyID> currRef) {
-  typename G::VertexTopologyID temp = currRef;
   for (typename G::EdgeHandle eh : state.graph.edges(currRef)) {
     countEdges.countEdge();
     typename G::VertexTopologyID dst = state.graph.getEdgeDst(eh);
@@ -184,7 +183,6 @@ void BFSOuterLoop_MDLCSR(BFSState<G> state,
     updateData(state.dist, state.graph.getData(dst));
     if (state.graph.getData(dst) != old_dst_data) {
       state.graph.setBitSet(dst);
-      // PANDO_CHECK(state.active.pushBack(dst));
     }
   }
 }
