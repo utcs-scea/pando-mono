@@ -68,7 +68,7 @@ pando::Status galois::generateEdgesPerVirtualHost(
 }
 
 pando::Vector<pando::Vector<galois::ELEdge>> galois::reduceLocalEdges(
-    galois::PerThreadVector<pando::Vector<galois::ELEdge>> localEdges, uint64_t numVertices) {
+    galois::ThreadLocalVector<pando::Vector<galois::ELEdge>> localEdges, uint64_t numVertices) {
   pando::Vector<pando::Vector<galois::ELEdge>> reducedEL;
   PANDO_CHECK(reducedEL.initialize(numVertices));
 
