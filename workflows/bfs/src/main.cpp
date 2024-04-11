@@ -36,11 +36,16 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
+  for (std::uint64_t i = 0; i < numVertices; i++) {
+    std::uint64_t host = graph.getPhysicalHostID(i);
+    std::cout << "token ID = " << i << ", host = " << host << std::endl;
+  }
+
 #ifdef PRINTS
   std::cerr << "Construct Graph End" << std::endl;
 #endif
 
-  using VertexTopologyID = typename galois::graph_traits<Graph>::VertexTopologyID;
+  using VertexTopologyID = typename Graph::VertexTopologyID;
   galois::HostLocalStorage<pando::Vector<VertexTopologyID>> phbfs{};
   PANDO_CHECK(phbfs.initialize());
 
@@ -57,7 +62,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   for (std::uint64_t srcVertex : srcVertices) {
     std::cout << "Source Vertex is " << srcVertex << std::endl;
 
-    PANDO_CHECK(galois::SSSP(graph, srcVertex, next, phbfs));
+    PANDO_CHECK(galois::SSSP_DLCSR(graph, srcVertex, next, phbfs));
 
     // Print Result
     for (std::uint64_t i = 0; i < numVertices; i++) {
@@ -80,11 +85,16 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
+  for (std::uint64_t i = 0; i < numVertices; i++) {
+    std::uint64_t host = graph.getPhysicalHostID(i);
+    std::cout << "token ID = " << i << ", host = " << host << std::endl;
+  }
+
 #ifdef PRINTS
   std::cerr << "Construct Graph End" << std::endl;
 #endif
 
-  using VertexTopologyID = typename galois::graph_traits<Graph>::VertexTopologyID;
+  using VertexTopologyID = typename Graph::VertexTopologyID;
   galois::HostLocalStorage<pando::Vector<VertexTopologyID>> phbfs{};
   PANDO_CHECK(phbfs.initialize());
 
@@ -101,7 +111,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   for (std::uint64_t srcVertex : srcVertices) {
     std::cout << "Source Vertex is " << srcVertex << std::endl;
 
-    PANDO_CHECK(galois::MirroredSSSP(graph, srcVertex, next, phbfs));
+    PANDO_CHECK(galois::SSSP_MDLCSR(graph, srcVertex, next, phbfs));
 
     // Print Result
     for (std::uint64_t i = 0; i < numVertices; i++) {

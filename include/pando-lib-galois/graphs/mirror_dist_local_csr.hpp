@@ -507,6 +507,31 @@ public:
     reduce(func);
     broadcast();
   }
+  /**
+   * @brief Reset the master bit sets of all hosts
+   */
+  void resetMasterBitSets() {
+    galois::doAll(
+        masterBitSets, +[](pando::GlobalRef<pando::Array<bool>> masterBitSet) {
+          fmapVoid(masterBitSet, fill, false);
+        });
+  }
+  /**
+   * @brief Reset the mirror bit sets of all hosts
+   */
+  void resetMirrorBitSets() {
+    galois::doAll(
+        mirrorBitSets, +[](pando::GlobalRef<pando::Array<bool>> mirrorBitSet) {
+          fmapVoid(mirrorBitSet, fill, false);
+        });
+  }
+  /**
+   * @brief Reset bit sets of all hosts
+   */
+  void resetBitSets() {
+    resetMasterBitSets();
+    resetMirrorBitSets();
+  }
 
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
