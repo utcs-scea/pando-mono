@@ -46,8 +46,8 @@ make run-tests
 - `-l`: Optional (Default: False): Use DistLocalCSR ... defaults to DistArrayCSR
 - `-c`: Optional (Default: 0): In DistLocalCSR, specify how chunk tasks:
   - `-c 0`: NO chunking -- This is always chosen if `-l = False`
-  - `-c 1`: Chunk Edges
-  - `-c 2`: Chunk Vertices
+  - `-c 1`: Chunk Vertices
+  - `-c 2`: Chunk Edges
 
 ```bash
 # On PREP: Runs TC (no chunking) on DistArrayCSR

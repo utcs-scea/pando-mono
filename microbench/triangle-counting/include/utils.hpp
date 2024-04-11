@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
-#define PANDO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#ifndef TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#define TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
 
 #include <getopt.h>
 #include <pando-rt/export.h>
@@ -34,7 +34,7 @@ using VT = galois::ELVertex;
 using GraphDL = galois::DistLocalCSR<VT, ET>;
 using GraphDA = galois::DistArrayCSR<VT, ET>;
 
-enum TC_CHUNK { NO_CHUNK = 0, CHUNK_EDGES = 1, CHUNK_VERTICES = 2 };
+enum TC_CHUNK { NO_CHUNK = 0, CHUNK_VERTICES = 1, CHUNK_EDGES = 2 };
 
 struct CommandLineOptions {
   std::string elFile;
@@ -188,4 +188,4 @@ void vertexset_intersection(pando::GlobalPtr<GraphType> graph_ptr,
 #endif
 }
 
-#endif // PANDO_MICROBENCH_TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
+#endif // TRIANGLE_COUNTING_INCLUDE_UTILS_HPP_
