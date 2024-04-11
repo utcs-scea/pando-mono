@@ -47,7 +47,7 @@ generate_export_header(pando-triangle-counting EXPORT_FILE_NAME ${CMAKE_CURRENT_
 
 target_include_directories(pando-triangle-counting
     PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${pando-triangle-counting_SOURCE_DIR}/include>"
         "$<BUILD_INTERFACE:${pando-lib-galois_SOURCE_DIR}/include>"
         "$<BUILD_INTERFACE:${pando-rt_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:include>"
@@ -86,7 +86,7 @@ add_subdirectory(src)
 
 # tests
 option(MICROBENCH_TESTING "Testing for microbenchmarks" ON)
-if (OFF)
+if (MICROBENCH_TESTING)
     include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOTesting.cmake)
     enable_testing()
     add_subdirectory(test)
