@@ -206,8 +206,8 @@ void updateActive(BFSState<G> state) {
       +[](BFSState<G> state, pando::GlobalRef<pando::Array<bool>> masterBitSet) {
         for (std::uint64_t i = 0; i < lift(masterBitSet, size); i++) {
           if (fmap(masterBitSet, operator[], i) == true) {
-            typename G::LocalVertexRange localMasterRange = state.graph.getLocalMasterRange();
-            typename G::VertexTopologyID masterTopologyID = *localMasterRange.begin() + i;
+            typename G::VertexTopologyID masterTopologyID =
+                state.graph.getMasterTopologyIDFromIndex(i);
             PANDO_CHECK(state.active.pushBack(masterTopologyID));
           }
         }
@@ -218,8 +218,8 @@ void updateActive(BFSState<G> state) {
       +[](BFSState<G> state, pando::GlobalRef<pando::Array<bool>> mirrorBitSet) {
         for (std::uint64_t i = 0; i < lift(mirrorBitSet, size); i++) {
           if (fmap(mirrorBitSet, operator[], i) == true) {
-            typename G::LocalVertexRange localMirrorRange = state.graph.getLocalMirrorRange();
-            typename G::VertexTopologyID mirrorTopologyID = *localMirrorRange.begin() + i;
+            typename G::VertexTopologyID mirrorTopologyID =
+                state.graph.getMirrorTopologyIDFromIndex(i);
             PANDO_CHECK(state.active.pushBack(mirrorTopologyID));
           }
         }
