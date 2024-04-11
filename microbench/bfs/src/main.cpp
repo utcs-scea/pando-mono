@@ -86,12 +86,12 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
+#ifdef PRINTS
   for (std::uint64_t i = 0; i < numVertices; i++) {
     std::uint64_t host = graph.getPhysicalHostID(i);
-    std::cout << "token ID = " << i << ", host = " << host << std::endl;
+    std::cerr << "token ID = " << i << ", host = " << host << std::endl;
   }
 
-#ifdef PRINTS
   std::cerr << "Construct Graph End" << std::endl;
 #endif
 
