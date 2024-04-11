@@ -559,12 +559,6 @@ public:
     PANDO_CHECK_RETURN(wg.initialize(numHosts));
     auto wgh = wg.getHandle();
 
-    galois::HostIndexedMap<std::uint64_t> numVerticesPerHost{};
-    PANDO_CHECK_RETURN(numVerticesPerHost.initialize());
-    for (std::uint64_t i = 0; i < numHosts; i++) {
-      numVerticesPerHost[i] = lift(vertexData[i], size);
-    }
-
     auto createCSRFuncs = +[](galois::HostLocalStorage<galois::HostIndexedMap<CSR>> arrayOfCSRs,
                               galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData,
                               galois::HostIndexedMap<std::uint64_t> numEdges, std::uint64_t i,
@@ -604,13 +598,13 @@ public:
 
     auto fillCSRFuncs =
         +[](DistLocalCSR<VertexType, EdgeType> dlcsr,
+            galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData,
             galois::HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
             galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
-            galois::HostIndexedMap<std::uint64_t> numVerticesPerHost, std::uint64_t i,
-            galois::WaitGroup::HandleType wgh) {
+            std::uint64_t i, galois::WaitGroup::HandleType wgh) {
           CSR currentCSR = fmap(dlcsr.arrayOfCSRs[i], operator[], i);
           pando::Vector<pando::Vector<ReadEdgeType>> currEdgeData = edgeData[i];
-          std::uint64_t numVertices = numVerticesPerHost[i];
+          std::uint64_t numVertices = lift(vertexData[i], size);
           galois::HashTable<std::uint64_t, std::uint64_t> currEdgeMap = edgeMap[i];
           std::uint64_t edgeCurr = 0;
           currentCSR.vertexEdgeOffsets[0] = Vertex{currentCSR.edgeDestinations.begin()};
@@ -641,8 +635,8 @@ public:
     for (std::uint64_t i = 0; i < numHosts; i++) {
       pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
                                         pando::anyPod, pando::anyCore};
-      PANDO_CHECK_RETURN(pando::executeOn(place, fillCSRFuncs, *this, edgeData, edgeMap,
-                                          numVerticesPerHost, i, wgh));
+      PANDO_CHECK_RETURN(
+          pando::executeOn(place, fillCSRFuncs, *this, vertexData, edgeData, edgeMap, i, wgh));
     }
 
     PANDO_CHECK_RETURN(wg.wait());
