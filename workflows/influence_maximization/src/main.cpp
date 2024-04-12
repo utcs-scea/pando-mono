@@ -6,10 +6,10 @@
 
 #include "pando-rt/export.h"
 #include "pando-rt/pando-rt.hpp"
-#include <pando-wf4/export.h>
 #include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/containers/pod_local_storage.hpp>
 #include <pando-lib-galois/utility/timer.hpp>
+#include <pando-wf4/export.h>
 #include <pando-wf4/graph.hpp>
 #include <pando-wf4/import.hpp>
 #include <pando-wf4/influence_maximization.hpp>
