@@ -89,10 +89,6 @@ set_target_properties(pando-bfs
 add_subdirectory(src)
 
 # tests
-option(MICROBENCH_TESTING "Build microbench tests." ON)
-option(BFS_TESTING "Build bfs tests." ON)
-if (MICROBENCH_TESTING AND BFS_TESTING)
-    include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOTesting.cmake)
-    enable_testing()
+if (ENABLE_BFS_TESTS)
     add_subdirectory(test)
 endif ()
