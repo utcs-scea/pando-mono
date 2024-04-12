@@ -363,10 +363,28 @@ int DrvCore::selectReadyThread() {
   return NO_THREAD_READY;
 }
 
+void DrvCore::updateReadyThreadStallCycleStat(int selected_thread_id) {
+  // update the stall cycles for the threads that are ready but not selected
+  if (selected_thread_id != NO_THREAD_READY) {
+    for (int t = 0; t < numThreads(); t++) {
+      if (t == selected_thread_id) {
+        continue;
+      }
+      else {
+        DrvThread *thread = getThread(t);
+        auto & state = thread->getAPIThread().getState();
+        if (state->canResume()) {
+          addReadyThreadStallCycleStat(1, thread);
+        }
+      }
+    }
+  }
+}
 
 void DrvCore::executeReadyThread() {
   // select a ready thread to execute
   int thread_id = selectReadyThread();
+  updateReadyThreadStallCycleStat(thread_id);
   if (thread_id == NO_THREAD_READY) {
     addStallCycleStat(1);
     idle_cycles_++;

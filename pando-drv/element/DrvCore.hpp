@@ -86,6 +86,7 @@ public:
       Statistic<uint64_t> *load_remote_pxn;
       Statistic<uint64_t> *store_remote_pxn;
       Statistic<uint64_t> *atomic_remote_pxn;
+      Statistic<uint64_t> *stall_cycles_when_ready;
       Statistic<uint64_t> *tag_cycles; // cycles spent executing with a tag
   };
 
@@ -105,6 +106,7 @@ public:
       {"load_remote_pxn", "Number of loads to remote PXN", "count", 1},
       {"store_remote_pxn", "Number of stores to remote PXN", "count", 1},
       {"atomic_remote_pxn", "Number of atomics to remote PXN", "count", 1},
+      {"stall_cycles_when_ready", "Number of cycles stalled when a thread is ready", "count", 1},
       {"tag_cycles", "number of cycles spent executing with a tag", "count", 1},
       {"stall_cycles", "Number of stalled cycles", "count", 1},
       {"busy_cycles", "Number of busy cycles", "count", 1},
@@ -189,6 +191,12 @@ public:
    * select a ready thread
    */
   int selectReadyThread();
+
+
+  /**
+   * // update the stall cycles for the threads that are ready but not selected
+   */
+  void updateReadyThreadStallCycleStat(int selected_thread_id);
 
   /**
    * execute one ready thread
@@ -451,6 +459,12 @@ public:
 
     void addStallCycleStat(uint64_t cycles) {
         stall_cycles_->addData(cycles);
+    }
+
+    void addReadyThreadStallCycleStat(uint64_t cycles, DrvThread *thread) {
+        int tid = getThreadID(thread);
+        ThreadStat *stats = &thread_stats_[tid];
+        stats->stall_cycles_when_ready->addData(cycles);
     }
 
     DrvSysConfig &sysConfig() {
