@@ -137,21 +137,18 @@ set_target_properties(pando-rt
 add_subdirectory(src)
 
 # tests
-option(BUILD_TESTING "Build tests." ON)
-if (BUILD_TESTING)
+if (ENABLE_ROOT_TESTS)
     include(cmake/PANDOTesting.cmake)
     enable_testing()
     add_subdirectory(test)
 endif ()
 
 # examples
-option(BUILD_EXAMPLES "Build examples" ON)
 if (BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif ()
 
 # documentation
-option(BUILD_DOCS "Build documentation" ON)
 if (BUILD_DOCS)
     add_subdirectory(docs)
 endif ()

@@ -14,7 +14,7 @@
 #include <pando-rt/containers/array.hpp>
 #include <pando-rt/memory/address_translation.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
-#include <pando-wf4-galois/influence_maximization.hpp>
+#include <pando-wf4/influence_maximization.hpp>
 
 namespace {
 

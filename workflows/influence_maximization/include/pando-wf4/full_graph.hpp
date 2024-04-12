@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF4_GALOIS_FULL_GRAPH_HPP_
-#define PANDO_WF4_GALOIS_FULL_GRAPH_HPP_
+#ifndef PANDO_WF4_FULL_GRAPH_HPP_
+#define PANDO_WF4_FULL_GRAPH_HPP_
 
 #include <pando-rt/export.h>
 
@@ -189,4 +189,4 @@ public:
 
 } // namespace wf4
 
-#endif // PANDO_WF4_GALOIS_FULL_GRAPH_HPP_
+#endif // PANDO_WF4_FULL_GRAPH_HPP_
