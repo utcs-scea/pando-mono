@@ -30,23 +30,25 @@ class CountEdges<true> {
   std::atomic<std::uint64_t> edges = 0;
 
 public:
-  void countEdge() {
+  inline void countEdge() {
     edges.fetch_add(1, std::memory_order_relaxed);
   }
-  void printEdges() {
+
+  inline void printEdges() {
     std::cerr << "Number of Edges on host " << pando::getCurrentPlace().node.id << " is "
               << edges.load(std::memory_order_relaxed) << std::endl;
   }
-  void resetCount() {
+
+  inline void resetCount() {
     edges = 0;
   }
 };
 template <>
 class CountEdges<false> {
 public:
-  void countEdge() {}
-  void printEdges() {}
-  void resetCount() {}
+  inline void countEdge() {}
+  inline void printEdges() {}
+  inline void resetCount() {}
 };
 
 #ifndef COUNTEDGE
@@ -55,7 +57,7 @@ constexpr bool COUNT_EDGE = false;
 constexpr bool COUNT_EDGE = true;
 #endif
 
-CountEdges<COUNT_EDGE> countEdges;
+extern CountEdges<COUNT_EDGE> countEdges;
 
 template <typename G>
 struct BFSState {
@@ -163,16 +165,7 @@ pando::Status SSSP_DLCSR(
   return pando::Status::Success;
 }
 
-void updateData(std::uint64_t val, pando::GlobalRef<std::uint64_t> ref) {
-  std::uint64_t temp = pando::atomicLoad(&ref, std::memory_order_relaxed);
-  do {
-    if (val >= temp) {
-      break;
-    }
-  } while (!pando::atomicCompareExchange(&ref, pando::GlobalPtr<std::uint64_t>(&temp),
-                                         pando::GlobalPtr<std::uint64_t>(&val),
-                                         std::memory_order_relaxed, std::memory_order_relaxed));
-}
+void updateData(std::uint64_t val, pando::GlobalRef<std::uint64_t> ref);
 
 template <typename G>
 void BFSOuterLoop_MDLCSR(BFSState<G> state,

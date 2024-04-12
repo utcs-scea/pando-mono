@@ -11,7 +11,7 @@ include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOCompilerOptions.cmake)
 
 target_sources(pando-bfs
     PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/main.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/sssp.cpp
 )
 
 # link pando-lib-galois
