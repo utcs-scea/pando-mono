@@ -36,7 +36,7 @@ jobs:
     strategy:
       matrix:
         build-type: ['Release']
-        project: ["ROOT", "GALOIS", "WF4"]
+        project: ["ROOT", "GALOIS", "WF4", "BFS"]
 
     steps:
 
@@ -64,6 +64,9 @@ jobs:
         fi
         if [ ${{ matrix.project }} == 'WF4' ]; then
           PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=BUILD_WORKFLOWS=ON -e=WF4_TESTS=ON"
+        fi
+        if [ ${{ matrix.project }} == 'BFS' ]; then
+          PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=BUILD_MICROBENCH=ON -e=BFS_TESTS=ON"
         fi
         if [ ${{ runner.name }} == 'zerberus-0' ]; then
           echo "CONTAINER_CPUSET='--cpuset-cpus=0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30'" >> $GITHUB_ENV
