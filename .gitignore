@@ -44,8 +44,7 @@ logs/
 deps/
 
 #Tags Files
-tags
+*tags.csv
 
 #Stats Files
 *stats.csv
-*tags.csv
