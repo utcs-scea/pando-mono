@@ -17,18 +17,11 @@ if(CMAKE_CXX_FLAGS)
     message(STATUS "Provided CXX Flags: " ${CMAKE_CXX_FLAGS})
 endif()
 
-option(ENABLE_PANDORT_TESTS "Enable pando-rt to run tests" OFF)
-option(ENABLE_WF4_TESTS "Enable wf4 to run tests" OFF)
+option(ENABLE_GALOIS_TESTS "Enable GALOIS to run tests" OFF)
+option(ENABLE_ROOT_TESTS "Enable ROOT to run tests" OFF)
+option(ENABLE_INFLUENCE_MAX_TESTS "Enable Influence Maximization to run tests" OFF)
 
-if (NOT ENABLE_PANDORT_TESTS)
-  message("Not Enabling Pandort testing")
-  set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
-  set(BUILD_TESTING OFF)
-endif()
 add_subdirectory(pando-rt)
-if(NOT ENABLE_PANDORT_TESTS)
-  set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
-endif()
 
 # CMake modules
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/pando-rt/cmake/Modules)
@@ -164,31 +157,32 @@ set_target_properties(pando-lib-galois
 add_subdirectory(src)
 
 # tests
-option(BUILD_TESTING "Build tests." ON)
 include(cmake/PANDOTesting.cmake)
-if (BUILD_TESTING)
+if (ENABLE_GALOIS_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif ()
 
 # Microbencharmks
-option(BUILD_MICROBENCH "Build Microbenchmarks" ON)
-option(MICROBENCH_TESTING "Testing for microbenchmarks" ON)
+option(BUILD_MICROBENCH "Build Microbenchmarks" OFF)
 if (BUILD_MICROBENCH)
   add_subdirectory(microbench)
 endif()
 
 # examples
-option(BUILD_EXAMPLES "Build examples" ON)
+option(BUILD_EXAMPLES "Build examples" OFF)
 if (BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif ()
 
 # documentation
-option(BUILD_DOCS "Build documentation" ON)
+option(BUILD_DOCS "Build documentation" OFF)
 if (BUILD_DOCS)
     add_subdirectory(docs)
 endif ()
 
 # workflows
+option(BUILD_WORKFLOWS "Build Workflows" OFF)
+if (BUILD_WORKFLOWS)
 add_subdirectory(workflows)
+endif()

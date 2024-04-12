@@ -87,7 +87,7 @@ set_target_properties(pando-wf4-galois
 add_subdirectory(src)
 
 # tests
-option(BUILD_TESTING "Build tests." ON)
-if (BUILD_TESTING AND ENABLE_WF4_TESTS)
+option(ENABLE_INFLUENCE_MAX_TESTS "Build INFLUENCE MAX tests." ON)
+if (ENABLE_INFLUENCE_MAX_TESTS)
     add_subdirectory(test)
 endif ()
