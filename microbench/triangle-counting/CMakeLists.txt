@@ -85,10 +85,7 @@ set_target_properties(pando-triangle-counting
 add_subdirectory(src)
 
 # tests
-option(MICROBENCH_TESTING "Testing for microbenchmarks" ON)
-if (MICROBENCH_TESTING)
-    include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOTesting.cmake)
-    enable_testing()
+if (ENABLE_TC_TESTS)
     add_subdirectory(test)
 endif ()
 
