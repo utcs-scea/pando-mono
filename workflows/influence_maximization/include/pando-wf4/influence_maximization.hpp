@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF4_GALOIS_INFLUENCE_MAXIMIZATION_HPP_
-#define PANDO_WF4_GALOIS_INFLUENCE_MAXIMIZATION_HPP_
+#ifndef PANDO_WF4_INFLUENCE_MAXIMIZATION_HPP_
+#define PANDO_WF4_INFLUENCE_MAXIMIZATION_HPP_
 
 #include <pando-rt/export.h>
 
@@ -97,4 +97,4 @@ wf4::NetworkGraph::VertexTokenID GetMostInfluentialNode(wf4::NetworkGraph& graph
 
 } // namespace wf4
 
-#endif // PANDO_WF4_GALOIS_INFLUENCE_MAXIMIZATION_HPP_
+#endif // PANDO_WF4_INFLUENCE_MAXIMIZATION_HPP_

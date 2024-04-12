@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF4_GALOIS_GRAPH_HPP_
-#define PANDO_WF4_GALOIS_GRAPH_HPP_
+#ifndef PANDO_WF4_GRAPH_HPP_
+#define PANDO_WF4_GRAPH_HPP_
 
 #include "full_graph.hpp"
 #include <pando-rt/memory/allocate_memory.hpp>
@@ -146,4 +146,4 @@ struct WaitState {
 
 } // namespace wf4
 
-#endif // PANDO_WF4_GALOIS_GRAPH_HPP_
+#endif // PANDO_WF4_GRAPH_HPP_
