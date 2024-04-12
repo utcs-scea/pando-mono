@@ -21,6 +21,10 @@ option(ENABLE_GALOIS_TESTS "Enable GALOIS to run tests" OFF)
 option(ENABLE_ROOT_TESTS "Enable ROOT to run tests" OFF)
 option(ENABLE_INFLUENCE_MAX_TESTS "Enable Influence Maximization to run tests" OFF)
 
+if(ENABLE_GALOIS_TESTS OR ENABLE_ROOT_TESTS OR ENABLE_INFLUENCE_MAX_TESTS)
+  enable_testing()
+endif()
+
 add_subdirectory(pando-rt)
 
 # CMake modules
@@ -159,11 +163,10 @@ add_subdirectory(src)
 # tests
 include(cmake/PANDOTesting.cmake)
 if (ENABLE_GALOIS_TESTS)
-    enable_testing()
     add_subdirectory(test)
 endif ()
 
-# Microbencharmks
+# Microbenchmarks
 option(BUILD_MICROBENCH "Build Microbenchmarks" OFF)
 if (BUILD_MICROBENCH)
   add_subdirectory(microbench)

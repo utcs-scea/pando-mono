@@ -11,7 +11,7 @@
 #include <pando-rt/memory/address_translation.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 
-#include <pando-wf4-galois/import.hpp>
+#include <pando-wf4/import.hpp>
 
 namespace {
 

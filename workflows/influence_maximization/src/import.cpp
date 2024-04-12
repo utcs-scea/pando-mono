@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#include "pando-wf4-galois/import.hpp"
+#include "pando-wf4/import.hpp"
 
 #include <algorithm>
 #include <cstring>

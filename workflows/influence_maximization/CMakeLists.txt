@@ -42,23 +42,23 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif ()
 
 # target
-pando_add_library(pando-wf4-galois)
+pando_add_library(pando-wf4)
 
 # headers
 include(GenerateExportHeader)
-generate_export_header(pando-wf4-galois EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/include/pando-wf4-galois/export.h)
+generate_export_header(pando-wf4 EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/include/pando-wf4/export.h)
 
-target_include_directories(pando-wf4-galois
+target_include_directories(pando-wf4
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pando-wf4-galois>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pando-wf4>"
         "$<INSTALL_INTERFACE:include>"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
 # library properties
-set_target_properties(pando-wf4-galois
+set_target_properties(pando-wf4
     PROPERTIES
         CXX_STANDARD                23
         CXX_STANDARD_REQUIRED       ON
@@ -68,8 +68,8 @@ set_target_properties(pando-wf4-galois
         POSITION_INDEPENDENT_CODE   ON
         VERSION                     "${PROJECT_VERSION}"
         SOVERSION                   "${PROJECT_VERSION_MAJOR}"
-        EXPORT_NAME                 pando-wf4-galois
-        OUTPUT_NAME                 pando-wf4-galois
+        EXPORT_NAME                 pando-wf4
+        OUTPUT_NAME                 pando-wf4
         PUBLIC_HEADER               "${PUBLIC_HEADERS}"
         # enable RPATH during both build and installation; use relative RPATH as well
         SKIP_BUILD_RPATH            FALSE
@@ -87,7 +87,9 @@ set_target_properties(pando-wf4-galois
 add_subdirectory(src)
 
 # tests
-option(ENABLE_INFLUENCE_MAX_TESTS "Build INFLUENCE MAX tests." ON)
+message(${ENABLE_INFLUENCE_MAX_TESTS})
 if (ENABLE_INFLUENCE_MAX_TESTS)
-    add_subdirectory(test)
+  include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOTesting.cmake)
+  enable_testing()
+  add_subdirectory(test)
 endif ()
