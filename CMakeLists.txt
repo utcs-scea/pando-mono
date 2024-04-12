@@ -21,8 +21,9 @@ option(ENABLE_GALOIS_TESTS "Enable GALOIS to run tests" OFF)
 option(ENABLE_ROOT_TESTS "Enable ROOT to run tests" OFF)
 option(ENABLE_INFLUENCE_MAX_TESTS "Enable Influence Maximization to run tests" OFF)
 option(ENABLE_BFS_TESTS "Enable bfs to run tests" OFF)
+option(ENABLE_TC_TESTS "Enable tc to run tests" OFF)
 
-if(ENABLE_GALOIS_TESTS OR ENABLE_ROOT_TESTS OR ENABLE_INFLUENCE_MAX_TESTS OR ENABLE_BFS_TESTS)
+if(ENABLE_GALOIS_TESTS OR ENABLE_ROOT_TESTS OR ENABLE_INFLUENCE_MAX_TESTS OR ENABLE_BFS_TESTS OR ENABLE_TC_TESTS)
   enable_testing()
 endif()
 
