@@ -17,4 +17,4 @@ void galois::updateData(std::uint64_t val, pando::GlobalRef<std::uint64_t> ref) 
                                          std::memory_order_relaxed, std::memory_order_relaxed));
 }
 
-galois::CountEdges<galois::COUNT_EDGE> countEdges;
+galois::CountEdges<galois::COUNT_EDGE> galois::countEdges;
