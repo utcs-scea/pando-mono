@@ -218,7 +218,7 @@ run-tests-smp:
 run-tests-drv:
 	set -o pipefail && \
 	. ~/.profile && \
-	cd ${DRV_BUILD_DIR} && ctest -j2 --verbose | tee test.out && \
+	cd ${DRV_BUILD_DIR} && ctest -j8 --verbose | tee test.out && \
 	! grep -E "Failure" test.out && ! grep -E "runtime error" test.out
 
 run-tests: run-tests-mpi
