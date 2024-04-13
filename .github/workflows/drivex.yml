@@ -126,7 +126,7 @@ jobs:
       env:
         PANDO_PREP_LOG_LEVEL: warning
       run: |
-        CONTAINER_CMD="setarch `uname -m` -R bash -lc 'make run-tests'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -lc 'make run-tests-drv'" \
           CONTAINER_OPTS="-e=CONTAINER_BUILD_DIR=${{ env.CONTAINER_BUILD_DIR }}" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \

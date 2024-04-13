@@ -79,7 +79,7 @@ void* asNativePtr(GlobalAddress globalAddr) noexcept {
 #if defined(PANDO_RT_USE_BACKEND_PREP)
 
   // yield to other hart and then issue the operation
-  hartYield();
+  //hartYield();
 
   if (globalAddr == 0) {
     return nullptr;
@@ -117,12 +117,10 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
   const auto nodeIdx = extractNodeIndex(srcGlobalAddr);
   if (nodeIdx == Nodes::getCurrentNode()) {
     // yield to other hart and then issue the operation
-    hartYield();
+    //hartYield();
 
     const void* srcNativePtr = Memory::getNativeAddress(srcGlobalAddr);
     // we read from shared memory
-    // TODO(ypapadop) Remove after atomics have been introduced
-    std::atomic_thread_fence(std::memory_order_acquire);
     std::memcpy(dstNativePtr, srcNativePtr, n);
 
 #if PANDO_MEM_TRACE_OR_STAT
@@ -172,13 +170,11 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
   const auto nodeIdx = extractNodeIndex(dstGlobalAddr);
   if (nodeIdx == Nodes::getCurrentNode()) {
     // yield to other hart and then issue the operation
-    hartYield();
+    //hartYield();
 
     void* dstNativePtr = Memory::getNativeAddress(dstGlobalAddr);
     std::memcpy(dstNativePtr, srcNativePtr, n);
     // we write to shared memory
-    // TODO(ypapadop) Remove after atomics have been introduced
-    std::atomic_thread_fence(std::memory_order_release);
 
 #if PANDO_MEM_TRACE_OR_STAT
     // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
