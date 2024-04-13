@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "pando-rt/status.hpp"
+#include "concurrentqueue.hpp"
 
 namespace pando {
 
@@ -23,11 +24,10 @@ namespace pando {
  */
 template <typename T>
 class Queue {
-  std::deque<T> m_queue;
-  mutable std::mutex m_mutex;
+  moodycamel::ConcurrentQueue<T> m_queue;
 
 public:
-  Queue() = default;
+  Queue() : m_queue(1000) {}
 
   Queue(const Queue&) = delete;
   Queue(Queue&&) = delete;
@@ -41,8 +41,7 @@ public:
    * @brief Enqueues @p t.
    */
   [[nodiscard]] Status enqueue(const T& t) noexcept {
-    std::lock_guard lock{m_mutex};
-    m_queue.push_back(t);
+    m_queue.enqueue(t);
     return Status::Success;
   }
 
@@ -50,8 +49,7 @@ public:
    * @copydoc enqueue(const T& t) noexcept
    */
   [[nodiscard]] Status enqueue(T&& t) noexcept {
-    std::lock_guard lock{m_mutex};
-    m_queue.push_back(std::move(t));
+    m_queue.enqueue(std::forward<T>(t));
     return Status::Success;
   }
 
@@ -59,12 +57,12 @@ public:
    * @brief Returns the first element in the queue if it exists.
    */
   std::optional<T> tryDequeue() {
-    std::lock_guard lock{m_mutex};
-    if (m_queue.empty()) {
+    T potential;
+    bool gotItem = m_queue.try_dequeue(potential);
+    if (!gotItem) {
       return std::nullopt;
     }
-    std::optional<T> o = std::move(m_queue.front());
-    m_queue.pop_front();
+    std::optional<T> o = std::move(potential);
     return o;
   }
 
@@ -72,16 +70,16 @@ public:
    * @brief Returns if the queue is empty.
    */
   bool empty() const noexcept {
-    std::lock_guard lock{m_mutex};
-    return m_queue.empty();
+    return 0 == m_queue.size_approx();
   }
 
   /**
    * @brief Clears the queue.
    */
   void clear() noexcept {
-    std::lock_guard lock{m_mutex};
-    return m_queue.clear();
+    while(!empty()) {
+      tryDequeue();
+    }
   }
 };
 
