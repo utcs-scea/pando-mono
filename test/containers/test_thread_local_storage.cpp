@@ -12,8 +12,8 @@
 TEST(ThreadLocalStorage, DimensionalManipulation) {
   galois::ThreadLocalStorage<std::uint64_t> tls;
   for (std::uint64_t i = 0; i < tls.size(); i++) {
-    auto [place, thread] = tls.getPlaceFromThreadIdx(i);
-    EXPECT_EQ(tls.getThreadIdxFromPlace(place, thread), i);
+    auto [place, thread] = galois::getPlaceFromThreadIdx(i);
+    EXPECT_EQ(galois::getThreadIdxFromPlace(place, thread), i);
   }
 }
 
@@ -34,10 +34,10 @@ TEST(ThreadLocalStorage, Init) {
   };
 
   pando::NotificationArray dones;
-  err = dones.init(tls.getNumThreads());
+  err = dones.init(galois::getNumThreads());
   EXPECT_EQ(err, pando::Status::Success);
   for (std::uint64_t i = 0; i < tls.size(); i++) {
-    auto [place, _thread] = tls.getPlaceFromThreadIdx(i);
+    auto [place, _thread] = galois::getPlaceFromThreadIdx(i);
     err = pando::executeOn(place, f, tls, i, dones.getHandle(i));
     EXPECT_EQ(err, pando::Status::Success);
   }
@@ -55,7 +55,7 @@ TEST(ThreadLocalStorage, Init) {
   dones.reset();
   EXPECT_EQ(err, pando::Status::Success);
   for (std::uint64_t i = 0; i < tls.size(); i++) {
-    auto [place, _thread] = tls.getPlaceFromThreadIdx(i);
+    auto [place, _thread] = galois::getPlaceFromThreadIdx(i);
     err = pando::executeOn(place, f, tls, i, dones.getHandle(i));
     EXPECT_EQ(err, pando::Status::Success);
   }
@@ -72,33 +72,33 @@ TEST(ThreadLocalStorage, DoAll) {
   EXPECT_TRUE(tls == tls);
   EXPECT_FALSE(tls != tls);
 
-  for (std::uint64_t i = 0; i < tls.getNumThreads(); i++) {
+  for (std::uint64_t i = 0; i < galois::getNumThreads(); i++) {
     tls[i] = 0xDEADBEEF;
   }
 
-  auto g = +[](galois::ThreadLocalStorage<std::uint64_t> tls, pando::GlobalRef<std::uint64_t> val) {
+  auto g = +[](pando::GlobalRef<std::uint64_t> val) {
     auto place =
         pando::Place(pando::getCurrentPlace().node, pando::PodIndex{0, 0}, pando::CoreIndex{0, 0});
-    const std::uint64_t threadIdx = tls.getThreadIdxFromPlace(place, pando::ThreadIndex(0));
+    const std::uint64_t threadIdx = galois::getThreadIdxFromPlace(place, pando::ThreadIndex(0));
     val = threadIdx;
   };
 
-  err = galois::doAll(tls, tls, g);
+  err = galois::doAll(tls, g);
 
   EXPECT_EQ(err, pando::Status::Success);
 
   auto f = +[](galois::ThreadLocalStorage<std::uint64_t> tls, pando::NotificationHandle done) {
     auto place =
         pando::Place(pando::getCurrentPlace().node, pando::PodIndex{0, 0}, pando::CoreIndex{0, 0});
-    const std::uint64_t threadIdx = tls.getThreadIdxFromPlace(place, pando::ThreadIndex(0));
+    const std::uint64_t threadIdx = galois::getThreadIdxFromPlace(place, pando::ThreadIndex(0));
     EXPECT_EQ(tls.getLocalRef(), threadIdx);
     done.notify();
   };
   pando::NotificationArray dones;
-  err = dones.init(tls.getNumThreads());
+  err = dones.init(galois::getNumThreads());
   EXPECT_EQ(err, pando::Status::Success);
-  for (std::uint64_t i = 0; i < tls.getNumThreads(); i++) {
-    const auto [place, _thread] = tls.getPlaceFromThreadIdx(i);
+  for (std::uint64_t i = 0; i < galois::getNumThreads(); i++) {
+    const auto [place, _thread] = galois::getPlaceFromThreadIdx(i);
     err = pando::executeOn(place, f, tls, dones.getHandle(i));
     EXPECT_EQ(err, pando::Status::Success);
   }

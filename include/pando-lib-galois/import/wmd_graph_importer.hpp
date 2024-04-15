@@ -375,7 +375,7 @@ template <typename VertexType>
 [[nodiscard]] galois::HostLocalStorage<pando::Vector<VertexType>> partitionVerticesParallel(
     galois::ThreadLocalVector<VertexType>&& localReadVertices,
     HostLocalStorage<pando::Array<std::uint64_t>> v2PM) {
-  const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
+  const std::uint64_t numThreads = getNumThreads();
 
   ThreadLocalStorage<HostIndexedMap<pando::Vector<VertexType>>> perThreadVerticesPartition{};
   HostLocalStorage<galois::Array<std::uint64_t>> numVerticesPerHostPerThread{};
@@ -397,9 +397,9 @@ template <typename VertexType>
         for (uint64_t j = 0; j < numHosts; j++) {
           PANDO_CHECK(fmap(pVec[j], initialize, 0));
         }
-        const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
+        const std::uint64_t numThreads = getNumThreads();
         const std::uint64_t host = pando::getCurrentPlace().node.id;
-        if (&perThreadVerticesPartition == vertPart.get(host * vertPart.getThreadsPerHost())) {
+        if (&perThreadVerticesPartition == vertPart.get(host * galois::getThreadsPerHost())) {
           PANDO_CHECK(fmap(numVerts[host], initialize, numThreads));
           PANDO_CHECK(fmap(prefixArr[host], initialize, numThreads));
         }
@@ -436,7 +436,7 @@ template <typename VertexType>
       numVerticesPerHostPerThread, prefixArrPerHostPerThread,
       +[](HostLocalStorage<Array<std::uint64_t>> numVerticesPerHostPerThread,
           Array<std::uint64_t> prefixArr) {
-        const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
+        const std::uint64_t numThreads = getNumThreads();
         const std::uint64_t host = pando::getCurrentPlace().node.id;
         Array<uint64_t> arr = numVerticesPerHostPerThread[host];
         galois::PrefixSum<SRC, DST, SRC_Val, DST_Val, galois::internal::transmute<uint64_t>,
@@ -464,7 +464,7 @@ template <typename VertexType>
   PANDO_CHECK(doAll(
       pHV, prefixArrPerHostPerThread, +[](decltype(pHV) pHV, galois::Array<uint64_t> prefixArr) {
         const std::uint64_t nodeIdx = pando::getCurrentPlace().node.id;
-        const std::uint64_t numThreads = ThreadLocalStorage<std::uint64_t>::getNumThreads();
+        const std::uint64_t numThreads = galois::getNumThreads();
         PANDO_CHECK(fmap(pHV[nodeIdx], initialize, prefixArr[numThreads - 1]));
       }));
 
