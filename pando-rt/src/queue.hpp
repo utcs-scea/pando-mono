@@ -28,7 +28,7 @@ class Queue {
   moodycamel::ConcurrentQueue<T> m_queue;
 
 public:
-  Queue() : m_queue(100000) {}
+  Queue() : m_queue(10000) {}
 
   Queue(const Queue&) = delete;
   Queue(Queue&&) = delete;

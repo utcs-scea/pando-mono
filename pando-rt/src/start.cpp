@@ -46,13 +46,13 @@ extern "C" int __start(int argc, char** argv) {
         if (!task.has_value()) {
           task = queue->tryDequeue();
         } else {
-//          for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
-//            auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
-//            if(otherQueue == queue) {continue;}
-//            if(otherQueue->getApproxSize() > CHUNK_SIZE) {
-//              task = otherQueue->tryDequeue();
-//            }
-//          }
+          for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
+            auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
+            if(otherQueue == queue) {continue;}
+            if(otherQueue->getApproxSize() > CHUNK_SIZE) {
+              task = otherQueue->tryDequeue();
+            }
+          }
         }
         if(task.has_value()) { (*task)(); task = std::nullopt; }
       } while (*coreActive == true);
