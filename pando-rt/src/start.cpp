@@ -15,11 +15,12 @@
 
 #ifdef PANDO_RT_USE_BACKEND_PREP
 #include "prep/cores.hpp"
+#include "prep/hart_context_fwd.hpp"
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 #include "drvx/cores.hpp"
 #endif
 
-constexpr std::uint64_t CHUNK_SIZE = 8192;
+constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 4096;
 
 extern "C" int __start(int argc, char** argv) {
   const auto thisPlace = pando::getCurrentPlace();
@@ -43,14 +44,18 @@ extern "C" int __start(int argc, char** argv) {
       std::optional<pando::Task> task = std::nullopt;
 
       do {
+        task = queue->tryDequeue();
         if (!task.has_value()) {
-          task = queue->tryDequeue();
-        } else {
-          for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
-            auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
-            if(otherQueue == queue) {continue;}
-            if(otherQueue->getApproxSize() > CHUNK_SIZE) {
-              task = otherQueue->tryDequeue();
+          pando::hartYield();
+          if (!task.has_value()) {
+            task = queue->tryDequeue();
+          } else {
+            for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
+              auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
+              if(otherQueue == queue) {continue;}
+              if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
+                task = otherQueue->tryDequeue();
+              }
             }
           }
         }
