@@ -11,12 +11,15 @@
 #include "pando-rt/main.hpp"
 #include "pando-rt/status.hpp"
 #include "pando-rt/stdlib.hpp"
+#include "pando-rt/pando-rt.hpp"
 
 #ifdef PANDO_RT_USE_BACKEND_PREP
 #include "prep/cores.hpp"
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 #include "drvx/cores.hpp"
 #endif
+
+constexpr std::uint64_t CHUNK_SIZE = 8192;
 
 extern "C" int __start(int argc, char** argv) {
   const auto thisPlace = pando::getCurrentPlace();
@@ -37,10 +40,21 @@ extern "C" int __start(int argc, char** argv) {
       // worker
       // executes tasks from the core's queue
 
+      std::optional<pando::Task> task = std::nullopt;
+
       do {
-        if (auto task = queue->tryDequeue(); task.has_value()) {
-          (*task)();
+        if (!task.has_value()) {
+          task = queue->tryDequeue();
+        } else {
+//          for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
+//            auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
+//            if(otherQueue == queue) {continue;}
+//            if(otherQueue->getApproxSize() > CHUNK_SIZE) {
+//              task = otherQueue->tryDequeue();
+//            }
+//          }
         }
+        if(task.has_value()) { (*task)(); task = std::nullopt; }
       } while (*coreActive == true);
     } else if (thisPlace.core.x == coreDims.x) {
       // scheduler

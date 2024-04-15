@@ -28,7 +28,7 @@ class Queue {
   moodycamel::ConcurrentQueue<T> m_queue;
 
 public:
-  Queue() : m_queue(1000) {}
+  Queue() : m_queue(100000) {}
 
   Queue(const Queue&) = delete;
   Queue(Queue&&) = delete;
@@ -72,6 +72,10 @@ public:
    */
   bool empty() const noexcept {
     return 0 == m_queue.size_approx();
+  }
+
+  std::uint64_t getApproxSize() const noexcept {
+    return m_queue.size_approx();
   }
 
   /**
@@ -137,6 +141,14 @@ public:
   bool empty() const noexcept {
     std::lock_guard lock{m_mutex};
     return m_queue.empty();
+  }
+
+  /**
+   * @brief Returns the approximate size
+   */
+  std::uint64_t getApproxSize() const noexcept {
+    std::lock_guard lock{m_mutex};
+    return m_queue.size();
   }
 
   /**
