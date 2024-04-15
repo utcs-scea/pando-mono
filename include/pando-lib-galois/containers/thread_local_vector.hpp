@@ -166,7 +166,7 @@ public:
       return static_cast<std::uint64_t>(0);
     const auto place =
         pando::Place(pando::NodeIndex(host), pando::PodIndex(0, 0), pando::CoreIndex(0, 0));
-    const auto idx = indices.getThreadIdxFromPlace(place, pando::ThreadIndex(0));
+    const auto idx = getThreadIdxFromPlace(place, pando::ThreadIndex(0));
     return indices[idx - 1];
   }
 
@@ -194,7 +194,7 @@ public:
     // Reduce into the per host vectors
     auto f = +[](decltype(tpl) assign, std::uint64_t i, uint64_t) {
       auto [data, flat] = assign;
-      std::uint64_t host = i / ThreadLocalStorage<T>::getThreadsPerHost();
+      std::uint64_t host = i / getThreadsPerHost();
       std::uint64_t start = PANDO_EXPECT_CHECK(data.hostIndexOffset(data.m_indices, host));
       std::uint64_t curr = (i == 0) ? 0 : data.m_indices[i - 1];
       std::uint64_t end = PANDO_EXPECT_CHECK(data.hostIndexOffset(data.m_indices, host + 1));
@@ -340,7 +340,7 @@ public:
     // Reduce into the per host vectors
     auto f = +[](decltype(tpl) assign, std::uint64_t i, uint64_t) {
       auto [data, flat] = assign;
-      std::uint64_t host = i / ThreadLocalStorage<T>::getThreadsPerHost();
+      std::uint64_t host = i / galois::getThreadsPerHost();
       std::uint64_t start = PANDO_EXPECT_CHECK(hostIndexOffset(data.m_indices, host));
       std::uint64_t curr = (i == 0) ? 0 : data.m_indices[i - 1];
       pando::Vector<std::uint64_t> localVec = data[i];

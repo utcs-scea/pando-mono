@@ -366,9 +366,8 @@ TEST(BuildEdgeCountToSend, MultiBigInsertionTest) {
     };
     auto f = +[](State s, galois::WMDEdge edge) {
       pando::Status err;
-      err = galois::internal::insertLocalEdgesPerThread(
-          s.hashPtr[galois::ThreadLocalStorage<std::uint64_t>::getCurrentThreadIdx()],
-          s.localEdges.getLocalRef(), edge);
+      err = galois::internal::insertLocalEdgesPerThread(s.hashPtr[galois::getCurrentThreadIdx()],
+                                                        s.localEdges.getLocalRef(), edge);
       EXPECT_EQ(err, pando::Status::Success);
     };
 
@@ -572,9 +571,8 @@ TEST(Integration, InsertEdgeCountVirtual2Physical) {
     };
     auto f = +[](State s, galois::WMDEdge edge) {
       pando::Status err;
-      err = galois::internal::insertLocalEdgesPerThread(
-          s.hashPtr[galois::ThreadLocalStorage<std::uint64_t>::getCurrentThreadIdx()],
-          s.localEdges.getLocalRef(), edge);
+      err = galois::internal::insertLocalEdgesPerThread(s.hashPtr[galois::getCurrentThreadIdx()],
+                                                        s.localEdges.getLocalRef(), edge);
       EXPECT_EQ(err, pando::Status::Success);
     };
 
