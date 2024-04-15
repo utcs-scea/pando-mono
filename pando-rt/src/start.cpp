@@ -36,6 +36,8 @@ extern "C" int __start(int argc, char** argv) {
     auto* queue = pando::Cores::getTaskQueue(thisPlace);
     auto coreActive = pando::Cores::getCoreActiveFlag();
 
+    auto ctok = queue->makeConsumerToken();
+
     // PH hart
     if (thisPlace.core.x < coreDims.x) {
       // worker
@@ -44,7 +46,7 @@ extern "C" int __start(int argc, char** argv) {
       std::optional<pando::Task> task = std::nullopt;
 
       do {
-        task = queue->tryDequeue();
+        task = queue->tryDequeue(ctok);
         if (!task.has_value()) {
           pando::hartYield();
           if (!task.has_value()) {
@@ -71,14 +73,23 @@ extern "C" int __start(int argc, char** argv) {
       // uniform distribution of potential target cores not including this scheduler core
       std::uniform_int_distribution<std::int8_t> dist(0, coreDims.x - 1);
 
+      std::vector<pando::Queue<pando::Task>::ProducerToken> ptoks;
+      for(std::uint8_t i = 0; i < coreDims.x; i++){
+        const pando::Place dstPlace(thisPlace.node, thisPlace.pod,
+                                    pando::CoreIndex(i, 0));
+        auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
+        ptoks.push_back(otherQueue->makeProducerToken());
+      }
+
       do {
         // distribute tasks from the queue
-        if (auto task = queue->tryDequeue(); task.has_value()) {
+        if (auto task = queue->tryDequeue(ctok); task.has_value()) {
           // enqueue in a random core in this node and pod
+          auto coreIdx = dist(rng);
           const pando::Place dstPlace(thisPlace.node, thisPlace.pod,
-                                      pando::CoreIndex(dist(rng), 0));
+                                      pando::CoreIndex(coreIdx, 0));
           auto* dstQueue = pando::Cores::getTaskQueue(dstPlace);
-          if (auto status = dstQueue->enqueue(std::move(task.value()));
+          if (auto status = dstQueue->enqueue(ptoks[coreIdx], std::move(task.value()));
               status != pando::Status::Success) {
             PANDO_ABORT("Could not enqueue from scheduler to worker core");
           }
