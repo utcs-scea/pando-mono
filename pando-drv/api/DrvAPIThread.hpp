@@ -11,6 +11,13 @@
 #include <memory>
 namespace DrvAPI
 {
+
+enum phase_t {
+    PHASE_INIT,
+    PHASE_EXEC,
+    PHASE_OTHER
+};
+
 class DrvAPIThread
 {
 public:
@@ -61,6 +68,20 @@ public:
    * @return std::shared_ptr<DrvAPIThreadState>
    */
   std::shared_ptr<DrvAPIThreadState> &getState() { return state_; }
+
+  /**
+   * @brief Set the phase
+   *
+   * @param phase
+   */
+  void setPhase(phase_t phase) { phase_ = phase;}
+
+  /**
+   * @brief Get the phase
+   *
+   * @return phase_t
+   */
+  phase_t getPhase() { return phase_; }
 
   /**
    * @brief Set the main function
@@ -200,6 +221,7 @@ private:
   std::unique_ptr<coro_t::pull_type> thread_context_; //!< Thread context, coroutine that can be resumed
   coro_t::push_type *main_context_; //!< Main context, can be yielded back to
   std::shared_ptr<DrvAPIThreadState> state_; //!< Thread state
+  phase_t phase_; //!< Phase
   drv_api_main_t main_; //!< Main function
   int argc_;
   char **argv_;

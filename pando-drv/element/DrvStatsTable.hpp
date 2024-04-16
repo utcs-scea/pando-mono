@@ -17,5 +17,6 @@ DEFINE_DRV_STAT(ATOMIC_DRAM,        "Number of atomics to remote l1sp", "instruc
 DEFINE_DRV_STAT(LOAD_REMOTE_PXN,    "Number of loads from remote l1sp", "instructions", 1)
 DEFINE_DRV_STAT(STORE_REMOTE_PXN,   "Number of stores to remote l1sp",  "instructions", 1)
 DEFINE_DRV_STAT(ATOMIC_REMOTE_PXN,  "Number of atomics to remote l1sp", "instructions", 1)
+DEFINE_DRV_STAT(STALL_CYCLES_WHEN_READY,  "Number of cycles stalled when a thread is ready", "cycles", 1)
 DEFINE_DRV_STAT(STALL_CYCLES,       "Number of cycles stalled",         "cycles",       1)
 DEFINE_DRV_STAT(BUSY_CYCLES,        "Number of cycles busy",            "cycles",       1)

@@ -212,26 +212,63 @@ void DrvCore::configureStatistics(Params &params) {
     tag_.verbose(CALL_INFO, 1, 0, "SimTime,TagName\n");
 
     int threads = params.find<int>("threads", 1);
-    thread_stats_.resize(threads);
+    total_thread_stats_.resize(threads);
+    init_thread_stats_.resize(threads);
+    exec_thread_stats_.resize(threads);
     for (int thread = 0; thread < threads; thread++) {
-        ThreadStat *stat = &thread_stats_[thread];
+        ThreadStat *total_stat = &total_thread_stats_[thread];
+        ThreadStat *init_stat = &init_thread_stats_[thread];
+        ThreadStat *exec_stat = &exec_thread_stats_[thread];
         std::string subid = "thread_" + std::to_string(thread);
-        stat->load_l1sp = registerStatistic<uint64_t>("load_l1sp", subid);
-        stat->load_l2sp = registerStatistic<uint64_t>("load_l2sp", subid);
-        stat->load_dram = registerStatistic<uint64_t>("load_dram", subid);
-        stat->load_remote_pxn = registerStatistic<uint64_t>("load_remote_pxn", subid);
-        stat->store_l1sp = registerStatistic<uint64_t>("store_l1sp", subid);
-        stat->store_l2sp = registerStatistic<uint64_t>("store_l2sp", subid);
-        stat->store_dram = registerStatistic<uint64_t>("store_dram", subid);
-        stat->store_remote_pxn = registerStatistic<uint64_t>("store_remote_pxn", subid);
-        stat->atomic_l1sp = registerStatistic<uint64_t>("atomic_l1sp", subid);
-        stat->atomic_l2sp = registerStatistic<uint64_t>("atomic_l2sp", subid);
-        stat->atomic_dram = registerStatistic<uint64_t>("atomic_dram", subid);
-        stat->atomic_remote_pxn = registerStatistic<uint64_t>("atomic_remote_pxn", subid);
-        stat->tag_cycles = registerStatistic<uint64_t>("tag_cycles", subid);
+        total_stat->load_l1sp = registerStatistic<uint64_t>("total_load_l1sp", subid);
+        total_stat->load_l2sp = registerStatistic<uint64_t>("total_load_l2sp", subid);
+        total_stat->load_dram = registerStatistic<uint64_t>("total_load_dram", subid);
+        total_stat->load_remote_pxn = registerStatistic<uint64_t>("total_load_remote_pxn", subid);
+        total_stat->store_l1sp = registerStatistic<uint64_t>("total_store_l1sp", subid);
+        total_stat->store_l2sp = registerStatistic<uint64_t>("total_store_l2sp", subid);
+        total_stat->store_dram = registerStatistic<uint64_t>("total_store_dram", subid);
+        total_stat->store_remote_pxn = registerStatistic<uint64_t>("total_store_remote_pxn", subid);
+        total_stat->atomic_l1sp = registerStatistic<uint64_t>("total_atomic_l1sp", subid);
+        total_stat->atomic_l2sp = registerStatistic<uint64_t>("total_atomic_l2sp", subid);
+        total_stat->atomic_dram = registerStatistic<uint64_t>("total_atomic_dram", subid);
+        total_stat->atomic_remote_pxn = registerStatistic<uint64_t>("total_atomic_remote_pxn", subid);
+        total_stat->stall_cycles_when_ready = registerStatistic<uint64_t>("total_stall_cycles_when_ready", subid);
+        total_stat->tag_cycles = registerStatistic<uint64_t>("total_tag_cycles", subid);
+        init_stat->load_l1sp = registerStatistic<uint64_t>("init_load_l1sp", subid);
+        init_stat->load_l2sp = registerStatistic<uint64_t>("init_load_l2sp", subid);
+        init_stat->load_dram = registerStatistic<uint64_t>("init_load_dram", subid);
+        init_stat->load_remote_pxn = registerStatistic<uint64_t>("init_load_remote_pxn", subid);
+        init_stat->store_l1sp = registerStatistic<uint64_t>("init_store_l1sp", subid);
+        init_stat->store_l2sp = registerStatistic<uint64_t>("init_store_l2sp", subid);
+        init_stat->store_dram = registerStatistic<uint64_t>("init_store_dram", subid);
+        init_stat->store_remote_pxn = registerStatistic<uint64_t>("init_store_remote_pxn", subid);
+        init_stat->atomic_l1sp = registerStatistic<uint64_t>("init_atomic_l1sp", subid);
+        init_stat->atomic_l2sp = registerStatistic<uint64_t>("init_atomic_l2sp", subid);
+        init_stat->atomic_dram = registerStatistic<uint64_t>("init_atomic_dram", subid);
+        init_stat->atomic_remote_pxn = registerStatistic<uint64_t>("init_atomic_remote_pxn", subid);
+        init_stat->stall_cycles_when_ready = registerStatistic<uint64_t>("init_stall_cycles_when_ready", subid);
+        init_stat->tag_cycles = registerStatistic<uint64_t>("init_tag_cycles", subid);
+        exec_stat->load_l1sp = registerStatistic<uint64_t>("exec_load_l1sp", subid);
+        exec_stat->load_l2sp = registerStatistic<uint64_t>("exec_load_l2sp", subid);
+        exec_stat->load_dram = registerStatistic<uint64_t>("exec_load_dram", subid);
+        exec_stat->load_remote_pxn = registerStatistic<uint64_t>("exec_load_remote_pxn", subid);
+        exec_stat->store_l1sp = registerStatistic<uint64_t>("exec_store_l1sp", subid);
+        exec_stat->store_l2sp = registerStatistic<uint64_t>("exec_store_l2sp", subid);
+        exec_stat->store_dram = registerStatistic<uint64_t>("exec_store_dram", subid);
+        exec_stat->store_remote_pxn = registerStatistic<uint64_t>("exec_store_remote_pxn", subid);
+        exec_stat->atomic_l1sp = registerStatistic<uint64_t>("exec_atomic_l1sp", subid);
+        exec_stat->atomic_l2sp = registerStatistic<uint64_t>("exec_atomic_l2sp", subid);
+        exec_stat->atomic_dram = registerStatistic<uint64_t>("exec_atomic_dram", subid);
+        exec_stat->atomic_remote_pxn = registerStatistic<uint64_t>("exec_atomic_remote_pxn", subid);
+        exec_stat->stall_cycles_when_ready = registerStatistic<uint64_t>("exec_stall_cycles_when_ready", subid);
+        exec_stat->tag_cycles = registerStatistic<uint64_t>("exec_tag_cycles", subid);
     }
-    busy_cycles_ = registerStatistic<uint64_t>("busy_cycles");
-    stall_cycles_ = registerStatistic<uint64_t>("stall_cycles");
+    total_busy_cycles_ = registerStatistic<uint64_t>("total_busy_cycles");
+    init_busy_cycles_ = registerStatistic<uint64_t>("init_busy_cycles");
+    exec_busy_cycles_ = registerStatistic<uint64_t>("exec_busy_cycles");
+    total_stall_cycles_ = registerStatistic<uint64_t>("total_stall_cycles");
+    init_stall_cycles_ = registerStatistic<uint64_t>("init_stall_cycles");
+    exec_stall_cycles_ = registerStatistic<uint64_t>("exec_stall_cycles");
 }
 
 /**
@@ -273,6 +310,7 @@ DrvCore::DrvCore(SST::ComponentId_t id, SST::Params& params)
   , loopback_(nullptr)
   , idle_cycles_(0)
   , core_on_(false)
+  , phase_(DrvAPI::phase_t::PHASE_OTHER)
   , system_callbacks_(std::make_shared<DrvSystem>(*this)) {
   id_ = params.find<int>("id", 0);
   pod_ = params.find<int>("pod", 0);
@@ -350,47 +388,52 @@ static constexpr int NO_THREAD_READY = -1;
 
 int DrvCore::selectReadyThread() {
   // select a ready thread to execute
+
+  bool selected = false;
+  int return_thread_id = NO_THREAD_READY;
   for (int t = 0; t < numThreads(); t++) {
     int thread_id = (last_thread_ + t + 1) % numThreads();
     DrvThread *thread = getThread(thread_id);
     auto & state = thread->getAPIThread().getState();
+    DrvAPI::phase_t phase = thread->getAPIThread().getPhase();
     if (state->canResume()) {
-      output_->verbose(CALL_INFO, 2, DEBUG_CLK, "thread %d is ready\n", thread_id);
-      return thread_id;
-    }
-  }
-  output_->verbose(CALL_INFO, 2, DEBUG_CLK, "no thread is ready\n");
-  return NO_THREAD_READY;
-}
+      if (!selected) {
+        output_->verbose(CALL_INFO, 2, DEBUG_CLK, "thread %d is ready\n", thread_id);
+        selected = true;
+        return_thread_id =  thread_id;
+      } else {
+        ThreadStat *total_stats = &total_thread_stats_[t];
+        total_stats->stall_cycles_when_ready->addData(1);
 
-void DrvCore::updateReadyThreadStallCycleStat(int selected_thread_id) {
-  // update the stall cycles for the threads that are ready but not selected
-  if (selected_thread_id != NO_THREAD_READY) {
-    for (int t = 0; t < numThreads(); t++) {
-      if (t == selected_thread_id) {
-        continue;
-      }
-      else {
-        DrvThread *thread = getThread(t);
-        auto & state = thread->getAPIThread().getState();
-        if (state->canResume()) {
-          addReadyThreadStallCycleStat(1, thread);
+        if (phase == DrvAPI::phase_t::PHASE_INIT) {
+          ThreadStat *init_stats = &init_thread_stats_[t];
+          init_stats->stall_cycles_when_ready->addData(1);
+        } else if (phase == DrvAPI::phase_t::PHASE_EXEC) {
+          ThreadStat *exec_stats = &exec_thread_stats_[t];
+          exec_stats->stall_cycles_when_ready->addData(1);
         }
       }
     }
   }
+
+  if (!selected) {
+    output_->verbose(CALL_INFO, 2, DEBUG_CLK, "no thread is ready\n");
+  }
+  return return_thread_id;
 }
 
 void DrvCore::executeReadyThread() {
   // select a ready thread to execute
   int thread_id = selectReadyThread();
-  updateReadyThreadStallCycleStat(thread_id);
   if (thread_id == NO_THREAD_READY) {
     addStallCycleStat(1);
     idle_cycles_++;
     return;
   }
   idle_cycles_ = 0;
+
+  DrvThread *thread = getThread(thread_id);
+  phase_ = thread->getAPIThread().getPhase();
 
   // execute the ready thread
   threads_[thread_id].execute(this);
@@ -444,8 +487,18 @@ void DrvCore::updateTagCycles(int times) {
 
     for (auto &drv_thread : threads_) {
         int tid = getThreadID(&drv_thread);
-        auto &thread_stats = thread_stats_[tid];
-        thread_stats.tag_cycles->addDataNTimes(times, drv_thread.getAPIThread().getTag());
+        auto &total_thread_stats = total_thread_stats_[tid];
+        total_thread_stats.tag_cycles->addDataNTimes(times, drv_thread.getAPIThread().getTag());
+
+        DrvAPI::phase_t phase = drv_thread.getAPIThread().getPhase();
+
+        if (phase == DrvAPI::phase_t::PHASE_INIT) {
+            auto &init_thread_stats = init_thread_stats_[tid];
+            init_thread_stats.tag_cycles->addDataNTimes(times, drv_thread.getAPIThread().getTag());
+        } else if (phase == DrvAPI::phase_t::PHASE_EXEC) {
+            auto &exec_thread_stats = exec_thread_stats_[tid];
+            exec_thread_stats.tag_cycles->addDataNTimes(times, drv_thread.getAPIThread().getTag());
+        }
     }
 }
 

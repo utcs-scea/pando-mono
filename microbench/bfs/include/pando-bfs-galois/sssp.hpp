@@ -20,6 +20,7 @@
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/sync/atomic.hpp>
+//#include <pando-rt/program_phase.hpp>
 
 namespace bfs {
 
@@ -132,6 +133,7 @@ pando::Status SSSP_DLCSR(
   state.active = active;
   state.dist = 0;
 
+  PANDO_DRV_PHASE_INIT_END();
 #ifdef PANDO_STAT_TRACE_ENABLE
   PANDO_CHECK(galois::doAll(
       wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
@@ -139,6 +141,7 @@ pando::Status SSSP_DLCSR(
       }));
   PANDO_CHECK(wg.wait());
 #endif
+  PANDO_DRV_PHASE_EXEC_BEGIN();
 
   while (!IsactiveIterationEmpty(phbfs)) {
 #ifdef DPRINTS
@@ -169,6 +172,7 @@ pando::Status SSSP_DLCSR(
       }));
   PANDO_CHECK(wg.wait());
 #endif
+  PANDO_DRV_PHASE_EXEC_END();
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
@@ -304,6 +308,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
   std::cerr << "Source is on host " << srcHost << std::endl;
 #endif
 
+  PANDO_DRV_PHASE_INIT_END();
 #ifdef PANDO_STAT_TRACE_ENABLE
   PANDO_CHECK(galois::doAll(
       wgh, toRead, +[](MDWorkList<G>) {
@@ -311,6 +316,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
       }));
   PANDO_CHECK(wg.wait());
 #endif
+  PANDO_DRV_PHASE_EXEC_BEGIN();
 
   *active = true;
   while (*active) {
@@ -355,6 +361,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
       }));
   PANDO_CHECK(wg.wait());
 #endif
+  PANDO_DRV_PHASE_EXEC_END();
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
