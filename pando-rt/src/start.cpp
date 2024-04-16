@@ -58,7 +58,10 @@ extern "C" int __start(int argc, char** argv) {
         if (!task.has_value()) {
           switch(failState) {
             case SchedulerFailState::YIELD:
+#ifdef PANDO_RT_USE_BACKEND_PREP
               pando::hartYield();
+              //In Drvx hart yielding is a 1000 cycle wait which is too much
+#endif
               failState = SchedulerFailState::STEAL;
               break;
             case SchedulerFailState::STEAL:
