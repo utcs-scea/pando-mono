@@ -567,18 +567,17 @@ public:
    */
   template <typename Func>
   void reduce(Func func) {
-    galois::GlobalBarrier barrier;
-    PANDO_CHECK(barrier.initialize(pando::getPlaceDims().node.id));
-
+    WaitGroup wg;
+    PANDO_CHECK(wg.initialize(0));
+    WaitGroup::HandleType wgh = wg.getHandle();
     auto thisCSR = *this;
-    auto state = galois::make_tpl(thisCSR, barrier, localMirrorToRemoteMasterOrderedTable,
-                                  masterBitSets, func);
+    auto state =
+        galois::make_tpl(thisCSR, localMirrorToRemoteMasterOrderedTable, masterBitSets, func, wgh);
 
-    galois::doAll(
-        state, mirrorBitSets,
+    PANDO_CHECK(galois::doAll(
+        wgh, state, mirrorBitSets,
         +[](decltype(state) state, pando::GlobalRef<pando::Array<bool>> mirrorBitSet) {
-          auto [object, barrier, localMirrorToRemoteMasterOrderedTable, masterBitSets, func] =
-              state;
+          auto [graph, localMirrorToRemoteMasterOrderedTable, masterBitSets, func, wgh] = state;
 
           pando::GlobalRef<pando::Array<MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
               localMirrorToRemoteMasterOrderedTable[pando::getCurrentPlace().node.id];
@@ -587,37 +586,40 @@ public:
             bool dirty = fmap(mirrorBitSet, operator[], i);
             if (dirty) {
               // obtain the local mirror vertex data
-              VertexTopologyID mirrorTopologyID = object.getMirrorTopologyIDFromIndex(i);
+              VertexTopologyID mirrorTopologyID = graph.getMirrorTopologyIDFromIndex(i);
               // a copy
-              VertexData mirrorData = object.getData(mirrorTopologyID);
+              VertexData mirrorData = graph.getData(mirrorTopologyID);
 
               // obtain the corresponding remote master information
               MirrorToMasterMap mirrorToMasterMap =
                   fmap(localMirrorToRemoteMasterOrderedMap, operator[], i);
               VertexTopologyID masterTopologyID = mirrorToMasterMap.getMaster();
-              // actual reference
-              pando::GlobalRef<VertexData> masterData = object.getData(masterTopologyID);
-
               // atomic function signature: func(VertexData mirror, pando::GlobalRef<VertexData>
               // master) apply the function
-              VertexData oldMasterData = masterData;
-              func(mirrorData, masterData);
+              wgh.addOne();
+              PANDO_CHECK(executeOn(
+                  localityOf(masterTopologyID),
+                  +[](Func func, decltype(graph) graph, VertexData mirrorData,
+                      VertexTopologyID masterID, WaitGroup::HandleType wgh) {
+                    auto masterData = graph.getData(masterID);
+                    VertexData oldMasterData = masterData;
+                    func(mirrorData, masterData);
+                    if (masterData != oldMasterData) {
+                      // set the remote master bit set
+                      pando::GlobalRef<pando::Array<bool>> masterBitSet =
+                          graph.masterBitSets.getLocalRef();
+                      std::uint64_t index = graph.getIndex(masterID, graph.getLocalMasterRange());
+                      fmap(masterBitSet, operator[], index) = true;
+                    }
+                    wgh.done();
+                  },
+                  func, graph, mirrorData, masterTopologyID, wgh));
               //  master data updated
-              if (masterData != oldMasterData) {
-                // set the remote master bit set
-                VertexTokenID masterTokenID = object.getTokenID(masterTopologyID);
-                std::uint64_t physicalHost = object.getPhysicalHostID(masterTokenID);
-                pando::GlobalRef<pando::Array<bool>> masterBitSet = masterBitSets[physicalHost];
-                std::uint64_t index =
-                    object.getIndex(masterTopologyID, object.getMasterRange(physicalHost));
-                fmap(masterBitSet, operator[], index) = true;
-              }
             }
           }
-
-          barrier.done();
-          PANDO_CHECK(barrier.wait());
-        });
+        }));
+    PANDO_CHECK(wg.wait());
+    wg.deinitialize();
   }
   /**
    * @brief Broadcast the updated master values to the corresponding mirror values
