@@ -17,7 +17,7 @@ Status detail::RequestBuffer::acquire(NodeIndex nodeIdx, std::size_t size) {
 
 void detail::RequestBuffer::release() {
   Nodes::requestRelease(m_size, m_metadata);
-  hartYield();
+  //hartYield();
 }
 
 } // namespace pando

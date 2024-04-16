@@ -11,12 +11,22 @@
 #include "pando-rt/main.hpp"
 #include "pando-rt/status.hpp"
 #include "pando-rt/stdlib.hpp"
+#include "pando-rt/pando-rt.hpp"
 
 #ifdef PANDO_RT_USE_BACKEND_PREP
 #include "prep/cores.hpp"
+#include "prep/hart_context_fwd.hpp"
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 #include "drvx/cores.hpp"
+#include "drvx/drvx.hpp"
 #endif
+
+constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 4096;
+
+enum SchedulerFailState{
+  YIELD,
+  STEAL,
+};
 
 extern "C" int __start(int argc, char** argv) {
   const auto thisPlace = pando::getCurrentPlace();
@@ -32,15 +42,41 @@ extern "C" int __start(int argc, char** argv) {
     auto* queue = pando::Cores::getTaskQueue(thisPlace);
     auto coreActive = pando::Cores::getCoreActiveFlag();
 
+    auto ctok = queue->makeConsumerToken();
+
     // PH hart
     if (thisPlace.core.x < coreDims.x) {
       // worker
       // executes tasks from the core's queue
 
+      std::optional<pando::Task> task = std::nullopt;
+
+      SchedulerFailState failState = SchedulerFailState::YIELD;
+
       do {
-        if (auto task = queue->tryDequeue(); task.has_value()) {
-          (*task)();
+        task = queue->tryDequeue(ctok);
+        if (!task.has_value()) {
+          switch(failState) {
+            case SchedulerFailState::YIELD:
+#ifdef PANDO_RT_USE_BACKEND_PREP
+              pando::hartYield();
+              //In Drvx hart yielding is a 1000 cycle wait which is too much
+#endif
+              failState = SchedulerFailState::STEAL;
+              break;
+            case SchedulerFailState::STEAL:
+              for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
+                auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
+                if(otherQueue == queue) {continue;}
+                if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
+                  task = otherQueue->tryDequeue();
+                }
+              }
+              failState = SchedulerFailState::YIELD;
+              break;
+          }
         }
+        if(task.has_value()) { (*task)(); task = std::nullopt; }
       } while (*coreActive == true);
     } else if (thisPlace.core.x == coreDims.x) {
       // scheduler
@@ -52,14 +88,23 @@ extern "C" int __start(int argc, char** argv) {
       // uniform distribution of potential target cores not including this scheduler core
       std::uniform_int_distribution<std::int8_t> dist(0, coreDims.x - 1);
 
+      std::vector<pando::Queue<pando::Task>::ProducerToken> ptoks;
+      for(std::uint8_t i = 0; i < coreDims.x; i++){
+        const pando::Place dstPlace(thisPlace.node, thisPlace.pod,
+                                    pando::CoreIndex(i, 0));
+        auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
+        ptoks.push_back(otherQueue->makeProducerToken());
+      }
+
       do {
         // distribute tasks from the queue
-        if (auto task = queue->tryDequeue(); task.has_value()) {
+        if (auto task = queue->tryDequeue(ctok); task.has_value()) {
           // enqueue in a random core in this node and pod
+          auto coreIdx = dist(rng);
           const pando::Place dstPlace(thisPlace.node, thisPlace.pod,
-                                      pando::CoreIndex(dist(rng), 0));
+                                      pando::CoreIndex(coreIdx, 0));
           auto* dstQueue = pando::Cores::getTaskQueue(dstPlace);
-          if (auto status = dstQueue->enqueue(std::move(task.value()));
+          if (auto status = dstQueue->enqueue(ptoks[coreIdx], std::move(task.value()));
               status != pando::Status::Success) {
             PANDO_ABORT("Could not enqueue from scheduler to worker core");
           }

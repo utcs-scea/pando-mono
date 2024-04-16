@@ -28,7 +28,9 @@ class Queue {
   moodycamel::ConcurrentQueue<T> m_queue;
 
 public:
-  Queue() : m_queue(1000) {}
+  using ProducerToken = moodycamel::ProducerToken;
+  using ConsumerToken = moodycamel::ConsumerToken;
+  Queue() : m_queue(10000) {}
 
   Queue(const Queue&) = delete;
   Queue(Queue&&) = delete;
@@ -47,10 +49,26 @@ public:
   }
 
   /**
+   * @brief Enqueues @p t.
+   */
+  [[nodiscard]] Status enqueue(ProducerToken & ptok, const T& t) noexcept {
+    m_queue.enqueue(ptok);
+    return Status::Success;
+  }
+
+  /**
    * @copydoc enqueue(const T& t) noexcept
    */
   [[nodiscard]] Status enqueue(T&& t) noexcept {
     m_queue.enqueue(std::forward<T>(t));
+    return Status::Success;
+  }
+
+  /**
+   * @copydoc enqueue(const T& t) noexcept
+   */
+  [[nodiscard]] Status enqueue(ProducerToken & ptok, T&& t) noexcept {
+    m_queue.enqueue(ptok, std::forward<T>(t));
     return Status::Success;
   }
 
@@ -68,10 +86,27 @@ public:
   }
 
   /**
+   * @brief Returns the first element in the queue if it exists.
+   */
+  std::optional<T> tryDequeue(ConsumerToken& ctok) {
+    T potential;
+    bool gotItem = m_queue.try_dequeue(ctok, potential);
+    if (!gotItem) {
+      return std::nullopt;
+    }
+    std::optional<T> o = std::move(potential);
+    return o;
+  }
+
+  /**
    * @brief Returns if the queue is empty.
    */
   bool empty() const noexcept {
     return 0 == m_queue.size_approx();
+  }
+
+  std::uint64_t getApproxSize() const noexcept {
+    return m_queue.size_approx();
   }
 
   /**
@@ -82,6 +117,14 @@ public:
       tryDequeue();
     }
   }
+
+  ProducerToken makeProducerToken() {
+    return moodycamel::ProducerToken(m_queue);
+  }
+
+  ConsumerToken makeConsumerToken() {
+    return moodycamel::ConsumerToken(m_queue);
+  }
 };
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 template <typename T>
@@ -90,6 +133,8 @@ class Queue {
   mutable std::mutex m_mutex;
 
 public:
+  using ProducerToken = std::uint64_t;
+  using ConsumerToken = std::uint64_t;
   Queue() = default;
 
   Queue(const Queue&) = delete;
@@ -110,9 +155,27 @@ public:
   }
 
   /**
+   * @brief Enqueues @p t.
+   */
+  [[nodiscard]] Status enqueue(ProducerToken &, const T& t) noexcept {
+    std::lock_guard lock{m_mutex};
+    m_queue.push_back(t);
+    return Status::Success;
+  }
+
+  /**
    * @copydoc enqueue(const T& t) noexcept
    */
   [[nodiscard]] Status enqueue(T&& t) noexcept {
+    std::lock_guard lock{m_mutex};
+    m_queue.push_back(std::move(t));
+    return Status::Success;
+  }
+
+  /**
+   * @copydoc enqueue(const T& t) noexcept
+   */
+  [[nodiscard]] Status enqueue(ProducerToken &, T&& t) noexcept {
     std::lock_guard lock{m_mutex};
     m_queue.push_back(std::move(t));
     return Status::Success;
@@ -132,6 +195,19 @@ public:
   }
 
   /**
+   * @brief Returns the first element in the queue if it exists.
+   */
+  std::optional<T> tryDequeue(ConsumerToken &) {
+    std::lock_guard lock{m_mutex};
+    if (m_queue.empty()) {
+      return std::nullopt;
+    }
+    std::optional<T> o = std::move(m_queue.front());
+    m_queue.pop_front();
+    return o;
+  }
+
+  /**
    * @brief Returns if the queue is empty.
    */
   bool empty() const noexcept {
@@ -140,11 +216,27 @@ public:
   }
 
   /**
+   * @brief Returns the approximate size
+   */
+  std::uint64_t getApproxSize() const noexcept {
+    std::lock_guard lock{m_mutex};
+    return m_queue.size();
+  }
+
+  /**
    * @brief Clears the queue.
    */
   void clear() noexcept {
     std::lock_guard lock{m_mutex};
     return m_queue.clear();
+  }
+
+  ProducerToken makeProducerToken() {
+    return 0;
+  }
+
+  ConsumerToken makeConsumerToken() {
+    return 0;
   }
 };
 #endif
