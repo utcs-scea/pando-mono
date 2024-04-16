@@ -125,6 +125,20 @@ docker:
 	${IMAGE_NAME}:${VERSION} \
 	${CONTAINER_CMD}
 
+apptainer-image:
+	@mkdir -p data/images
+	@apptainer build data/images/${IMAGE_NAME}.${VERSION}.sif docker-daemon://${IMAGE_NAME}:${VERSION}
+
+apptainer:
+	apptainer exec \
+	--no-mount hostfs \
+	--no-mount home \
+	--writable-tmpfs \
+	--bind ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
+	--pwd=${CONTAINER_WORKDIR} \
+	data/images/${IMAGE_NAME}.${VERSION}.sif \
+	${CONTAINER_CMD}
+
 cmake-mpi:
 	@echo "Must be run from inside the dev Docker container"
 	@. /dependencies/spack/share/spack/setup-env.sh && \
