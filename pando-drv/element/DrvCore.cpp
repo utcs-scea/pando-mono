@@ -370,10 +370,10 @@ void DrvCore::setup() {
  * finish the component
  */
 void DrvCore::finish() {
-  Cycle_t cycle = getNextClockCycle(clocktc_);
-  cycle--;
-  updateTagCycles(cycle-unregister_cycle_);
-  addStallCycleStat(cycle-unregister_cycle_);
+  //Cycle_t cycle = getNextClockCycle(clocktc_);
+  //cycle--;
+  //updateTagCycles(cycle-unregister_cycle_);
+  //addStallCycleStat(cycle-unregister_cycle_);
   threads_.clear();
   auto stdmem = dynamic_cast<DrvStdMemory*>(memory_);
   if (stdmem) {
@@ -511,7 +511,8 @@ bool DrvCore::clockTick(SST::Cycle_t cycle) {
   }
   updateTagCycles(1);
   bool unregister = shouldUnregisterClock();
-  core_on_ = !unregister;
+  unregister = false;
+  core_on_ = (!unregister);
   if (unregister) {
     output_->verbose(CALL_INFO, 2, DEBUG_CLK, "unregistering clock\n");
     // save the time for statistics
