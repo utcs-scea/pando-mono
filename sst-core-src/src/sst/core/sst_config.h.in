@@ -1,0 +1,203 @@
+/* src/sst/core/sst_config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Defines if the backtrace function is avalible */
+#undef HAVE_BACKTRACE
+
+/* define if the compiler supports basic C++17 syntax */
+#undef HAVE_CXX17
+
+/* Define to 1 if you have the <c_asm.h> header file. */
+#undef HAVE_C_ASM_H
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
+/* Define to 1 if you have the <execinfo.h> header file. */
+#undef HAVE_EXECINFO_H
+
+/* Defines whether we have the hdf5 library */
+#undef HAVE_HDF5
+
+/* Define to 1 if you have the <intrinsics.h> header file. */
+#undef HAVE_INTRINSICS_H
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Defines whether we have the libz library */
+#undef HAVE_LIBZ
+
+/* Define to 1 if you have the <mach/mach_time.h> header file. */
+#undef HAVE_MACH_MACH_TIME_H
+
+/* Define to 1 if you have the <Python.h> header file. */
+#undef HAVE_PYTHON_H
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#undef HAVE_STDIO_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/time.h> header file. */
+#undef HAVE_SYS_TIME_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
+#undef LT_OBJDIR
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* SST-Core Git Branch */
+#undef SSTCORE_GIT_BRANCH
+
+/* SST-Core Git Commit Count */
+#undef SSTCORE_GIT_COMMITCOUNT
+
+/* SST-Core Git Head SHA */
+#undef SSTCORE_GIT_HEADSHA
+
+/* Defines the C compiler used to build SST */
+#undef SST_CC
+
+/* Defines the CFLAGS used to build SST */
+#undef SST_CFLAGS
+
+/* EXPERIMENTAL Tracks clock handler execution time and counters */
+#undef SST_CLOCK_PROFILING
+
+/* Defines compile for Mac OS-X */
+#undef SST_COMPILE_MACOSX
+
+/* Define if you have the MPI library. */
+#undef SST_CONFIG_HAVE_MPI
+
+/* Set to 1 if Python was found */
+#undef SST_CONFIG_HAVE_PYTHON
+
+/* Set to 1 if Python version is 3 */
+#undef SST_CONFIG_HAVE_PYTHON3
+
+/* Defines the C preprocessor used to build SST */
+#undef SST_CPP
+
+/* Defines the CPPFLAGS used to build SST */
+#undef SST_CPPFLAGS
+
+/* Defines the C++ compiler used to build SST */
+#undef SST_CXX
+
+/* Defines the C++ preprocessor used to build SST */
+#undef SST_CXXCPP
+
+/* Defines the CXXFLAGS used to build SST */
+#undef SST_CXXFLAGS
+
+/* Whether to enable preview build */
+#undef SST_ENABLE_PREVIEW_BUILD
+
+/* EXPERIMENTAL Tracks event and communication time and counters */
+#undef SST_EVENT_PROFILING
+
+/* EXPERIMENTAL Enables nanosecond resolution clock. Disable for gettimeofday
+   microsecond resolution */
+#undef SST_HIGH_RESOLUTION_CLOCK
+
+/* Defines the location SST will be installed in */
+#undef SST_INSTALL_PREFIX
+
+/* Defines the linker used to build SST */
+#undef SST_LD
+
+/* Defines the LDFLAGS used to build SST */
+#undef SST_LDFLAGS
+
+/* Defines the MPI C compiler used to build SST */
+#undef SST_MPICC
+
+/* Defines the MPI C++ compilers used to build SST */
+#undef SST_MPICXX
+
+/* EXPERIMENTAL Required for all performance tracking. Enables file creation
+   and final output */
+#undef SST_PERFORMANCE_INSTRUMENTING
+
+/* EXPERIMENTAL Periodically prints performance information to files */
+#undef SST_PERIODIC_PRINT
+
+/* EXPERIMENTAL Tune to affect how often files are written. */
+#undef SST_PERIODIC_PRINT_THRESHOLD
+
+/* Defines the CPPFLAGS needed to compile Python into SST */
+#undef SST_PYTHON_CPPFLAGS
+
+/* Defines the LDFLAGS needed to compile Python into SST */
+#undef SST_PYTHON_LDFLAGS
+
+/* EXPERIMENTAL Tracks execution time for each rank. */
+#undef SST_RUNTIME_PROFILING
+
+/* EXPERIMENTAL Tracks synchronization time and count */
+#undef SST_SYNC_PROFILING
+
+/* Test Frameworks will be sym-linked instead of copied on install */
+#undef SST_TESTFRAMEWORK_DEV
+
+/* Define to 1 if all of the C90 standard headers exist (not just the ones
+   required in a freestanding environment). This macro is provided for
+   backward compatibility; new code need not use it. */
+#undef STDC_HEADERS
+
+/* Set to 1 to use memory pools in the SST core */
+#undef USE_MEMPOOL
+
+/* Tracks extra information about events and activities. */
+#undef __SST_DEBUG_EVENT_TRACKING__
+
+/* Defines additional debug output is to be printed */
+#undef __SST_DEBUG_OUTPUT__
+
+/* Defines if core should have profiling enabled. */
+#undef __SST_ENABLE_PROFILE__
+
+/* Defines that standard PRI macros should be enabled */
+#undef __STDC_FORMAT_MACROS
+
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#undef inline
+#endif
