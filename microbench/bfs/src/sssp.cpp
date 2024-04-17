@@ -6,7 +6,7 @@
 
 #include <pando-bfs-galois/sssp.hpp>
 
-void galois::updateData(std::uint64_t val, pando::GlobalRef<std::uint64_t> ref) {
+void bfs::updateData(std::uint64_t val, pando::GlobalRef<std::uint64_t> ref) {
   std::uint64_t temp = pando::atomicLoad(&ref, std::memory_order_relaxed);
   do {
     if (val >= temp) {
@@ -17,4 +17,4 @@ void galois::updateData(std::uint64_t val, pando::GlobalRef<std::uint64_t> ref) 
                                          std::memory_order_relaxed, std::memory_order_relaxed));
 }
 
-galois::CountEdges<galois::COUNT_EDGE> galois::countEdges;
+bfs::CountEdges<galois::COUNT_EDGE> galois::countEdges;
