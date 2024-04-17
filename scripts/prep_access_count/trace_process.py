@@ -6,8 +6,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-if len(sys.argv) != 7:
-    print("usage: python3 plot.py (application or workflow name) (number of hosts) (directory to the stat files) (per-phase / end-to-end) (include-local / remote-only) (stat-dump / hist-only)")
+if len(sys.argv) != 8:
+    print("usage: python3 trace_process.py (application or workflow name) (number of hosts) (directory to the stat files) (per-phase / end-to-end) (include-local / remote-only) (load / store / rmw / func / reference) (stat-dump / plot-hist)")
     sys.exit(1)
 
 app = sys.argv[1]
@@ -15,7 +15,37 @@ host = int(sys.argv[2])
 directory = sys.argv[3]
 granularity = sys.argv[4]
 print_local = sys.argv[5]
-dump = sys.argv[6]
+access_type = sys.argv[6]
+result_mode = sys.argv[7]
+
+#####   Preprocess trace files   #####
+def extract(filename, app):
+    with open(filename, 'r') as file:
+        capturing = False
+        lines_to_keep = []
+        for line in file:
+            if app in line:
+                capturing = not capturing
+            if capturing or app in line:
+                lines_to_keep.append(line)
+
+    with open(filename, 'w') as file:
+        file.writelines(lines_to_keep)
+
+def process_files(file_list, app):
+    for filename in file_list:
+        extract(filename, app)
+
+file_list = []
+for host_id in range(host):
+    file_list.append(directory + '/pando_mem_stat_node_' + str(host_id) + '.trace')
+process_files(file_list, app)
+
+os.makedirs("trace", exist_ok=True)
+for file in file_list:
+    os.system("mv " + file + " ./trace")
+
+
 
 #####   Processing   #####
 load_cnt = []
@@ -45,7 +75,7 @@ for host_id in range(host):
 
     print("Reading host " + str(host_id))
 
-    filename = directory + "/pando_mem_stat_node_" + str(host_id) + ".trace"
+    filename = "./trace/pando_mem_stat_node_" + str(host_id) + ".trace"
     f = open(filename, "r")
     #lines = f.readlines()
 
@@ -218,7 +248,7 @@ def plot_total(access_type, send_recv, host_id, x, cnt_array, byte_array):
     plt.close(fig)
 
 def dump_phase(access_type, send_recv, host_id, phase, x, cnt_array, byte_array):
-    file = open("./dump/" + access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_phase" + str(phase) + ".txt", "w")
+    file = open("./stat/" + access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_phase" + str(phase) + ".txt", "w")
     if send_recv == "send":
         file.write(access_type + "s Sent By Host " + str(host_id) + " (" + app.upper() + " Phase " + str(phase) + ")\n")
         prep = "to"
@@ -231,7 +261,7 @@ def dump_phase(access_type, send_recv, host_id, phase, x, cnt_array, byte_array)
     file.close()
 
 def dump_total(access_type, send_recv, host_id, x, cnt_array, byte_array):
-    file = open("./dump/" + access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_total.txt", "w")
+    file = open("./stat/" + access_type.lower() + "_" + send_recv + "_host" + str(host_id) + "_total.txt", "w")
     if send_recv == "send":
         file.write(access_type + "s Sent By Host " + str(host_id) + " (" + app.upper() + " Total)\n")
         prep = "to"
@@ -243,9 +273,10 @@ def dump_total(access_type, send_recv, host_id, x, cnt_array, byte_array):
         file.write(prep + " host " + str(i) + " : " + str(cnt_array[host_id][i]) + " requests, " + str(byte_array[host_id][i]) + " bytes\n")
     file.close()
 
-os.makedirs("histograms", exist_ok=True)
-if dump == "stat-dump":
-    os.makedirs("dump", exist_ok=True)
+if result_mode == "stat-dump":
+    os.makedirs("stat", exist_ok=True)
+elif result_mode == "plot-hist":
+    os.makedirs("histograms", exist_ok=True)
 
 if granularity == "per-phase":
     load_cnt_trans = np.transpose(load_cnt)
@@ -270,30 +301,38 @@ if granularity == "per-phase":
     x = [i for i in range(host)]
     for host_id in range(host):
         for phase in range(phase_max):
-            plot_phase("Load", "recv", host_id, phase, x, load_cnt, load_byte)
-            plot_phase("Store", "recv", host_id, phase, x, store_cnt, store_byte)
-            plot_phase("RMW", "recv", host_id, phase, x, rmw_cnt, rmw_byte)
-            plot_phase("Function", "recv", host_id, phase, x, func_cnt, func_byte)
-            plot_phase("Reference", "recv", host_id, phase, x, ref_cnt, ref_byte)
-
-            plot_phase("Load", "send", host_id, phase, x, load_cnt_trans, load_byte_trans)
-            plot_phase("Store", "send", host_id, phase, x, store_cnt_trans, store_byte_trans)
-            plot_phase("RMW", "send", host_id, phase, x, rmw_cnt_trans, rmw_byte_trans)
-            plot_phase("Function", "send", host_id, phase, x, func_cnt_trans, func_byte_trans)
-            plot_phase("Reference", "send", host_id, phase, x, ref_cnt_trans, ref_byte_trans)
-
-            if dump == "stat-dump":
-                dump_phase("Load", "recv", host_id, phase, x, load_cnt, load_byte)
-                dump_phase("Store", "recv", host_id, phase, x, store_cnt, store_byte)
-                dump_phase("RMW", "recv", host_id, phase, x, rmw_cnt, rmw_byte)
-                dump_phase("Function", "recv", host_id, phase, x, func_cnt, func_byte)
-                dump_phase("Reference", "recv", host_id, phase, x, ref_cnt, ref_byte)
-
-                dump_phase("Load", "send", host_id, phase, x, load_cnt_trans, load_byte_trans)
-                dump_phase("Store", "send", host_id, phase, x, store_cnt_trans, store_byte_trans)
-                dump_phase("RMW", "send", host_id, phase, x, rmw_cnt_trans, rmw_byte_trans)
-                dump_phase("Function", "send", host_id, phase, x, func_cnt_trans, func_byte_trans)
-                dump_phase("Reference", "send", host_id, phase, x, ref_cnt_trans, ref_byte_trans)
+            if result_mode == "stat-dump":
+                if access_type == "load":
+                    dump_phase("Load", "recv", host_id, phase, x, load_cnt, load_byte)
+                    dump_phase("Load", "send", host_id, phase, x, load_cnt_trans, load_byte_trans)
+                elif access_type == "store":
+                    dump_phase("Store", "recv", host_id, phase, x, store_cnt, store_byte)
+                    dump_phase("Store", "send", host_id, phase, x, store_cnt_trans, store_byte_trans)
+                elif access_type == "rmw":
+                    dump_phase("RMW", "recv", host_id, phase, x, rmw_cnt, rmw_byte)
+                    dump_phase("RMW", "send", host_id, phase, x, rmw_cnt_trans, rmw_byte_trans)
+                elif access_type == "func":
+                    dump_phase("Function", "recv", host_id, phase, x, func_cnt, func_byte)
+                    dump_phase("Function", "send", host_id, phase, x, func_cnt_trans, func_byte_trans)
+                elif access_type == "reference":
+                    dump_phase("Reference", "recv", host_id, phase, x, ref_cnt, ref_byte)
+                    dump_phase("Reference", "send", host_id, phase, x, ref_cnt_trans, ref_byte_trans)
+            elif result_mode == "plot-hist":
+                if access_type == "load":
+                    plot_phase("Load", "recv", host_id, phase, x, load_cnt, load_byte)
+                    plot_phase("Load", "send", host_id, phase, x, load_cnt_trans, load_byte_trans)
+                elif access_type == "store":
+                    plot_phase("Store", "recv", host_id, phase, x, store_cnt, store_byte)
+                    plot_phase("Store", "send", host_id, phase, x, store_cnt_trans, store_byte_trans)
+                elif access_type == "rmw":
+                    plot_phase("RMW", "recv", host_id, phase, x, rmw_cnt, rmw_byte)
+                    plot_phase("RMW", "send", host_id, phase, x, rmw_cnt_trans, rmw_byte_trans)
+                elif access_type == "func":
+                    plot_phase("Function", "recv", host_id, phase, x, func_cnt, func_byte)
+                    plot_phase("Function", "send", host_id, phase, x, func_cnt_trans, func_byte_trans)
+                elif access_type == "reference":
+                    plot_phase("Reference", "recv", host_id, phase, x, ref_cnt, ref_byte)
+                    plot_phase("Reference", "send", host_id, phase, x, ref_cnt_trans, ref_byte_trans)
 
 elif granularity == "end-to-end":
     load_cnt_total = np.array([[0 for src in range(host)] for dst in range(host)])
@@ -337,29 +376,37 @@ elif granularity == "end-to-end":
 
     x = [i for i in range(host)]
     for host_id in range(host):
-        plot_total("Load", "recv", host_id, x, load_cnt_total, load_byte_total)
-        plot_total("Store", "recv", host_id, x, store_cnt_total, store_byte_total)
-        plot_total("RMW", "recv", host_id, x, rmw_cnt_total, rmw_byte_total)
-        plot_total("Function", "recv", host_id, x, func_cnt_total, func_byte_total)
-        plot_total("Reference", "recv", host_id, x, ref_cnt_total, ref_byte_total)
-
-        plot_total("Load", "send", host_id, x, load_cnt_total_trans, load_byte_total_trans)
-        plot_total("Store", "send", host_id, x, store_cnt_total_trans, store_byte_total_trans)
-        plot_total("RMW", "send", host_id, x, rmw_cnt_total_trans, rmw_byte_total_trans)
-        plot_total("Function", "send", host_id, x, func_cnt_total_trans, func_byte_total_trans)
-        plot_total("Reference", "send", host_id, x, ref_cnt_total_trans, ref_byte_total_trans)
-
-        if dump == "stat-dump":
-            dump_total("Load", "recv", host_id, x, load_cnt_total, load_byte_total)
-            dump_total("Store", "recv", host_id, x, store_cnt_total, store_byte_total)
-            dump_total("RMW", "recv", host_id, x, rmw_cnt_total, rmw_byte_total)
-            dump_total("Function", "recv", host_id, x, func_cnt_total, func_byte_total)
-            dump_total("Reference", "recv", host_id, x, ref_cnt_total, ref_byte_total)
-
-            dump_total("Load", "send", host_id, x, load_cnt_total_trans, load_byte_total_trans)
-            dump_total("Store", "send", host_id, x, store_cnt_total_trans, store_byte_total_trans)
-            dump_total("RMW", "send", host_id, x, rmw_cnt_total_trans, rmw_byte_total_trans)
-            dump_total("Function", "send", host_id, x, func_cnt_total_trans, func_byte_total_trans)
-            dump_total("Reference", "send", host_id, x, ref_cnt_total_trans, ref_byte_total_trans)
+        if result_mode == "stat-dump":
+            if access_type == "load":
+                dump_total("Load", "recv", host_id, x, load_cnt_total, load_byte_total)
+                dump_total("Load", "send", host_id, x, load_cnt_total_trans, load_byte_total_trans)
+            elif access_type == "store":
+                dump_total("Store", "recv", host_id, x, store_cnt_total, store_byte_total)
+                dump_total("Store", "send", host_id, x, store_cnt_total_trans, store_byte_total_trans)
+            elif access_type == "rmw":
+                dump_total("RMW", "recv", host_id, x, rmw_cnt_total, rmw_byte_total)
+                dump_total("RMW", "send", host_id, x, rmw_cnt_total_trans, rmw_byte_total_trans)
+            elif access_type == "func":
+                dump_total("Function", "recv", host_id, x, func_cnt_total, func_byte_total)
+                dump_total("Function", "send", host_id, x, func_cnt_total_trans, func_byte_total_trans)
+            elif access_type == "reference":
+                dump_total("Reference", "recv", host_id, x, ref_cnt_total, ref_byte_total)
+                dump_total("Reference", "send", host_id, x, ref_cnt_total_trans, ref_byte_total_trans)
+        elif result_mode == "plot-hist":
+            if access_type == "load":
+                plot_total("Load", "recv", host_id, x, load_cnt_total, load_byte_total)
+                plot_total("Load", "send", host_id, x, load_cnt_total_trans, load_byte_total_trans)
+            elif access_type == "store":
+                plot_total("Store", "recv", host_id, x, store_cnt_total, store_byte_total)
+                plot_total("Store", "send", host_id, x, store_cnt_total_trans, store_byte_total_trans)
+            elif access_type == "rmw":
+                plot_total("RMW", "recv", host_id, x, rmw_cnt_total, rmw_byte_total)
+                plot_total("RMW", "send", host_id, x, rmw_cnt_total_trans, rmw_byte_total_trans)
+            elif access_type == "func":
+                plot_total("Function", "recv", host_id, x, func_cnt_total, func_byte_total)
+                plot_total("Function", "send", host_id, x, func_cnt_total_trans, func_byte_total_trans)
+            elif access_type == "reference":
+                plot_total("Reference", "recv", host_id, x, ref_cnt_total, ref_byte_total)
+                plot_total("Reference", "send", host_id, x, ref_cnt_total_trans, ref_byte_total_trans)
 else:
     sys.exit(3)
