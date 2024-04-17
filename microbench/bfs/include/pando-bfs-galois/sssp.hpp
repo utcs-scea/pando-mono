@@ -178,7 +178,7 @@ using VTopID = typename G::VertexTopologyID;
 template <typename G>
 using MDInnerWorkList = pando::Vector<VTopID<G>>;
 template <typename G>
-using MDWorkList = pando::Array<InnerWorkList<G>>;
+using MDWorkList = pando::Array<MDInnerWorkList<G>>;
 
 template <typename G>
 bool isWorkListEmpty(MDWorkList<G> worklist) {
@@ -190,7 +190,7 @@ bool isWorkListEmpty(MDWorkList<G> worklist) {
 }
 
 template <typename G>
-bool SSSPFunctor(G& graph, MDInnerWorkList<G> toWrite, VTopID vertex) {
+bool SSSPFunctor(G& graph, MDInnerWorkList<G> toWrite, VTopID<G> vertex) {
   bool ready = false;
   auto currDist = graph.getData(vertex) + 1;
   for (typename G::EdgeHandle eh : graph.edges(vertex)) {
@@ -200,7 +200,7 @@ bool SSSPFunctor(G& graph, MDInnerWorkList<G> toWrite, VTopID vertex) {
     std::uint64_t oldData = currData;
     if (oldData > currData) {
       updateData(currDist, currData);
-      state.graph.setBitSet(dst);
+      graph.setBitSet(dst);
       ready = true;
     }
   }
@@ -216,12 +216,12 @@ pando::Status MDLCSRLocal(G& graph, MDWorkList<G> toRead, MDWorkList<G> toWrite)
   PANDO_CHECK(wg.initialize(0));
   auto wgh = wg.getHandle();
   while (!*ready) {
-    for (R<InnerWorkList<G>> toRun : toRead) {
-      InnerWorkList vec = toRun;
+    for (R<MDInnerWorkList<G>> toRun : toRead) {
+      MDInnerWorkList<G> vec = toRun;
       liftVoid(toRun, clear);
       auto innerState = galois::make_tpl(graph, toWrite, ready);
       PANDO_CHECK(doAll(
-          wgh, innerState, vec, +[](decltype(innerState) innerState, VTopID vertex) {
+          wgh, innerState, vec, +[](decltype(innerState) innerState, VTopID<G> vertex) {
             auto [graph, toWrite, ready] = innerState;
             const std::uint64_t threadPerHostIdx =
                 galois::getCurrentThreadIdx() % galois::getThreadsPerHost();
@@ -245,7 +245,7 @@ bool updateActive(pando::Array<bool> arr) {
 
 template <typename G>
 pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkList<G>>& toRead,
-                         HostLocalStorage<MDWorkList<G>>& toWrite, P<bool> ready) {
+                         HostLocalStorage<MDWorkList<G>>& toWrite, P<bool> active) {
 #ifdef DPRINTS
   std::cout << "Got into SSSP" << std::endl;
 #endif
@@ -272,15 +272,32 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 #ifdef DPRINTS
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
 #endif
+    *active = false;
 
     auto state = galois::make_tpl(graph, toWrite);
     PANDO_CHECK_RETURN(galois::doAll(
-        wgh, state, toRead, +[](decltype(state), MDInnerWorkList<G> toRead) {
+        wgh, state, toRead, +[](decltype(state) state, MDWorkList<G> toRead) {
+          auto [graph, toWrite] = state;
+          MDLCSRLocal<G>(graph, toRead, toWrite.getLocalRef());
         }));
     PANDO_CHECK_RETURN(wg.wait());
 
     graph.sync(updateData);
-    updateActive(state);
+    galois::HostLocalStorage<pando::Array<bool>> masterBitSets = graph.getMasterBitSets();
+    galois::HostLocalStorage<pando::Array<bool>> mirrorBitSets = graph.getMirrorBitSets();
+    auto activeState = galois::make_tpl(mirrorBitSets, active);
+    PANDO_CHECK_RETURN(galois::doAll(
+        wgh, activeState, masterBitSets,
+        +[](decltype(activeState) activeState, pando::Array<bool> masterBitSet) {
+          auto [mirrorBitSets, active] = activeState;
+          if (updateActive(masterBitSet)) {
+            *active = true;
+          } else if (updateActive(mirrorBitSets.getLocalRef())) {
+            *active = true;
+          }
+        }));
+
+    PANDO_CHECK_RETURN(wg.wait());
     graph.resetBitSets();
 
 #ifdef DPRINTS
@@ -292,15 +309,15 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
-        phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
+        toRead, +[](pando::Vector<typename G::VertexTopologyID>) {
           countEdges.printEdges();
           countEdges.resetCount();
         });
   }
-  active = state.active;
   wg.deinitialize();
   return pando::Status::Success;
 }
 
-};     // namespace bfs
+}; // namespace bfs
+
 #endif // PANDO_BFS_GALOIS_SSSP_HPP_
