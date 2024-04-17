@@ -2,7 +2,7 @@
 # Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
 fail_fast: true
-exclude: ^pando-rt/|.gitmodules|.gitignore|.git/|^graphs/|^ok/
+exclude: ^pando-rt/|.gitmodules|.gitignore|.git/|^graphs/|^ok/|^sst-core-src/|^sst-elements-src/
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.2.0

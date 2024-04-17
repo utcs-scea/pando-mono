@@ -50,7 +50,8 @@ RUN apt-get update -y \
 
 COPY scripts/build_drvx_deps.sh /tmp/build_drvx_deps.sh
 
-COPY deps/ /dependencies/deps
+COPY sst-core-src/ /dependencies/deps/sst-core-src
+COPY sst-elements-src/ /dependencies/deps/sst-elements-src
 
 WORKDIR /dependencies
 
