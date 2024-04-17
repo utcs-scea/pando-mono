@@ -17,4 +17,4 @@ void bfs::updateData(std::uint64_t val, pando::GlobalRef<std::uint64_t> ref) {
                                          std::memory_order_relaxed, std::memory_order_relaxed));
 }
 
-bfs::CountEdges<galois::COUNT_EDGE> galois::countEdges;
+bfs::CountEdges<bfs::COUNT_EDGE> bfs::countEdges;
