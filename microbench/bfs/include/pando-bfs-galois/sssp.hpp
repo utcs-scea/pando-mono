@@ -132,7 +132,13 @@ pando::Status SSSP_DLCSR(
   state.active = active;
   state.dist = 0;
 
-  PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
+#ifdef PANDO_STAT_TRACE_ENABLE
+  PANDO_CHECK(galois::doAll(
+      wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
+        PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
+      }));
+  PANDO_CHECK(wg.wait());
+#endif
 
   while (!IsactiveIterationEmpty(phbfs)) {
 #ifdef DPRINTS
@@ -156,7 +162,13 @@ pando::Status SSSP_DLCSR(
 #endif
   }
 
-  PANDO_MEM_STAT_NEW_KERNEL("BFS End");
+#ifdef PANDO_STAT_TRACE_ENABLE
+  PANDO_CHECK(galois::doAll(
+      wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
+        PANDO_MEM_STAT_NEW_KERNEL("BFS END");
+      }));
+  PANDO_CHECK(wg.wait());
+#endif
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
