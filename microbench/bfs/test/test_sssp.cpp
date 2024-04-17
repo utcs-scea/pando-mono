@@ -66,7 +66,7 @@ TEST(SSSP, FullyConnected) {
 
   PANDO_CHECK(next.initialize());
 
-  EXPECT_EQ(galois::SSSP_DLCSR(graph, 0, next, phbfs), pando::Status::Success);
+  EXPECT_EQ(bfs::SSSP_DLCSR(graph, 0, next, phbfs), pando::Status::Success);
   EXPECT_EQ(graph.getData(0), static_cast<std::uint64_t>(0));
   for (std::uint64_t i = 1; i < SIZE; i++) {
     EXPECT_EQ(graph.getData(i), static_cast<std::uint64_t>(1));

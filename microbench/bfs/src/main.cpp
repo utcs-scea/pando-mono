@@ -16,6 +16,7 @@
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
+#include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
 
@@ -63,7 +64,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   for (std::uint64_t srcVertex : srcVertices) {
     std::cout << "Source Vertex is " << srcVertex << std::endl;
 
-    PANDO_CHECK(galois::SSSP_DLCSR(graph, srcVertex, next, phbfs));
+    PANDO_CHECK(bfs::SSSP_DLCSR(graph, srcVertex, next, phbfs));
 
     // Print Result
     for (std::uint64_t i = 0; i < numVertices; i++) {
@@ -95,24 +96,35 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   std::cerr << "Construct Graph End" << std::endl;
 #endif
 
-  using VertexTopologyID = typename Graph::VertexTopologyID;
-  galois::HostLocalStorage<pando::Vector<VertexTopologyID>> phbfs{};
-  PANDO_CHECK(phbfs.initialize());
+  bfs::P<bool> active;
+  pando::LocalStorageGuard<bool> activeGuard(active, 1);
+
+  galois::HostLocalStorage<bfs::MDWorkList<Graph>> toRead{};
+  galois::HostLocalStorage<bfs::MDWorkList<Graph>> toWrite{};
+  PANDO_CHECK(toRead.initialize());
+  PANDO_CHECK(toWrite.initialize());
 
   PANDO_CHECK(galois::doAll(
-      phbfs, +[](pando::GlobalRef<pando::Vector<VertexTopologyID>> vecRef) {
-        PANDO_CHECK(fmap(vecRef, initialize, 2));
-        liftVoid(vecRef, clear);
+      toRead, toWrite,
+      +[](decltype(toRead) toRead, pando::GlobalRef<bfs::MDWorkList<Graph>> toWriteLocal) {
+        pando::GlobalRef<bfs::MDWorkList<Graph>> toReadLocal = toRead.getLocalRef();
+        const std::uint64_t numThreadPerHost = galois::getThreadsPerHost();
+        PANDO_CHECK(fmap(toReadLocal, initialize, numThreadPerHost));
+        PANDO_CHECK(fmap(toWriteLocal, initialize, numThreadPerHost));
+        PANDO_CHECK(fmap(fmap(toReadLocal, operator[], 0), initialize, 2));
+        PANDO_CHECK(fmap(fmap(toWriteLocal, operator[], 0), initialize, 2));
+        liftVoid(fmap(toReadLocal, operator[], 0), clear);
+        liftVoid(fmap(toWriteLocal, operator[], 0), clear);
+        for (std::uint64_t i = 1; i < numThreadPerHost; i++) {
+          PANDO_CHECK(fmap(fmap(toReadLocal, operator[], i), initialize, 0));
+          PANDO_CHECK(fmap(fmap(toWriteLocal, operator[], i), initialize, 0));
+        }
       }));
-  galois::ThreadLocalVector<VertexTopologyID> next;
-
-  PANDO_CHECK(next.initialize());
-
   // Run BFS
   for (std::uint64_t srcVertex : srcVertices) {
     std::cout << "Source Vertex is " << srcVertex << std::endl;
 
-    PANDO_CHECK(galois::SSSP_MDLCSR(graph, srcVertex, next, phbfs));
+    PANDO_CHECK(bfs::SSSPMDLCSR(graph, srcVertex, toRead, toWrite, active));
 
     // Print Result
     for (std::uint64_t i = 0; i < numVertices; i++) {
