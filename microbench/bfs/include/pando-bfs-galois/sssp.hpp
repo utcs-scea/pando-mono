@@ -200,7 +200,7 @@ bool SSSPFunctor(G& graph, R<MDInnerWorkList<G>> toWrite, VTopID<G> vertex) {
     typename G::VertexTopologyID dst = graph.getEdgeDst(eh);
     R<std::uint64_t> currData = graph.getData(dst);
     std::uint64_t oldData = currData;
-    if (oldData > currData) {
+    if (oldData > currDist) {
       updateData(currDist, currData);
       PANDO_CHECK(fmap(toWrite, pushBack, dst));
       graph.setBitSet(dst);
@@ -250,7 +250,7 @@ bool updateActive(G& graph, MDWorkList<G> toRead, const pando::Array<bool>& mast
       PANDO_CHECK(fmap(toRead[0], pushBack, graph.getMasterTopologyIDFromIndex(i)));
     }
   }
-  for (std::uint64_t i = 0; i < masterBitSet.size(); i++) {
+  for (std::uint64_t i = 0; i < mirrorBitSet.size(); i++) {
     if (mirrorBitSet[i]) {
       active = true;
       PANDO_CHECK(fmap(toRead[0], pushBack, graph.getMirrorTopologyIDFromIndex(i)));
@@ -299,6 +299,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
     PANDO_CHECK_RETURN(wg.wait());
 
     graph.sync(updateData);
+
     galois::HostLocalStorage<pando::Array<bool>> masterBitSets = graph.getMasterBitSets();
     galois::HostLocalStorage<pando::Array<bool>> mirrorBitSets = graph.getMirrorBitSets();
     auto activeState = galois::make_tpl(graph, mirrorBitSets, toRead, active);
