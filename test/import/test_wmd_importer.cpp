@@ -209,6 +209,12 @@ TEST_P(DLCSRInitEdgeList, initializeEL) {
   // Iterate over vertices
   std::uint64_t vid = 0;
 
+  PANDO_CHECK(galois::doAll(
+      graph.vertices(), +[](typename Graph::VertexTopologyID vert) {
+        EXPECT_EQ(static_cast<std::uint64_t>(localityOf(vert).node.id),
+                  pando::getCurrentPlace().node.id);
+      }));
+
   for (typename Graph::VertexTopologyID vert : graph.vertices()) {
     EXPECT_EQ(vid, graph.getVertexIndex(vert));
     vid++;
@@ -223,6 +229,9 @@ TEST_P(DLCSRInitEdgeList, initializeEL) {
     graph.setData(vert, dumbVertex);
     vertexData = graph.getData(vert);
     EXPECT_EQ(vertexData.id, numVertices);
+
+    EXPECT_EQ(static_cast<std::uint64_t>(localityOf(vert).node.id),
+              graph.getPhysicalHostID(srcTok));
 
     // Iterate over edges
     EXPECT_NE(goldenTable.find(srcTok), goldenTable.end())

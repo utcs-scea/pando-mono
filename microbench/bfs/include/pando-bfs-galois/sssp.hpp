@@ -9,6 +9,7 @@
 
 #include <pando-rt/export.h>
 
+#include <cassert>
 #include <fstream>
 #include <utility>
 
@@ -193,6 +194,9 @@ bool isWorkListEmpty(MDWorkList<G> worklist) {
 
 template <typename G>
 bool SSSPFunctor(G& graph, R<MDInnerWorkList<G>> toWrite, VTopID<G> vertex) {
+#ifndef NDEBUG
+  assert(localityOf(vertex).node.id == pando::getCurrentPlace().node.id);
+#endif
   bool ready = false;
   auto currDist = graph.getData(vertex) + 1;
   for (typename G::EdgeHandle eh : graph.edges(vertex)) {
@@ -281,7 +285,13 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 
   PANDO_CHECK_RETURN(fmap(fmap(toRead[srcHost], operator[], 0), pushBack, srcID));
 
-  PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
+#ifdef PANDO_STAT_TRACE_ENABLE
+  PANDO_CHECK(galois::doAll(
+      wgh, toRead, +[](MDWorkList<G>) {
+        PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
+      }));
+  PANDO_CHECK(wg.wait());
+#endif
 
   *active = true;
   while (*active) {
@@ -321,7 +331,13 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 #endif
   }
 
-  PANDO_MEM_STAT_NEW_KERNEL("BFS End");
+#ifdef PANDO_STAT_TRACE_ENABLE
+  PANDO_CHECK(galois::doAll(
+      wgh, toRead, +[](MDWorkList<G>) {
+        PANDO_MEM_STAT_NEW_KERNEL("BFS END");
+      }));
+  PANDO_CHECK(wg.wait());
+#endif
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
