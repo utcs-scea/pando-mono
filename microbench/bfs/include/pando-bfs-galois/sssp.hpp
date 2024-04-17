@@ -219,6 +219,7 @@ pando::Status MDLCSRLocal(G& graph, MDWorkList<G> toRead, MDWorkList<G> toWrite)
   PANDO_CHECK(wg.initialize(0));
   auto wgh = wg.getHandle();
   while (!*ready) {
+    *ready = true;
     for (R<MDInnerWorkList<G>> toRun : toRead) {
       MDInnerWorkList<G> vec = toRun;
       liftVoid(toRun, clear);
@@ -228,7 +229,8 @@ pando::Status MDLCSRLocal(G& graph, MDWorkList<G> toRead, MDWorkList<G> toWrite)
             auto [graph, toWrite, ready] = innerState;
             const std::uint64_t threadPerHostIdx =
                 galois::getCurrentThreadIdx() % galois::getThreadsPerHost();
-            *ready = !SSSPFunctor(graph, toWrite[threadPerHostIdx], vertex);
+            if (!SSSPFunctor(graph, toWrite[threadPerHostIdx], vertex))
+              *ready = false;
           }));
     }
     PANDO_CHECK(wg.wait());

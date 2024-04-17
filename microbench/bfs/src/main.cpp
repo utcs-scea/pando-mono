@@ -115,7 +115,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
         PANDO_CHECK(fmap(fmap(toWriteLocal, operator[], 0), initialize, 2));
         liftVoid(fmap(toReadLocal, operator[], 0), clear);
         liftVoid(fmap(toWriteLocal, operator[], 0), clear);
-        for (std::uint64_t i = 1; i < lift(toReadLocal, size()); i++) {
+        for (std::uint64_t i = 1; i < numThreadPerHost; i++) {
           PANDO_CHECK(fmap(fmap(toReadLocal, operator[], i), initialize, 0));
           PANDO_CHECK(fmap(fmap(toWriteLocal, operator[], i), initialize, 0));
         }
