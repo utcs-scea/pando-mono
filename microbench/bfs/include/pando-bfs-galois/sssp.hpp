@@ -127,11 +127,6 @@ pando::Status SSSP_DLCSR(
 
   PANDO_CHECK_RETURN(fmap(phbfs.getLocalRef(), pushBack, graph.getTopologyID(src)));
 
-  BFSState<G> state;
-  state.graph = graph;
-  state.active = active;
-  state.dist = 0;
-
 #ifdef PANDO_STAT_TRACE_ENABLE
   PANDO_CHECK(galois::doAll(
       wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
@@ -139,7 +134,28 @@ pando::Status SSSP_DLCSR(
       }));
   PANDO_CHECK(wg.wait());
 #endif
-
+  PANDO_MEM_STAT_NEW_PHASE();
+  BFSState<G> state;
+  PANDO_MEM_STAT_NEW_PHASE();
+#ifdef PANDO_STAT_TRACE_ENABLE
+  PANDO_CHECK(galois::doAll(
+      wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
+        PANDO_MEM_STAT_NEW_KERNEL("BFS End");
+      }));
+  PANDO_CHECK(wg.wait());
+#endif
+  state.graph = graph;
+  state.active = active;
+  state.dist = 0;
+  /*
+  #ifdef PANDO_STAT_TRACE_ENABLE
+    PANDO_CHECK(galois::doAll(
+        wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
+          PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
+        }));
+    PANDO_CHECK(wg.wait());
+  #endif
+  */
   while (!IsactiveIterationEmpty(phbfs)) {
 #ifdef DPRINTS
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
@@ -161,15 +177,15 @@ pando::Status SSSP_DLCSR(
     std::cerr << "Iteration loop end:\t" << state.dist - 1 << std::endl;
 #endif
   }
-
-#ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
-      wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
-        PANDO_MEM_STAT_NEW_KERNEL("BFS END");
-      }));
-  PANDO_CHECK(wg.wait());
-#endif
-
+  /*
+  #ifdef PANDO_STAT_TRACE_ENABLE
+    PANDO_CHECK(galois::doAll(
+        wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
+          PANDO_MEM_STAT_NEW_KERNEL("BFS END");
+        }));
+    PANDO_CHECK(wg.wait());
+  #endif
+  */
   if constexpr (COUNT_EDGE) {
     galois::doAll(
         phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
@@ -298,6 +314,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
   PANDO_CHECK_RETURN(wg.wait());
 
   auto srcHost = graph.getPhysicalHostID(src);
+  std::cout << "Source is on host " << srcHost << std::endl;
   auto srcID = graph.getGlobalTopologyID(src);
 
   graph.setData(srcID, 0);
@@ -306,20 +323,28 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 #endif
 
   PANDO_CHECK_RETURN(fmap(fmap(toRead[srcHost], operator[], 0), pushBack, srcID));
-
-#ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
-      wgh, toRead, +[](MDWorkList<G>) {
-        PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
-      }));
-  PANDO_CHECK(wg.wait());
-#endif
-
+  /*
+  #ifdef PANDO_STAT_TRACE_ENABLE
+    PANDO_CHECK(galois::doAll(
+        wgh, toRead, +[](MDWorkList<G>) {
+          PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
+        }));
+    PANDO_CHECK(wg.wait());
+  #endif
+  */
   *active = true;
   while (*active) {
 #ifdef DPRINTS
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
 #endif
+#ifdef PANDO_STAT_TRACE_ENABLE
+    PANDO_CHECK(galois::doAll(
+        wgh, toRead, +[](MDWorkList<G>) {
+          PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
+        }));
+    PANDO_CHECK(wg.wait());
+#endif
+
     *active = false;
 
     auto state = galois::make_tpl(graph, toWrite);
@@ -331,6 +356,14 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
     PANDO_CHECK_RETURN(wg.wait());
 
     graph.sync(updateData);
+
+#ifdef PANDO_STAT_TRACE_ENABLE
+    PANDO_CHECK(galois::doAll(
+        wgh, toRead, +[](MDWorkList<G>) {
+          PANDO_MEM_STAT_NEW_KERNEL("BFS END");
+        }));
+    PANDO_CHECK(wg.wait());
+#endif
 
 #ifdef BROADCAST_FOR_SYNC
     galois::HostLocalStorage<pando::Array<bool>> masterBitSets = graph.getMasterBitSets();
@@ -365,15 +398,15 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
     std::cerr << "Iteration loop end:\t" << state.dist - 1 << std::endl;
 #endif
   }
-
-#ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
-      wgh, toRead, +[](MDWorkList<G>) {
-        PANDO_MEM_STAT_NEW_KERNEL("BFS END");
-      }));
-  PANDO_CHECK(wg.wait());
-#endif
-
+  /*
+  #ifdef PANDO_STAT_TRACE_ENABLE
+    PANDO_CHECK(galois::doAll(
+        wgh, toRead, +[](MDWorkList<G>) {
+          PANDO_MEM_STAT_NEW_KERNEL("BFS END");
+        }));
+    PANDO_CHECK(wg.wait());
+  #endif
+  */
   if constexpr (COUNT_EDGE) {
     galois::doAll(
         toRead, +[](pando::Vector<typename G::VertexTopologyID>) {
