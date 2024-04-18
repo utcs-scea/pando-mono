@@ -16,7 +16,6 @@
 #include <pando-lib-galois/graphs/local_csr.hpp>
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
-#include <pando-lib-galois/sync/global_barrier.hpp>
 #include <pando-lib-galois/sync/simple_lock.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
@@ -570,50 +569,49 @@ public:
     WaitGroup wg;
     PANDO_CHECK(wg.initialize(0));
     WaitGroup::HandleType wgh = wg.getHandle();
-    auto thisCSR = *this;
-    auto state =
-        galois::make_tpl(thisCSR, localMirrorToRemoteMasterOrderedTable, masterBitSets, func, wgh);
+    auto thisMDLCSR = *this;
+    auto state = galois::make_tpl(thisMDLCSR, func, wgh);
 
     PANDO_CHECK(galois::doAll(
-        wgh, state, mirrorBitSets,
-        +[](decltype(state) state, pando::GlobalRef<pando::Array<bool>> mirrorBitSet) {
-          auto [graph, localMirrorToRemoteMasterOrderedTable, masterBitSets, func, wgh] = state;
+        wgh, state, localMirrorToRemoteMasterOrderedTable,
+        +[](decltype(state) state,
+            pando::GlobalRef<pando::Array<MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap) {
+          auto [thisMDLCSR, func, wgh] = state;
 
-          pando::GlobalRef<pando::Array<MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
-              localMirrorToRemoteMasterOrderedTable[pando::getCurrentPlace().node.id];
+          pando::GlobalRef<pando::Array<bool>> mirrorBitSet = thisMDLCSR.getLocalMirrorBitSet();
 
           for (std::uint64_t i = 0ul; i < lift(mirrorBitSet, size); i++) {
             bool dirty = fmap(mirrorBitSet, operator[], i);
             if (dirty) {
               // obtain the local mirror vertex data
-              VertexTopologyID mirrorTopologyID = graph.getMirrorTopologyIDFromIndex(i);
+              VertexTopologyID mirrorTopologyID = thisMDLCSR.getMirrorTopologyIDFromIndex(i);
               // a copy
-              VertexData mirrorData = graph.getData(mirrorTopologyID);
+              VertexData mirrorData = thisMDLCSR.getData(mirrorTopologyID);
 
               // obtain the corresponding remote master information
-              MirrorToMasterMap mirrorToMasterMap =
-                  fmap(localMirrorToRemoteMasterOrderedMap, operator[], i);
-              VertexTopologyID masterTopologyID = mirrorToMasterMap.getMaster();
+              MirrorToMasterMap map = fmap(localMirrorToRemoteMasterOrderedMap, operator[], i);
+              VertexTopologyID masterTopologyID = map.getMaster();
               // atomic function signature: func(VertexData mirror, pando::GlobalRef<VertexData>
               // master) apply the function
               wgh.addOne();
               PANDO_CHECK(executeOn(
                   localityOf(masterTopologyID),
-                  +[](Func func, decltype(graph) graph, VertexData mirrorData,
-                      VertexTopologyID masterID, WaitGroup::HandleType wgh) {
-                    auto masterData = graph.getData(masterID);
+                  +[](Func func, decltype(thisMDLCSR) thisMDLCSR, VertexTopologyID masterTopologyID,
+                      VertexData mirrorData, WaitGroup::HandleType wgh) {
+                    pando::GlobalRef<VertexData> masterData = thisMDLCSR.getData(masterTopologyID);
                     VertexData oldMasterData = masterData;
                     func(mirrorData, masterData);
                     if (masterData != oldMasterData) {
                       // set the remote master bit set
                       pando::GlobalRef<pando::Array<bool>> masterBitSet =
-                          graph.masterBitSets.getLocalRef();
-                      std::uint64_t index = graph.getIndex(masterID, graph.getLocalMasterRange());
+                          thisMDLCSR.getLocalMasterBitSet();
+                      std::uint64_t index =
+                          thisMDLCSR.getIndex(masterTopologyID, thisMDLCSR.getLocalMasterRange());
                       fmap(masterBitSet, operator[], index) = true;
                     }
                     wgh.done();
                   },
-                  func, graph, mirrorData, masterTopologyID, wgh));
+                  func, thisMDLCSR, masterTopologyID, mirrorData, wgh));
               //  master data updated
             }
           }
@@ -625,20 +623,20 @@ public:
    * @brief Broadcast the updated master values to the corresponding mirror values
    */
   void broadcast() {
-    galois::GlobalBarrier barrier;
-    PANDO_CHECK(barrier.initialize(pando::getPlaceDims().node.id));
+    WaitGroup wg;
+    PANDO_CHECK(wg.initialize(0));
+    WaitGroup::HandleType wgh = wg.getHandle();
 
-    auto thisCSR = *this;
-    auto state = galois::make_tpl(thisCSR, barrier, masterBitSets, mirrorBitSets);
+    auto thisMDLCSR = *this;
+    auto state = galois::make_tpl(thisMDLCSR, wgh);
 
-    galois::doAll(
-        state, localMasterToRemoteMirrorTable,
+    PANDO_CHECK(galois::doAll(
+        wgh, state, localMasterToRemoteMirrorTable,
         +[](decltype(state) state, pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>>
                                        localMasterToRemoteMirrorMap) {
-          auto [object, barrier, masterBitSets, mirrorBitSets] = state;
+          auto [thisMDLCSR, wgh] = state;
 
-          pando::GlobalRef<pando::Array<bool>> masterBitSet =
-              masterBitSets[pando::getCurrentPlace().node.id];
+          pando::GlobalRef<pando::Array<bool>> masterBitSet = thisMDLCSR.getLocalMasterBitSet();
 
           std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
 
@@ -646,36 +644,43 @@ public:
             pando::GlobalRef<pando::Vector<MirrorToMasterMap>> mapVectorFromHost =
                 fmap(localMasterToRemoteMirrorMap, operator[], nodeId);
             for (std::uint64_t i = 0ul; i < lift(mapVectorFromHost, size); i++) {
-              MirrorToMasterMap m = fmap(mapVectorFromHost, operator[], i);
-              VertexTopologyID masterTopologyID = m.getMaster();
-              std::uint64_t index = object.getIndex(masterTopologyID, object.getLocalMasterRange());
+              MirrorToMasterMap map = fmap(mapVectorFromHost, operator[], i);
+              VertexTopologyID masterTopologyID = map.getMaster();
+              std::uint64_t index =
+                  thisMDLCSR.getIndex(masterTopologyID, thisMDLCSR.getLocalMasterRange());
               bool dirty = fmap(masterBitSet, operator[], index);
               if (dirty) {
                 // obtain the local master vertex data
-                VertexData masterData = object.getData(masterTopologyID);
+                VertexData masterData = thisMDLCSR.getData(masterTopologyID);
 
                 // obtain the corresponding remote mirror information
-                VertexTopologyID mirrorTopologyID = m.getMirror();
-                // actual reference
-                pando::GlobalRef<VertexData> mirrorData = object.getData(mirrorTopologyID);
-
-                VertexData oldMirrorData = mirrorData;
-                mirrorData = masterData;
-                //  mirror data updated
-                if (mirrorData != oldMirrorData) {
-                  // set the remote mirror bit set
-                  pando::GlobalRef<pando::Array<bool>> mirrorBitSet = mirrorBitSets[nodeId];
-                  std::uint64_t index =
-                      object.getIndex(mirrorTopologyID, object.getMirrorRange(nodeId));
-                  fmap(mirrorBitSet, operator[], index) = true;
-                }
+                VertexTopologyID mirrorTopologyID = map.getMirror();
+                wgh.addOne();
+                PANDO_CHECK(executeOn(
+                    localityOf(mirrorTopologyID),
+                    +[](decltype(thisMDLCSR) thisMDLCSR, VertexTopologyID mirrorTopologyID,
+                        VertexData masterData, WaitGroup::HandleType wgh) {
+                      pando::GlobalRef<VertexData> mirrorData =
+                          thisMDLCSR.getData(mirrorTopologyID);
+                      VertexData oldMirrorData = mirrorData;
+                      mirrorData = masterData;
+                      if (mirrorData != oldMirrorData) {
+                        // set the remote mirror bit set
+                        pando::GlobalRef<pando::Array<bool>> mirrorBitSet =
+                            thisMDLCSR.getLocalMirrorBitSet();
+                        std::uint64_t index =
+                            thisMDLCSR.getIndex(mirrorTopologyID, thisMDLCSR.getLocalMirrorRange());
+                        fmap(mirrorBitSet, operator[], index) = true;
+                      }
+                      wgh.done();
+                    },
+                    thisMDLCSR, mirrorTopologyID, masterData, wgh));
               }
             }
           }
-
-          barrier.done();
-          PANDO_CHECK(barrier.wait());
-        });
+        }));
+    PANDO_CHECK(wg.wait());
+    wg.deinitialize();
   }
   /**
    * @brief Synchronize master and mirror values among hosts
