@@ -257,8 +257,13 @@ pando::Status MDLCSRLocal(G& graph, MDWorkList<G> toRead, MDWorkList<G> toWrite)
 }
 
 template <typename G>
+#ifdef BROADCAST_FOR_SYNC
 bool updateActive(G& graph, MDWorkList<G> toRead, const pando::Array<bool>& masterBitSet,
-                  const pando::Array<bool>& mirrorBitSet) {
+                  const pando::Array<bool>& mirrorBitSet)
+#else
+bool updateActive(G& graph, MDWorkList<G> toRead, const pando::Array<bool>& masterBitSet)
+#endif
+{
   bool active = false;
   for (std::uint64_t i = 0; i < masterBitSet.size(); i++) {
     if (masterBitSet[i]) {
@@ -266,12 +271,14 @@ bool updateActive(G& graph, MDWorkList<G> toRead, const pando::Array<bool>& mast
       PANDO_CHECK(fmap(toRead[0], pushBack, graph.getMasterTopologyIDFromIndex(i)));
     }
   }
+#ifdef BROADCAST_FOR_SYNC
   for (std::uint64_t i = 0; i < mirrorBitSet.size(); i++) {
     if (mirrorBitSet[i]) {
       active = true;
       PANDO_CHECK(fmap(toRead[0], pushBack, graph.getMirrorTopologyIDFromIndex(i)));
     }
   }
+#endif
   return active;
 }
 
@@ -294,6 +301,9 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
   auto srcID = graph.getGlobalTopologyID(src);
 
   graph.setData(srcID, 0);
+#ifndef BROADCAST_FOR_SYNC
+  graph.broadcast();
+#endif
 
   PANDO_CHECK_RETURN(fmap(fmap(toRead[srcHost], operator[], 0), pushBack, srcID));
 
@@ -322,6 +332,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 
     graph.sync(updateData);
 
+#ifdef BROADCAST_FOR_SYNC
     galois::HostLocalStorage<pando::Array<bool>> masterBitSets = graph.getMasterBitSets();
     galois::HostLocalStorage<pando::Array<bool>> mirrorBitSets = graph.getMirrorBitSets();
     auto activeState = galois::make_tpl(graph, mirrorBitSets, toRead, active);
@@ -334,6 +345,18 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
             *active = true;
           }
         }));
+#else
+    galois::HostLocalStorage<pando::Array<bool>> masterBitSets = graph.getMasterBitSets();
+    auto activeState = galois::make_tpl(graph, toRead, active);
+    PANDO_CHECK_RETURN(galois::doAll(
+        wgh, activeState, masterBitSets,
+        +[](decltype(activeState) activeState, pando::Array<bool> masterBitSet) {
+          auto [graph, toRead, active] = activeState;
+          if (updateActive(graph, toRead.getLocalRef(), masterBitSet)) {
+            *active = true;
+          }
+        }));
+#endif
 
     PANDO_CHECK_RETURN(wg.wait());
     graph.resetBitSets();

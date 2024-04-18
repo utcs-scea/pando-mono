@@ -683,7 +683,9 @@ public:
   template <typename Func>
   void sync(Func func) {
     reduce(func);
+#ifdef BROADCAST_FOR_SYNC
     broadcast();
+#endif
   }
 
   template <typename ReadVertexType, typename ReadEdgeType>
