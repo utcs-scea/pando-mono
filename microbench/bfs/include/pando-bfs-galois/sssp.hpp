@@ -294,13 +294,15 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
           std::int16_t srcHost = graph.getPhysicalHostID(src);
           if (srcHost == pando::getCurrentPlace().node.id) {
             PANDO_CHECK(fmap(toRead[0], pushBack, srcID));
-#ifdef DPRINTS
-            std::cout << "Source is on host " << srcHost << std::endl;
-#endif
           }
         }
       }));
   PANDO_CHECK_RETURN(wg.wait());
+
+#ifdef DPRINTS
+  std::uint64_t srcHost = graph.getPhysicalHostID(src);
+  std::cout << "Source is on host " << srcHost << std::endl;
+#endif
 
 #ifdef PANDO_STAT_TRACE_ENABLE
   PANDO_CHECK(galois::doAll(
