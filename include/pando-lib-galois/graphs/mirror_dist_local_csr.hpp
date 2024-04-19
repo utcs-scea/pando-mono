@@ -686,12 +686,20 @@ public:
    * @brief Synchronize master and mirror values among hosts
    */
   template <typename Func>
+#ifdef SYNC_ONLY_REDUCE
   void sync(Func func) {
     reduce(func);
-#ifdef BROADCAST_FOR_SYNC
-    broadcast();
-#endif
   }
+#elif SYNC_ONLY_BROADCAST
+  void sync() {
+    broadcast();
+  }
+#else
+  void sync(Func func) {
+    reduce(func);
+    broadcast();
+  }
+#endif
 
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
