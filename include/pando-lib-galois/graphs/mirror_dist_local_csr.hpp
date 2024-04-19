@@ -680,10 +680,12 @@ public:
   /**
    * @brief Synchronize master and mirror values among hosts
    */
-  template <typename Func, bool NOBROADCAST = false>
+  template <typename Func, bool REDUCE = true, bool BROADCAST = true>
   void sync(Func func) {
-    reduce(func);
-    if (!NOBROADCAST) {
+    if (REDUCE) {
+      reduce(func);
+    }
+    if (BROADCAST) {
       broadcast();
     }
   }
