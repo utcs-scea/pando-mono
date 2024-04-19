@@ -109,7 +109,7 @@ pando::Status SSSP_DLCSR(
     G& graph, std::uint64_t src, ThreadLocalVector<typename G::VertexTopologyID>& active,
     galois::HostLocalStorage<pando::Vector<typename G::VertexTopologyID>>& phbfs) {
 #ifdef DPRINTS
-  std::cout << "Got into SSSP" << std::endl;
+  std::cerr << "Got into SSSP" << std::endl;
 #endif
 
   galois::WaitGroup wg{};
@@ -272,7 +272,7 @@ template <typename G>
 pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkList<G>>& toRead,
                          HostLocalStorage<MDWorkList<G>>& toWrite, P<bool> active) {
 #ifdef DPRINTS
-  std::cout << "Got into SSSP" << std::endl;
+  std::cerr << "Got into SSSP" << std::endl;
 #endif
   galois::WaitGroup wg{};
   PANDO_CHECK_RETURN(wg.initialize(0));
@@ -301,7 +301,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 
 #ifdef DPRINTS
   std::uint64_t srcHost = graph.getPhysicalHostID(src);
-  std::cout << "Source is on host " << srcHost << std::endl;
+  std::cerr << "Source is on host " << srcHost << std::endl;
 #endif
 
 #ifdef PANDO_STAT_TRACE_ENABLE
