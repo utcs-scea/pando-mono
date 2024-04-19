@@ -250,7 +250,7 @@ public:
   /**
    * @brief returns local topology ID of a mirror vertex
    */
-  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
+  Pair<VertexTopologyID, bool> getLocalTopologyID(VertexTokenID tid) {
     return dlcsr.getLocalTopologyID(tid);
   }
   /**
@@ -685,21 +685,13 @@ public:
   /**
    * @brief Synchronize master and mirror values among hosts
    */
-  template <typename Func>
-#ifdef SYNC_ONLY_REDUCE
+  template <typename Func, bool NOBROADCAST = false>
   void sync(Func func) {
     reduce(func);
+    if (!NOBROADCAST) {
+      broadcast();
+    }
   }
-#elif SYNC_ONLY_BROADCAST
-  void sync() {
-    broadcast();
-  }
-#else
-  void sync(Func func) {
-    reduce(func);
-    broadcast();
-  }
-#endif
 
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
@@ -769,7 +761,7 @@ public:
       fmap(_localMirrorToRemoteMasterOrderedTable, initialize, mirror_size);
       for (uint64_t j = 0; j < mirror_size; j++) {
         _localMirrorToRemoteMasterOrderedTable[j] =
-            MirrorToMasterMap(fmap(dlcsr, getLocalTopologyID, localMirrorList[j]),
+            MirrorToMasterMap(std::get<0>(fmap(dlcsr, getLocalTopologyID, localMirrorList[j])),
                               fmap(dlcsr, getGlobalTopologyID, localMirrorList[j]));
       }
       mdlcsr.masterRange.getLocalRef() = _masterRange;

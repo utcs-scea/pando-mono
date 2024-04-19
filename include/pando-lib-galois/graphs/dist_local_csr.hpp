@@ -407,23 +407,21 @@ public:
 
   /** Vertex Manipulation **/
   VertexTopologyID getTopologyID(VertexTokenID tid) {
-    std::uint64_t virtualHostID = tid % this->numVHosts();
-    std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
-    auto [ret, found] = fmap(getLocalCSR(), relaxedgetTopologyID, tid);
+    auto [ret, found] = fmap(getLocalCSR(), relaxedGetTopologyID, tid);
     if (!found) {
-      return fmap(getCSR(physicalHost), getTopologyID, tid);
+      return getGlobalTopologyID(tid);
     } else {
       return ret;
     }
   }
 
-private:
   // This function is for mirrored dist local csr, or classes which will directly use it. Don't use
   // it externally. getLocalTopologyID with non-existing tokenID will return failure.
-  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
-    return fmap(getLocalCSR(), getTopologyID, tid);
+  Pair<VertexTopologyID, bool> getLocalTopologyID(VertexTokenID tid) {
+    return fmap(getLocalCSR(), relaxedGetTopologyID, tid);
   }
 
+private:
   VertexTopologyID getGlobalTopologyID(VertexTokenID tid) {
     std::uint64_t virtualHostID = tid % this->numVHosts();
     std::uint64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
