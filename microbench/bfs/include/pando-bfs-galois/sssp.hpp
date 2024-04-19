@@ -128,21 +128,24 @@ pando::Status SSSP_DLCSR(
   PANDO_CHECK_RETURN(fmap(phbfs.getLocalRef(), pushBack, graph.getTopologyID(src)));
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
-      wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
-        PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
-      }));
+  wgh.add(pando::getPlaceDims().node.id);
+  auto func = +[](WaitGroup::HandleType wgh) {
+    PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
+    wgh.done();
+  };
+  for (std::int16_t nodeId = 0; nodeId < pando::getPlaceDims().node.id; nodeId++) {
+    PANDO_CHECK(pando::executeOn(
+        pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore}, func, wgh));
+  }
   PANDO_CHECK(wg.wait());
+  // wg2.deinitialize();
 #endif
+
   PANDO_MEM_STAT_NEW_PHASE();
   BFSState<G> state;
   PANDO_MEM_STAT_NEW_PHASE();
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
-      wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
-        PANDO_MEM_STAT_NEW_KERNEL("BFS End");
-      }));
-  PANDO_CHECK(wg.wait());
+  PANDO_MEM_STAT_NEW_KERNEL("BFS End");
 #endif
   state.graph = graph;
   state.active = active;
