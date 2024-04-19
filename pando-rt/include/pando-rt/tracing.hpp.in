@@ -28,6 +28,13 @@ PANDO_RT_EXPORT void memStatNewPhase();
  */
 PANDO_RT_EXPORT void memStatNewKernel(std::string_view kernelName);
 
+/**
+ * @brief Start a new kernel.
+ *
+ * @ingroup ROOT
+ */
+PANDO_RT_EXPORT void memStatWaitGroupAccess();
+
 } // namespace pando
 
 #define PANDO_MEM_STAT_NEW_PHASE()  \
@@ -39,9 +46,16 @@ do {                                \
 do {                                            \
     pando::memStatNewKernel((KERNEL_NAME));     \
 } while(false)
+
+#define PANDO_MEM_STAT_WAIT_GROUP_ACCESS() \
+do{ \
+    pando::memStatWaitGroupAccess();\
+  } while(false)
+
 #else
 #define PANDO_MEM_STAT_NEW_PHASE()
 #define PANDO_MEM_STAT_NEW_KERNEL(KERNEL_NAME)
+#define PANDO_MEM_STAT_WAIT_GROUP_ACCESS()
 #endif
 
 #endif // PANDO_RT_TRACING_HPP_

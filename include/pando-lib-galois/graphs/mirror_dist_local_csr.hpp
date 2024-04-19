@@ -251,7 +251,7 @@ public:
   /**
    * @brief returns local topology ID of a mirror vertex
    */
-  VertexTopologyID getLocalTopologyID(VertexTokenID tid) {
+  Pair<VertexTopologyID, bool> getLocalTopologyID(VertexTokenID tid) {
     return dlcsr.getLocalTopologyID(tid);
   }
   /**
@@ -680,10 +680,12 @@ public:
   /**
    * @brief Synchronize master and mirror values among hosts
    */
-  template <typename Func>
+  template <typename Func, bool NOBROADCAST = false>
   void sync(Func func) {
     reduce(func);
-    broadcast();
+    if (!NOBROADCAST) {
+      broadcast();
+    }
   }
 
   template <typename ReadVertexType, typename ReadEdgeType>
@@ -754,7 +756,7 @@ public:
       fmap(_localMirrorToRemoteMasterOrderedTable, initialize, mirror_size);
       for (uint64_t j = 0; j < mirror_size; j++) {
         _localMirrorToRemoteMasterOrderedTable[j] =
-            MirrorToMasterMap(fmap(dlcsr, getLocalTopologyID, localMirrorList[j]),
+            MirrorToMasterMap(std::get<0>(fmap(dlcsr, getLocalTopologyID, localMirrorList[j])),
                               fmap(dlcsr, getGlobalTopologyID, localMirrorList[j]));
       }
       mdlcsr.masterRange.getLocalRef() = _masterRange;

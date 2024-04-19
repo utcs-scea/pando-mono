@@ -278,12 +278,17 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
       }));
   PANDO_CHECK_RETURN(wg.wait());
 
-  auto srcHost = graph.getPhysicalHostID(src);
-  auto srcID = graph.getGlobalTopologyID(src);
-
-  graph.setData(srcID, 0);
-
-  PANDO_CHECK_RETURN(fmap(fmap(toRead[srcHost], operator[], 0), pushBack, srcID));
+  auto initialState = galois::make_tpl(graph, src);
+  PANDO_CHECK(galois::doAll(
+      wgh, initialState, toRead, +[](decltype(initialState) state, MDWorkList<G> toRead) {
+        auto [graph, src] = state;
+        auto [srcID, found] = graph.getLocalTopologyID(src);
+        if (found) {
+          graph.setDataOnly(srcID, 0);
+          PANDO_CHECK(fmap(toRead[0], pushBack, srcID));
+        }
+      }));
+  PANDO_CHECK_RETURN(wg.wait());
 
 #ifdef PANDO_STAT_TRACE_ENABLE
   PANDO_CHECK(galois::doAll(
@@ -308,7 +313,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
         }));
     PANDO_CHECK_RETURN(wg.wait());
 
-    graph.sync(updateData);
+    graph.template sync<decltype(updateData), true>(updateData);
 
     galois::HostLocalStorage<pando::Array<bool>> masterBitSets = graph.getMasterBitSets();
     galois::HostLocalStorage<pando::Array<bool>> mirrorBitSets = graph.getMirrorBitSets();
