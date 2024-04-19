@@ -52,10 +52,12 @@ load_cnt = []
 store_cnt = []
 rmw_cnt = []
 func_cnt = []
+waitgroup_cnt = []
 load_byte = []
 store_byte = []
 rmw_byte = []
 func_byte = []
+waitgroup_byte = []
 
 phase_total = [0 for i in range(host)]
 
@@ -64,10 +66,12 @@ for host_id in range(host):
     store_cnt.append([])
     rmw_cnt.append([])
     func_cnt.append([])
+    waitgroup_cnt.append([])
     load_byte.append([])
     store_byte.append([])
     rmw_byte.append([])
     func_byte.append([])
+    waitgroup_byte.append([])
 
     phase_curr = -1
 
@@ -93,10 +97,12 @@ for host_id in range(host):
             store_cnt[host_id].append([0 for src in range(host)])
             rmw_cnt[host_id].append([0 for src in range(host)])
             func_cnt[host_id].append([0 for src in range(host)])
+            waitgroup_cnt[host_id].append([0 for src in range(host)])
             load_byte[host_id].append([0 for src in range(host)])
             store_byte[host_id].append([0 for src in range(host)])
             rmw_byte[host_id].append([0 for src in range(host)])
             func_byte[host_id].append([0 for src in range(host)])
+            waitgroup_byte[host_id].append([0 for src in range(host)])
         elif line.find('Source Node') != -1:
             line_split = line.strip().split()
             src = int(line_split[2])
@@ -181,6 +187,25 @@ for host_id in range(host):
             line_split = line.strip().split()
             byte = int(line_split[2])
             func_byte[host_id][phase_curr][src] += byte
+        elif line.find('WAIT_GROUP (count)') != -1:
+            line_split = line.strip().split()
+            count = int(line_split[2])
+            waitgroup_cnt[host_id][phase_curr][src] += count
+        elif line.find('WAIT_GROUP (bytes)') != -1:
+            line_split = line.strip().split()
+            byte = int(line_split[2])
+            waitgroup_byte[host_id][phase_curr][src] += byte
+
+
+
+# adjust the load numbers
+for host_id in range(host):
+    for phase in range(phase_total[host_id]):
+        for src in range(host):
+            if waitgroup_cnt[host_id][phase][src] > load_cnt[host_id][phase][src]:
+                print("difference = ", waitgroup_cnt[host_id][phase][src] - load_cnt[host_id][phase][src])
+            if waitgroup_cnt[host_id][phase][src] > 0:
+                load_cnt[host_id][phase][src] = load_cnt[host_id][phase][src] - waitgroup_cnt[host_id][phase][src] + 1
 
 
 
