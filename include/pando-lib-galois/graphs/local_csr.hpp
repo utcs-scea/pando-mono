@@ -421,16 +421,16 @@ public:
 private:
   // Use with your own risk.
   // It is reasonable only when you could handle the non-existing value outside of this function.
-  galois::Pair<VertexTopologyID, bool> relaxedgetTopologyID(VertexTokenID token) {
-    pando::GlobalPtr<Vertex> ret;
+  galois::Pair<VertexTopologyID, bool> relaxedGetTopologyID(VertexTokenID token) {
+    pando::GlobalPtr<Vertex> ret = nullptr;
     bool found = tokenToTopology.get(token, ret);
     return galois::make_tpl(ret, found);
   }
 
 public:
   VertexTopologyID getTopologyID(VertexTokenID token) {
-    pando::GlobalPtr<Vertex> ret;
-    if (!tokenToTopology.get(token, ret)) {
+    auto [ret, found] = relaxedGetTopologyID(token);
+    if (!found) {
       std::cerr << "In the host " << pando::getCurrentPlace().node.id
                 << "can't find token:" << token << std::endl;
       PANDO_ABORT("FAILURE TO FIND TOKENID");

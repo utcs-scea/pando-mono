@@ -128,7 +128,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
 
     // Print Result
     for (std::uint64_t i = 0; i < numVertices; i++) {
-      std::uint64_t val = graph.getData(graph.getTopologyID(i));
+      std::uint64_t val = graph.getData(graph.getGlobalTopologyID(i));
       std::cout << val << std::endl;
     }
   }
