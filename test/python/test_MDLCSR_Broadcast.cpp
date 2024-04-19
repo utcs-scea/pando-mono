@@ -17,6 +17,7 @@
 #include <pando-lib-galois/import/ingest_wmd_csv.hpp>
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
+#include <pando-lib-galois/sync/global_barrier.hpp>
 #include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
