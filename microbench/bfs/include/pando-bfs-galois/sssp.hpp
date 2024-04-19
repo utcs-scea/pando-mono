@@ -308,6 +308,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
   graph.setData(srcID, 0);
 #ifdef SYNC_ONLY_REDUCE
   graph.broadcast();
+  graph.resetBitSets();
 #endif
 
   PANDO_CHECK_RETURN(fmap(fmap(toRead[srcHost], operator[], 0), pushBack, srcID));
