@@ -300,8 +300,10 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
   PANDO_CHECK_RETURN(wg.wait());
 
   auto srcHost = graph.getPhysicalHostID(src);
-  std::cout << "Source is on host " << srcHost << std::endl;
   auto srcID = graph.getGlobalTopologyID(src);
+#ifdef DPRINTS
+  std::cout << "Source is on host " << srcHost << std::endl;
+#endif
 
   graph.setData(srcID, 0);
 #ifdef SYNC_ONLY_REDUCE

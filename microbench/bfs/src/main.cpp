@@ -105,11 +105,13 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   PANDO_CHECK(toWrite.initialize());
 
   // print out number of mirrors
+#ifdef DPRINTS
   PANDO_CHECK(galois::doAll(
       graph, toRead, +[](Graph graph, bfs::MDWorkList<Graph>) {
         std::cout << "Host " << pando::getCurrentPlace().node.id << " has " << graph.getMirrorSize()
                   << " mirrors" << std::endl;
       }));
+#endif
 
   PANDO_CHECK(galois::doAll(
       toRead, toWrite,
