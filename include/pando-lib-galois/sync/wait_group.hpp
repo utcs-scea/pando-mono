@@ -119,6 +119,7 @@ public:
   [[nodiscard]] pando::Status wait() {
     pando::waitUntil([this] {
       const bool ready = *m_count <= static_cast<std::int64_t>(0);
+      PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
       return ready;
     });
     pando::atomicThreadFence(std::memory_order_acquire);
