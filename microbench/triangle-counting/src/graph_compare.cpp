@@ -15,6 +15,28 @@ void show_graph(pando::GlobalPtr<GraphType> graph_ptr) {
   }
 }
 
+void show_mirrored_graph(pando::GlobalPtr<GraphMDL> graph_ptr) {
+  uint32_t num_hosts = pando::getPlaceDims().node.id;
+  std::cout << graph_ptr->vertices().size() << " = VERTEX SIZE\n";
+  for (uint32_t i = 0; i < num_hosts; i++) {
+    std::cout << "*** HOST " << i << "***\n";
+    GraphMDL::LocalVertexRange masterRange = graph_ptr->getMasterRange(i);
+    GraphMDL::LocalVertexRange mirrorRange = graph_ptr->getMirrorRange(i);
+    std::cout << "*** num_masters = " << masterRange.size()
+              << " ... num_mirrors = " << mirrorRange.size() << "\n";
+    for (GraphMDL::VertexTopologyID masterTopologyID = *lift(masterRange, begin);
+         masterTopologyID < *lift(masterRange, end); masterTopologyID++) {
+      auto master_tokenID = graph_ptr->getTokenID(masterTopologyID);
+      auto global_topo_id = graph_ptr->getGlobalTopologyID(master_tokenID);
+      std::cout << "\tMASTER: " << graph_ptr->getTokenID(global_topo_id) << "\n";
+      for (typename GraphMDL::EdgeHandle eh : graph_ptr->edges(global_topo_id)) {
+        typename GraphMDL::VertexTopologyID dst = graph_ptr->getEdgeDst(eh);
+        std::cout << "\t\tDST:" << graph_ptr->getTokenID(dst) << "\n";
+      }
+    }
+  }
+}
+
 template <typename GraphType>
 pando::Status generate_graph_stats(pando::GlobalPtr<GraphType> graph_ptr,
                                    GRAPH_TYPE graph_type_enum) {
@@ -75,11 +97,20 @@ pando::Status generate_graph_stats(pando::GlobalPtr<GraphType> graph_ptr,
 void HBMainGraphCompare(pando::Notification::HandleType hb_done, pando::Array<char> filename,
                         int64_t num_vertices, GRAPH_TYPE graph_type) {
   switch (graph_type) {
-    case GRAPH_TYPE::MDLCSR:
+    case GRAPH_TYPE::MDLCSR: {
+      std::cout << "Creating graph ...\n";
+      GraphMDL graph = galois::initializeELDLCSR<GraphMDL, MirroredVT, ET>(filename, num_vertices);
+      pando::GlobalPtr<GraphMDL> graph_ptr = static_cast<pando::GlobalPtr<GraphMDL>>(
+          pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphMDL)));
+      *graph_ptr = graph;
+      std::cout << "Collecting Graph Stats ...\n";
+      show_mirrored_graph(graph_ptr);
+      pando::deallocateMemory(graph_ptr, 1);
+      graph.deinitialize();
       break;
+    }
     case GRAPH_TYPE::DACSR: {
-      GraphDA graph = galois::initializeELDACSR<GraphDA, galois::ELVertex, galois::ELEdge>(
-          filename, num_vertices);
+      GraphDA graph = galois::initializeELDACSR<GraphDA, VT, ET>(filename, num_vertices);
       pando::GlobalPtr<GraphDA> graph_ptr = static_cast<pando::GlobalPtr<GraphDA>>(
           pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphDA)));
       *graph_ptr = graph;
@@ -90,8 +121,7 @@ void HBMainGraphCompare(pando::Notification::HandleType hb_done, pando::Array<ch
       break;
     }
     default: {
-      GraphDL graph = galois::initializeELDLCSR<GraphDL, galois::ELVertex, galois::ELEdge>(
-          filename, num_vertices);
+      GraphDL graph = galois::initializeELDLCSR<GraphDL, VT, ET>(filename, num_vertices);
       pando::GlobalPtr<GraphDL> graph_ptr = static_cast<pando::GlobalPtr<GraphDL>>(
           pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphDL)));
       *graph_ptr = graph;

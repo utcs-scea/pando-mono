@@ -19,7 +19,7 @@ rmat_files = {
     8: "graphs/rmat_571919_seed1_scale8_nV256_nE2144.el",
     9: "graphs/rmat_571919_seed1_scale9_nV512_nE4736.el",
     10: "graphs/rmat_571919_seed1_scale10_nV1024_nE10447.el",
-    # 11: "graphs/rmat_571919_seed1_scale11_nV2048_nE22601.el"
+    11: "graphs/rmat_571919_seed1_scale11_nV2048_nE22601.el"
 }
 
 chunk_modes = ["no_chunk", "chunk_vert", "chunk_edge"]

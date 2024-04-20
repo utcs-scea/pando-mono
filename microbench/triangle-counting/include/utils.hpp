@@ -13,6 +13,8 @@
 
 #include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/containers/pod_local_storage.hpp>
+#include <pando-lib-galois/containers/thread_local_storage.hpp>
+#include <pando-lib-galois/containers/thread_local_vector.hpp>
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
@@ -22,6 +24,7 @@
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/utility/prefix_sum.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
+#include <pando-rt/containers/array.hpp>
 
 #define COORDINATOR_ID    0
 #define DEBUG             0
@@ -33,8 +36,54 @@
 using ET = galois::ELEdge;
 using VT = galois::ELVertex;
 struct MirroredVT : VT {
-  galois::HashTable<uint64_t, uint64_t> queries; // Stores tokenId
+  galois::Array<pando::Vector<uint64_t>> queries;
+
+  constexpr MirroredVT() noexcept = default;
+  constexpr MirroredVT(MirroredVT&&) noexcept = default;
+  constexpr MirroredVT(const MirroredVT&) noexcept = default;
+  ~MirroredVT() = default;
+
+  constexpr MirroredVT& operator=(const MirroredVT&) noexcept = default;
+  constexpr MirroredVT& operator=(MirroredVT&&) noexcept = default;
+
+  explicit MirroredVT(ELVertex) {
+    PANDO_CHECK(queries.initialize(galois::getThreadsPerHost()));
+    galois::doAll(
+        queries, +[](pando::GlobalRef<pando::Vector<uint64_t>> thread_vector) {
+          PANDO_CHECK(fmap(thread_vector, initialize, 0));
+        });
+  }
+
+  void deinitialize() {
+    galois::doAll(
+        queries, +[](pando::GlobalRef<pando::Vector<uint64_t>> thread_vector) {
+          fmapVoid(thread_vector, deinitialize);
+        });
+    queries.deinitialize();
+  }
+
+  void clear() {
+    galois::doAll(
+        queries, +[](pando::GlobalRef<pando::Vector<uint64_t>> thread_vector) {
+          fmapVoid(thread_vector, clear);
+        });
+  }
+
+  uint64_t get_all_size() {
+    uint64_t total_sz = 0;
+    for (uint64_t i = 0; i < queries.size(); i++) {
+      total_sz += fmap(queries[i], size);
+    }
+    return total_sz;
+  }
+
+  pando::Status add_query(uint64_t new_query) {
+    auto indx = galois::getCurrentThreadIdx() % galois::getThreadsPerHost();
+    auto err = fmap(queries[indx], pushBack, new_query);
+    return err;
+  }
 };
+
 using GraphDL = galois::DistLocalCSR<VT, ET>;
 using GraphMDL = galois::MirrorDistLocalCSR<MirroredVT, ET>;
 using GraphDA = galois::DistArrayCSR<VT, ET>;
