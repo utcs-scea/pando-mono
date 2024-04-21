@@ -6,39 +6,56 @@
 # Build dependencies for DrvX
 set -eo pipefail
 
-cd deps
+echo DRV_ROOT=$DRV_ROOT
+ls -al $DRV_ROOT
+
+pushd deps
 
 if [ ! -d sst-core-src ]; then
     echo "Run 'make drive-deps' outside of docker first"
+    pwd
+    ls -al
     exit 1
 fi
-cd sst-core-src &&
+
+pushd sst-core-src &&
     ./autogen.sh &&
     mkdir -p sst-core-build &&
-    cd sst-core-build &&
+    pushd sst-core-build &&
     ../configure --prefix=$DRV_ROOT &&
-    make -j $(nproc) install &&
-    cd ../..
+    make -j $(nproc) install || exit 1
+popd
+popd
+echo DRV_ROOT=$DRV_ROOT
+ls -al $DRV_ROOT
 
 if [ ! -d sst-elements-src ]; then
     echo "Run 'make drive-deps' outside of docker first"
     exit 1
 fi
-cd sst-elements-src &&
+pushd sst-elements-src &&
     ./autogen.sh &&
     mkdir -p sst-elements-build &&
-    cd sst-elements-build &&
+    pushd sst-elements-build &&
     ../configure --prefix=$DRV_ROOT --with-sst-core=$DRV_ROOT &&
-    make -j $(nproc) install &&
-    cd ../..
+    make -j $(nproc) install || exit 1
+popd
+popd
+
+echo DRV_ROOT=$DRV_ROOT
+ls -al $DRV_ROOT
 
 if [ ! -d boost_1_82_0 ]; then
     wget https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz &&
         tar zxf boost_1_82_0.tar.gz
 fi
-cd boost_1_82_0 &&
-    ./bootstrap.sh &&
-    ./b2 --prefix=$DRV_ROOT install &&
-    cd ..
 
-cd ..
+pushd boost_1_82_0 &&
+    ./bootstrap.sh &&
+    ./b2 --prefix=$DRV_ROOT install || exit 1
+
+popd
+popd
+
+echo DRV_ROOT=$DRV_ROOT
+ls -al $DRV_ROOT

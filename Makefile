@@ -99,15 +99,27 @@ docker-image:
 	--file Dockerfile.dev \
 	--target dev .
 
+tacc-image:
+	@${MAKE} docker-image-dependencies
+	@docker --context ${CONTAINER_CONTEXT} build \
+	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
+	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
+	--build-arg UNAME=${UNAME} \
+	--build-arg IS_CI=false \
+  --build-arg UID=${UID} \
+  --build-arg GID=${GID} \
+	--build-arg DRIVEX_IMAGE=drivex:${DRIVEX_VERSION} \
+	-t ${IMAGE_NAME}-tacc:${VERSION} \
+	--file Dockerfile.dev \
+	--target dev .
+
 docker-image-dependencies:
 	@mkdir -p dockerbuild
 	@mkdir -p data
-	@docker image inspect pando-gasnet:latest >/dev/null 2>&1 || \
 	docker --context ${CONTAINER_CONTEXT} build \
 	-t pando-gasnet:latest \
 	--file Dockerfile.dev \
 	--target gasnet .
-	@docker image inspect drivex:${DRIVEX_VERSION} >/dev/null 2>&1 || \
 	docker --context ${CONTAINER_CONTEXT} build \
 	--build-arg GASNET_IMAGE=pando-gasnet:latest \
 	-t drivex:${DRIVEX_VERSION} \
@@ -123,6 +135,21 @@ docker:
 	--privileged \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
 	${IMAGE_NAME}:${VERSION} \
+	${CONTAINER_CMD}
+
+apptainer-image:
+	@${MAKE} tacc-image
+	@mkdir -p data/images
+	@apptainer build data/images/${IMAGE_NAME}-tacc.${VERSION}.sif docker-daemon://${IMAGE_NAME}-tacc:${VERSION}
+
+apptainer:
+	apptainer exec \
+	--no-mount hostfs \
+	--no-mount home \
+	--writable-tmpfs \
+	--bind ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
+	--pwd=${CONTAINER_WORKDIR} \
+	data/images/${IMAGE_NAME}-tacc.${VERSION}.sif \
 	${CONTAINER_CMD}
 
 cmake-mpi:
@@ -197,11 +224,6 @@ cmake-drv:
 setup-ci: cmake-mpi
 
 setup: cmake-mpi cmake-smp
-
-drive-deps:
-	@mkdir -p deps/
-	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-core.git deps/sst-core-src
-	@git clone --branch pando-rt-backend git@github.com:AMDResearch/pando-sst-elements.git deps/sst-elements-src
 
 run-tests-mpi:
 	set -o pipefail && \

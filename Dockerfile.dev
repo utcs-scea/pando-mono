@@ -36,6 +36,10 @@ RUN . /dependencies/spack/share/spack/setup-env.sh \
       &&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} \
       &&  spack install -j`nproc` gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} conduits=smp,mpi target=x86_64
 
+ARG PYTHON_VERSION=3.10.10
+RUN . /dependencies/spack/share/spack/setup-env.sh \
+&& spack install -j`nproc` python@${PYTHON_VERSION}%gcc@${GCC_VERSION}
+
 # Build Drive X
 FROM ${GASNET_IMAGE} AS drivex
 
@@ -50,8 +54,8 @@ RUN apt-get update -y \
 
 COPY scripts/build_drvx_deps.sh /tmp/build_drvx_deps.sh
 
-COPY sst-core-src/ /dependencies/deps/sst-core-src
-COPY sst-elements-src/ /dependencies/deps/sst-elements-src
+COPY sst-core-src/ /dependencies/deps/sst-core-src/
+COPY sst-elements-src/ /dependencies/deps/sst-elements-src/
 
 WORKDIR /dependencies
 
@@ -60,18 +64,20 @@ ARG OMPI_VERSION=4.1.5
 
 COPY scripts/load_drvx.sh /tmp/load_drvx.sh
 
-RUN cd . && . /tmp/load_drvx.sh \
+RUN . /tmp/load_drvx.sh \
+&&  mkdir -p $DRV_ROOT \
+&&  python3 --version \
 &&  . /dependencies/spack/share/spack/setup-env.sh \
 &&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} \
-&&  cd /dependencies && bash /tmp/build_drvx_deps.sh
+&&  cd /dependencies && bash /tmp/build_drvx_deps.sh && ls -al /dependencies
 
 COPY pando-drv /dependencies/pando-drv
 
 RUN cd /dependencies && \
       . /tmp/load_drvx.sh && \
       . /dependencies/spack/share/spack/setup-env.sh && \
-      spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
       cd /dependencies && \
+      ls -al /dependencies/install && \
       DRV_DIR=/dependencies/pando-drv make -j -C /dependencies/pando-drv install
 
 RUN  ln -s /dependencies/install /dependencies/pando-drv/install
