@@ -3,7 +3,7 @@
 #ifndef TRIANGLE_COUNTING_INCLUDE_TC_ALGOS_HPP_
 #define TRIANGLE_COUNTING_INCLUDE_TC_ALGOS_HPP_
 
-#include "utils.hpp"
+#include <tc_mdlcsr.hpp>
 
 template <typename GraphType>
 void tc_no_chunk(pando::GlobalPtr<GraphType> graph_ptr,
