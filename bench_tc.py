@@ -5,9 +5,6 @@ import shlex, subprocess
 import argparse
 import os
 
-PXNS_TIMES_CORES = 64
-PXNS_TIMES_PE = 32 # zerberus ... on lanuedoc, 64
-
 # Generates bash script to run and collect benchmarks
 env = {"PANDO_PREP_MAIN_NODE": "17179869184"}
 executable = "./dockerbuild/microbench/triangle-counting/src/tc"
@@ -27,17 +24,13 @@ rmat_files = {
 
 chunk_modes = ["no_chunk", "chunk_vert", "chunk_edge"]
 graph_types = ["DLCSR", "MDLCSR", "DACSR"]
+machines = {'languedoc':64, 'zerberus':32, 'tacc':128}
 
-def collect_traces_RMAT(num_hosts, num_cores, graph_mode, chunk_mode, scale, output_dir='data'):
-    assert PXNS_TIMES_CORES % num_hosts == 0, f"PXNS_TIMES_CORES = {PXNS_TIMES_CORES} should b divisible by num_hosts = {num_hosts}"
-    assert PXNS_TIMES_PE % num_hosts == 0, f"num_hosts = {num_hosts} should be even"
-    pe = PXNS_TIMES_PE // num_hosts
-    num_cores = PXNS_TIMES_CORES // num_hosts
-
-    # 64 cores / numhosts ... Cpus/host
-    # PE = num_hosts * cpus ...  ... min 4 cpus (32 or 64)
-    # num_cores * num_hosts = localhost:32 (localhost:64 on languedoc)
-    # pe = localhost:32 / num_hosts
+def collect_traces_RMAT(num_hosts, graph_mode, chunk_mode, scale, machine, output_dir='data'):
+    compute_units = machines[machine]
+    assert compute_units % num_hosts == 0, f"compute_units = {compute_units} should b divisible by num_hosts = {num_hosts}"
+    pe = compute_units // num_hosts
+    num_cores = compute_units // num_hosts
 
     # Create place for trace files
     input_graph = rmat_files[scale]
@@ -50,7 +43,7 @@ def collect_traces_RMAT(num_hosts, num_cores, graph_mode, chunk_mode, scale, out
     assert os.path.exists(fn), f"OS should now see a path to {fn}"
 
     # Generate trace files
-    cmd0 = f'MPIRUN_CMD="mpirun -np %N -host localhost:{PXNS_TIMES_PE} --mca btl self,vader,tcp --map-by slot:PE={pe} --use-hwthread-cpus %P %A" PANDO_PREP_MAIN_NODE=17179869184 '
+    cmd0 = f'MPIRUN_CMD="mpirun -np %N -host localhost:{compute_units} --mca btl self,vader,tcp --map-by slot:PE={pe} --use-hwthread-cpus %P %A" PANDO_PREP_MAIN_NODE=17179869184 '
     cmd0 += f"./scripts/preprun_mpi.sh -c {num_cores} -n {num_hosts} {executable} -i {input_graph} -v {num_input_vertices} -c {chunk_mode} -g {graph_mode}"
     # Move trace files into dir
     cmd1 = f"mv *.trace {fn}"
@@ -58,7 +51,7 @@ def collect_traces_RMAT(num_hosts, num_cores, graph_mode, chunk_mode, scale, out
     return [cmd0, cmd1]
 
 
-def experiment_chunk_DLCSR_RMAT(num_hosts, num_cores, output_dir='data'):
+def experiment_chunk_DLCSR_RMAT(num_hosts, machine, output_dir='data'):
     print("*******************************************************")
     print(f"          Collecting Benchmarks for CHUNKING on DLCSR ...")
     print("*******************************************************")
@@ -67,14 +60,14 @@ def experiment_chunk_DLCSR_RMAT(num_hosts, num_cores, output_dir='data'):
         msg = f'"*** scale = {scale}, fn = {rmat_files[scale]} ***"'
         all_cmds.append(f"echo {msg}")
         for c in range(len(chunk_modes)):
-            cmds = collect_traces_RMAT(num_hosts, num_cores, 0, c, scale, output_dir=f'{output_dir}/expChunk')
+            cmds = collect_traces_RMAT(num_hosts, 0, c, scale, machine, output_dir=f'{output_dir}/expChunk')
             all_cmds += cmds
 
     with open("experiment_chunk.sh", "w") as file:
         for line in all_cmds:
             file.write(f"{line}\n")
 
-def experiment_graph_type_RMAT(num_hosts, num_cores, output_dir='data'):
+def experiment_graph_type_RMAT(num_hosts, machine, output_dir='data'):
     print("*******************************************************")
     print(f"          Collecting Benchmarks for GRAPH TYPES ...")
     print("*******************************************************")
@@ -84,7 +77,7 @@ def experiment_graph_type_RMAT(num_hosts, num_cores, output_dir='data'):
         all_cmds.append(f"echo {msg}")
         for g in range(len(graph_types)):
             input_graph = rmat_files[scale]
-            cmds = collect_traces_RMAT(num_hosts, num_cores, g, 0, scale, output_dir=f'{output_dir}/expGT')
+            cmds = collect_traces_RMAT(num_hosts, g, 0, scale, machine, output_dir=f'{output_dir}/expGT')
             all_cmds += cmds
 
     with open("experiment_graph_type.sh", "w") as file:
@@ -92,9 +85,8 @@ def experiment_graph_type_RMAT(num_hosts, num_cores, output_dir='data'):
             file.write(f"{line}\n")
 
 
-
-
 # ------------------- RUN ---------------------
+
 parser = argparse.ArgumentParser(prog="BenchMarkTC", description="Benchmarks TC on PREP")
 parser.add_argument(
     "-n",
@@ -104,14 +96,14 @@ parser.add_argument(
     type=int,
     required=True,
 )
-parser.add_argument(
-    "-c",
-    "--numCores",
-    action="store",
-    help=f"Enter number of cores",
-    type=int,
-    required=True,
-)
+# parser.add_argument(
+#     "-c",
+#     "--numCores",
+#     action="store",
+#     help=f"Enter number of cores",
+#     type=int,
+#     required=True,
+# )
 parser.add_argument(
     "-e",
     "--experiment",
@@ -128,16 +120,31 @@ parser.add_argument(
     type=str,
     required=True
 )
+parser.add_argument(
+    "-m",
+    "--machine",
+    help=f"Specify machine: Options = {machines.keys()}",
+    choices=machines,
+    action='store',
+    type=str,
+    required=True,
+    default='zerberus'
+)
 
 args = vars(parser.parse_args())
 num_hosts = int(args["numHosts"])
-num_cores = int(args["numCores"])
 output_dir = str(args['outputDir'])
-experiment = experiment_chunk_DLCSR_RMAT if bool(args['experiment']) else experiment_graph_type_RMAT
-print("*" * 42)
-print("*" + " " * 10 + f"Generating bench scripts: TC on num_hosts: {num_hosts}, num_cores: {num_cores}, outputDir: {output_dir}")
-print("*" * 42)
+machine = str(args['machine'])
 
 assert num_hosts > 0, f"ERROR: Num hosts = {num_hosts} should be > 0"
-assert num_cores > 0, f"ERROR: Num hosts = {num_cores} should be > 0"
-experiment(num_hosts=num_hosts, num_cores=num_cores, output_dir=output_dir)
+assert machine in machines, f'ERROR: Dont recognize machine: {machine}'
+
+experiment = experiment_chunk_DLCSR_RMAT if bool(args['experiment']) else experiment_graph_type_RMAT
+compute_units = machines[machine]
+
+print("*" * 42)
+print("*" + " " * 10 + f"Generating bench scripts for {machine} (compute_units = {compute_units}): TC on num_hosts: {num_hosts}, num_cores: {compute_units//num_hosts}, outputDir: {output_dir}")
+print("*" * 42)
+
+
+experiment(num_hosts=num_hosts, output_dir=output_dir, machine=machine)
