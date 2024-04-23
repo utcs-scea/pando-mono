@@ -102,7 +102,7 @@ def experiment_graph_type_RMAT(num_hosts, machine, output_dir='data'):
             cmds = collect_traces_RMAT(num_hosts, g, 0, scale, machine, output_dir=f'{output_dir}/expGT')
             all_cmds += cmds
 
-    with open(f"experiment_chunk_{machine}_hosts{num_hosts}.sh", "w") as file:
+    with open(f"experiment_graph_type_{machine}_hosts{num_hosts}.sh", "w") as file:
         for line in all_cmds:
             file.write(f"{line}\n")
 
