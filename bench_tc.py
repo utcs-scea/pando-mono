@@ -16,10 +16,10 @@ rmat_files = {
     8: "graphs/rmat_571919_seed1_scale8_nV256_nE2144.el",
     9: "graphs/rmat_571919_seed1_scale9_nV512_nE4736.el",
     10: "graphs/rmat_571919_seed1_scale10_nV1024_nE10447.el",
-    11: "graphs/rmat_571919_seed1_scale11_nV2048_nE22601.el",
-    12: "graphs/rmat_571919_seed1_scale12_nV4096_nE48335.el",
-    13: "graphs/rmat_571919_seed1_scale13_nV8192_nE102016.el",
-    14: "graphs/rmat_571919_seed1_scale14_nV16384_nE213350.el"
+    # 11: "graphs/rmat_571919_seed1_scale11_nV2048_nE22601.el",
+    # 12: "graphs/rmat_571919_seed1_scale12_nV4096_nE48335.el",
+    # 13: "graphs/rmat_571919_seed1_scale13_nV8192_nE102016.el",
+    # 14: "graphs/rmat_571919_seed1_scale14_nV16384_nE213350.el"
 }
 
 chunk_modes = ["no_chunk", "chunk_vert", "chunk_edge"]
@@ -51,6 +51,28 @@ def collect_traces_RMAT(num_hosts, graph_mode, chunk_mode, scale, machine, outpu
     return [cmd0, cmd1]
 
 
+def create_slurm(num_hosts, graph_mode, chunk_mode, scale, machine, output_dir='data', time='01:00:00'):
+    input_graph = rmat_files[scale]
+    num_input_vertices = 2**scale
+    fn = f"{output_dir}/{graph_types[graph_mode]}/host{num_hosts}/{chunk_modes[chunk_mode]}/scale{scale}"
+    with open('job2run.slurm', 'w') as file:
+        sbatch_settings = f'#!/bin/bash\n#SBATCH -J {fn}\n#SBATCH -o {fn}.out\n#SBATCH -e {fn}.err\n#SBATCH -t {time}\n#SBATCH -N 1\n#SBATCH -n 1\n#SBATCH -c 128\n#SBATCH --exclusive\n#SBATCH --mail-type=none\n#SBATCH --mail-user=prachi.ingle@utexas.edu\n#SBATCH -p normal\n'
+        file.write(f"{sbatch_settings}\n")
+
+        echos = f'''echo "SLURM_JOB_ID=\$SLURM_JOB_ID"\necho "TIME={time}"\n'''
+        file.write(f"{echos}\n")
+
+        file.write(". ./scripts/tacc_env.sh")
+
+        print(f"\t *** Creating {fn}")
+        if not os.path.exists(fn):
+            os.makedirs(fn)
+
+
+
+
+
+
 def experiment_chunk_DLCSR_RMAT(num_hosts, machine, output_dir='data'):
     print("*******************************************************")
     print(f"          Collecting Benchmarks for CHUNKING on DLCSR ...")
@@ -63,7 +85,7 @@ def experiment_chunk_DLCSR_RMAT(num_hosts, machine, output_dir='data'):
             cmds = collect_traces_RMAT(num_hosts, 0, c, scale, machine, output_dir=f'{output_dir}/expChunk')
             all_cmds += cmds
 
-    with open("experiment_chunk.sh", "w") as file:
+    with open(f"experiment_chunk_{machine}_hosts{num_hosts}.sh", "w") as file:
         for line in all_cmds:
             file.write(f"{line}\n")
 
@@ -80,7 +102,7 @@ def experiment_graph_type_RMAT(num_hosts, machine, output_dir='data'):
             cmds = collect_traces_RMAT(num_hosts, g, 0, scale, machine, output_dir=f'{output_dir}/expGT')
             all_cmds += cmds
 
-    with open("experiment_graph_type.sh", "w") as file:
+    with open(f"experiment_chunk_{machine}_hosts{num_hosts}.sh", "w") as file:
         for line in all_cmds:
             file.write(f"{line}\n")
 
