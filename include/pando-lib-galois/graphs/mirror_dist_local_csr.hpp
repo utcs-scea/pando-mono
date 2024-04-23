@@ -788,15 +788,17 @@ public:
     // initialize bit sets for mirror and master
     PANDO_CHECK_RETURN(mirrorBitSets.initialize());
     PANDO_CHECK_RETURN(masterBitSets.initialize());
-    auto state = galois::make_tpl(masterRange, mirrorRange, mirrorBitSet);
-    PANDO_CHECK(galois::doAll(wgh, state, masterBitSets,
-          +[](decltype(state) state, pando::GlobalRef<pando::Array<bool>> masterBitSet) {
-      pando::GlobalRef<pando::Array<bool>> mirrorBitSet = mirrorBitSets.getLocalRef();
-      PANDO_CHECK_RETURN(fmap(mirrorBitSet, initialize, lift(mirrorRange.getLocalRef(), size)));
-      PANDO_CHECK_RETURN(fmap(masterBitSet, initialize, lift(masterRange.getLocalRef(), size)));
-      fmapVoid(mirrorBitSet, fill, false);
-      fmapVoid(masterBitSet, fill, false);
-    }));
+    auto state = galois::make_tpl(masterRange, mirrorRange, mirrorBitSets);
+    PANDO_CHECK(galois::doAll(
+        wgh, state, masterBitSets,
+        +[](decltype(state) state, pando::GlobalRef<pando::Array<bool>> masterBitSet) {
+          auto [masterRange, mirrorRange, mirrorBitSets] = state;
+          pando::GlobalRef<pando::Array<bool>> mirrorBitSet = mirrorBitSets.getLocalRef();
+          PANDO_CHECK(fmap(mirrorBitSet, initialize, lift(mirrorRange.getLocalRef(), size)));
+          PANDO_CHECK(fmap(masterBitSet, initialize, lift(masterRange.getLocalRef(), size)));
+          fmapVoid(mirrorBitSet, fill, false);
+          fmapVoid(masterBitSet, fill, false);
+        }));
     PANDO_CHECK(wg.wait());
     wg.deinitialize();
     return pando::Status::Success;
