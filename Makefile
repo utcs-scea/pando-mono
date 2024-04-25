@@ -155,12 +155,14 @@ apptainer:
 
 cmake-mpi:
 	@echo "Must be run from inside the dev Docker container"
-	@cmake \
+	@. /dependencies/spack/share/spack/setup-env.sh && \
+	spack load gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} && \
+	cmake \
   -S ${SRC_DIR} \
   -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
 	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
-	-DPANDO_PREP_GASNET_CONDUIT=ibv \
+	-DPANDO_PREP_GASNET_CONDUIT=mpi \
   -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
 	-DBUILD_EXAMPLES=${BUILD_EXAMPLES} \
 	-DBUILD_WORKFLOWS=${BUILD_WORKFLOWS} \
@@ -171,17 +173,18 @@ cmake-mpi:
 	-DENABLE_BFS_TESTS=${BFS_TESTS} \
 	-DENABLE_TC_TESTS=${TC_TESTS} \
   -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
-	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT}
+	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT} \
+	-DCMAKE_CXX_COMPILER=g++-12 \
+  -DCMAKE_C_COMPILER=gcc-12
 
-cmake-ibv:
-	@echo "Must be run from inside the dev Docker container"
+cmake-tacc:
 	@cmake \
   -S ${SRC_DIR} \
   -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
 	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
 	-DPANDO_PREP_GASNET_CONDUIT=ibv \
-  -DCMAKE_INSTALL_PREFIX=/opt/pando-lib-galois \
+  -DCMAKE_INSTALL_PREFIX=${WORK}/mono-install \
 	-DBUILD_EXAMPLES=${BUILD_EXAMPLES} \
 	-DBUILD_WORKFLOWS=${BUILD_WORKFLOWS} \
 	-DBUILD_MICROBENCH=${BUILD_MICROBENCH} \
