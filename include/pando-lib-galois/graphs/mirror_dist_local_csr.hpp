@@ -800,7 +800,7 @@ public:
           fmapVoid(masterBitSet, fill, false);
         }));
     PANDO_CHECK(wg.wait());
-    wg.deinitialize();
+    // wg.deinitialize();
     return pando::Status::Success;
   }
 
