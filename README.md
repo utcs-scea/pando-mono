@@ -14,7 +14,7 @@ repo's `pando-rt` submodule for using root.
 Before developing make sure you have initialized the `pando-rt` submodule
 with `git submodule update --init --recursive`.
 
-## Docker Setup:
+## Docker Setup
 
 ```shell
 git submodule update --init --recursive
@@ -28,6 +28,7 @@ make setup
 make -C dockerbuild -j8
 make run-tests
 ```
+
 Developers can run a hello-world smoke test inside their containers by running
 `bash scripts/run.sh`.
 
@@ -37,7 +38,7 @@ Inside the container run `make cmake-drv`.
 
 Workloads can then be run via `bash scripts/run-drv.sh`.
 
-## TACC Setup:
+## TACC Setup
 
 ```shell
 . ./scripts/tacc_build_env.sh
