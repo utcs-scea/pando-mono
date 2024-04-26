@@ -14,11 +14,11 @@ namespace DrvAPI
  *
  */
 template <typename T>
-T read(DrvAPIAddress address, phase_t phase)
+T read(DrvAPIAddress address, stage_t stage)
 {
     T result{};
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemReadConcrete<T>>(address));
-    DrvAPIThread::current()->setPhase(phase);
+    DrvAPIThread::current()->setStage(stage);
     DrvAPIThread::current()->yield();
     auto read_req = std::dynamic_pointer_cast<DrvAPIMemRead>(DrvAPIThread::current()->getState());
     if (read_req) {
@@ -32,10 +32,10 @@ T read(DrvAPIAddress address, phase_t phase)
  *
  */
 template <typename T>
-void write(DrvAPIAddress address, phase_t phase, T value)
+void write(DrvAPIAddress address, stage_t stage, T value)
 {
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemWriteConcrete<T>>(address, value));
-    DrvAPIThread::current()->setPhase(phase);
+    DrvAPIThread::current()->setStage(stage);
     DrvAPIThread::current()->yield();
 }
 
@@ -44,11 +44,11 @@ void write(DrvAPIAddress address, phase_t phase, T value)
  *
  */
 template <typename T>
-T atomic_swap(DrvAPIAddress address, phase_t phase, T value)
+T atomic_swap(DrvAPIAddress address, stage_t stage, T value)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicSWAP>>(address, value));
-    DrvAPIThread::current()->setPhase(phase);
+    DrvAPIThread::current()->setStage(stage);
     DrvAPIThread::current()->yield();
     auto atomic_req = std::dynamic_pointer_cast<DrvAPIMemAtomic>(DrvAPIThread::current()->getState());
     if (atomic_req) {
@@ -61,11 +61,11 @@ T atomic_swap(DrvAPIAddress address, phase_t phase, T value)
  * @brief atomic add to a memory address
  */
 template <typename T>
-T atomic_add(DrvAPIAddress address, phase_t phase, T value)
+T atomic_add(DrvAPIAddress address, stage_t stage, T value)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicADD>>(address, value));
-    DrvAPIThread::current()->setPhase(phase);
+    DrvAPIThread::current()->setStage(stage);
     DrvAPIThread::current()->yield();
     auto atomic_req = std::dynamic_pointer_cast<DrvAPIMemAtomic>(DrvAPIThread::current()->getState());
     if (atomic_req) {
@@ -78,11 +78,11 @@ T atomic_add(DrvAPIAddress address, phase_t phase, T value)
  * @brief atomic add to a memory address
  */
 template <typename T>
-T atomic_or(DrvAPIAddress address, phase_t phase, T value)
+T atomic_or(DrvAPIAddress address, stage_t stage, T value)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicOR>>(address, value));
-    DrvAPIThread::current()->setPhase(phase);
+    DrvAPIThread::current()->setStage(stage);
     DrvAPIThread::current()->yield();
     auto atomic_req = std::dynamic_pointer_cast<DrvAPIMemAtomic>(DrvAPIThread::current()->getState());
     if (atomic_req) {
@@ -95,11 +95,11 @@ T atomic_or(DrvAPIAddress address, phase_t phase, T value)
  * @brief atomic compare and swap to a memory address
  */
 template <typename T>
-T atomic_cas(DrvAPIAddress address, phase_t phase, T compare, T value)
+T atomic_cas(DrvAPIAddress address, stage_t stage, T compare, T value)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcreteExt<T, DrvAPIMemAtomicCAS>>(address, value, compare));
-    DrvAPIThread::current()->setPhase(phase);
+    DrvAPIThread::current()->setStage(stage);
     DrvAPIThread::current()->yield();
     auto atomic_req = std::dynamic_pointer_cast<DrvAPIMemAtomic>(DrvAPIThread::current()->getState());
     if (atomic_req) {

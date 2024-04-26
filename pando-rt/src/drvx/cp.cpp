@@ -41,7 +41,7 @@ void CommandProcessor::barrier() {
 
     // enter the global barrier by incrementing the global counter on PXN-0
     std::int64_t curBarrierCount =
-        DrvAPI::atomic_add(toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)), DrvAPI::phase_t::PHASE_OTHER, 1u);
+        DrvAPI::atomic_add(toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)), DrvAPI::stage_t::STAGE_OTHER, 1u);
     if (curBarrierCount == Drvx::getNodeDims().id - 1) {
       // last PXN to reach barrier; reset global barrier counter and signal to other PXNs that we
       // are done
@@ -61,7 +61,7 @@ void CommandProcessor::barrier() {
 }
 
 void CommandProcessor::signalCoresDone() {
-  DrvAPI::atomic_add(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), DrvAPI::phase_t::PHASE_OTHER, 1u);
+  DrvAPI::atomic_add(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), DrvAPI::stage_t::STAGE_OTHER, 1u);
 }
 
 /// Wait for all cores on all PXNs to be done.

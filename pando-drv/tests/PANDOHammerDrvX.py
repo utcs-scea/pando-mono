@@ -24,7 +24,7 @@ MakePANDOHammer(MakeTile)
 
 if (arguments.core_stats):
     DrvXTile.enableAllCoreStats()
-if (arguments.core_stats):
+if (arguments.all_stats):
     sst.enableAllStatisticsForAllComponents()
 
 sst.setStatisticLoadLevel(arguments.stats_load_level)

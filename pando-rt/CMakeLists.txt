@@ -105,7 +105,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/status.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/stddef.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/stdlib.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/program_phase.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/program_stage.hpp
 )
 
 # library properties

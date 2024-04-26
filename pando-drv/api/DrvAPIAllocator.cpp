@@ -24,14 +24,14 @@ struct global_memory_data {
 DRV_API_REF_CLASS_BEGIN(global_memory_data)
     DRV_API_REF_CLASS_DATA_MEMBER(global_memory_data, base)
     DRV_API_REF_CLASS_DATA_MEMBER(global_memory_data, status)
-    void init(DrvAPIMemoryType type, phase_t phase) {
+    void init(DrvAPIMemoryType type, stage_t stage) {
         // 1. check if initialized
        int64_t s = status();
        if (s == STATUS_INIT) {
              return;
        }
        // 2. check if I should initialize
-       s = DrvAPI::atomic_cas(&status(), phase, STATUS_UNINIT, STATUS_INIT_IN_PROCESS);
+       s = DrvAPI::atomic_cas(&status(), stage, STATUS_UNINIT, STATUS_INIT_IN_PROCESS);
        if (s == STATUS_UNINIT) {
              DrvAPISection &section = DrvAPI::DrvAPISection::GetSection(type);
              DrvAPIAddress sz = static_cast<DrvAPIAddress>(section.getSize());
@@ -51,10 +51,10 @@ DRV_API_REF_CLASS_BEGIN(global_memory_data)
            s = status();
        }
     }
-    DrvAPIPointer<void> allocate(size_t size, phase_t phase) {
+    DrvAPIPointer<void> allocate(size_t size, stage_t stage) {
         // size should be 8-byte aligned
         size = (size + 7) & ~7;
-        uint64_t addr = DrvAPI::atomic_add<uint64_t>(&base(), phase, size);
+        uint64_t addr = DrvAPI::atomic_add<uint64_t>(&base(), stage, size);
         return DrvAPIPointer<void>(addr);
     }
 DRV_API_REF_CLASS_END(global_memory_data)
@@ -72,14 +72,14 @@ void DrvAPIMemoryAllocatorInit() {
     // 1. init l1sp
     if (!isCommandProcessor()) {
         global_memory_ref l1 = &l1sp_memory;
-        l1.init(DrvAPIMemoryType::DrvAPIMemoryL1SP, PHASE_OTHER);
+        l1.init(DrvAPIMemoryType::DrvAPIMemoryL1SP, STAGE_OTHER);
         // 2. init l2sp
         global_memory_ref l2 = &l2sp_memory;
-        l2.init(DrvAPIMemoryType::DrvAPIMemoryL2SP, PHASE_OTHER);
+        l2.init(DrvAPIMemoryType::DrvAPIMemoryL2SP, STAGE_OTHER);
     }
     // 3. init dram
     global_memory_ref dram = &dram_memory;
-    dram.init(DrvAPIMemoryType::DrvAPIMemoryDRAM, PHASE_OTHER);
+    dram.init(DrvAPIMemoryType::DrvAPIMemoryDRAM, STAGE_OTHER);
 }
 
 DrvAPIPointer<void> DrvAPIMemoryAlloc(DrvAPIMemoryType type, size_t size) {
@@ -106,7 +106,7 @@ DrvAPIPointer<void> DrvAPIMemoryAlloc(DrvAPIMemoryType type, size_t size) {
         std::cerr << "ERROR: invalid memory type: " << static_cast<int>(type) << std::endl;
         exit(1);
     }
-    return mem.allocate(size, PHASE_OTHER);
+    return mem.allocate(size, STAGE_OTHER);
 }
 
 void DrvAPIMemoryFree(const DrvAPIPointer<void> &ptr) {

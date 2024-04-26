@@ -92,14 +92,14 @@ public:
          * cast operator to type T
          */
         operator value_type() const {
-            return DrvAPI::read<T>(vaddr_, PHASE_OTHER);
+            return DrvAPI::read<T>(vaddr_, STAGE_OTHER);
         }
 
         /**
          * assignment operator
          */
         value_handle &operator=(const T &value) {
-            DrvAPI::write<T>(vaddr_, PHASE_OTHER, value);
+            DrvAPI::write<T>(vaddr_, STAGE_OTHER, value);
             return *this;
         }
 

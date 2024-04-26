@@ -226,13 +226,6 @@ public:
    */
   int selectReadyThread();
 
-
-  /**
-   * // update the stall cycles for the threads that are ready but not selected
-   */
-/*
-  void updateReadyThreadStallCycleStat(int selected_thread_id);
-*/
   /**
    * execute one ready thread
    */
@@ -435,7 +428,7 @@ public:
     void addLoadStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
         ThreadStat *total_stats = &total_thread_stats_[tid];
-        DrvAPI::phase_t phase = thread->getAPIThread().getPhase();
+        DrvAPI::stage_t stage = thread->getAPIThread().getStage();
         if (isPAddressL1SP(addr)) {
             total_stats->load_l1sp->addData(1);
         } else if (isPAddressL2SP(addr)) {
@@ -447,7 +440,7 @@ public:
             total_stats->load_remote_pxn->addData(1);
         }
 
-        if (phase == DrvAPI::phase_t::PHASE_INIT) {
+        if (stage == DrvAPI::stage_t::STAGE_INIT) {
             ThreadStat *init_stats = &init_thread_stats_[tid];
             if (isPAddressL1SP(addr)) {
                 init_stats->load_l1sp->addData(1);
@@ -458,7 +451,7 @@ public:
             } else if (isPAddressRemotePXN(addr))  {
                 init_stats->load_remote_pxn->addData(1);
             }
-        } else if (phase == DrvAPI::phase_t::PHASE_EXEC) {
+        } else if (stage == DrvAPI::stage_t::STAGE_EXEC) {
             ThreadStat *exec_stats = &exec_thread_stats_[tid];
             if (isPAddressL1SP(addr)) {
                 exec_stats->load_l1sp->addData(1);
@@ -478,7 +471,7 @@ public:
     void addStoreStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
         ThreadStat *total_stats = &total_thread_stats_[tid];
-        DrvAPI::phase_t phase = thread->getAPIThread().getPhase();
+        DrvAPI::stage_t stage = thread->getAPIThread().getStage();
         if (isPAddressL1SP(addr)) {
             total_stats->store_l1sp->addData(1);
         } else if (isPAddressL2SP(addr)) {
@@ -490,7 +483,7 @@ public:
             total_stats->store_remote_pxn->addData(1);
         }
 
-        if (phase == DrvAPI::phase_t::PHASE_INIT) {
+        if (stage == DrvAPI::stage_t::STAGE_INIT) {
             ThreadStat *init_stats = &init_thread_stats_[tid];
             if (isPAddressL1SP(addr)) {
                 init_stats->store_l1sp->addData(1);
@@ -501,7 +494,7 @@ public:
             } else if (isPAddressRemotePXN(addr))  {
                 init_stats->store_remote_pxn->addData(1);
             }
-        } else if (phase == DrvAPI::phase_t::PHASE_EXEC) {
+        } else if (stage == DrvAPI::stage_t::STAGE_EXEC) {
             ThreadStat *exec_stats = &exec_thread_stats_[tid];
             if (isPAddressL1SP(addr)) {
                 exec_stats->store_l1sp->addData(1);
@@ -521,7 +514,7 @@ public:
     void addAtomicStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
         ThreadStat *total_stats = &total_thread_stats_[tid];
-        DrvAPI::phase_t phase = thread->getAPIThread().getPhase();
+        DrvAPI::stage_t stage = thread->getAPIThread().getStage();
         if (isPAddressL1SP(addr)) {
             total_stats->atomic_l1sp->addData(1);
         } else if (isPAddressL2SP(addr)) {
@@ -533,7 +526,7 @@ public:
             total_stats->atomic_remote_pxn->addData(1);
         }
 
-        if (phase == DrvAPI::phase_t::PHASE_INIT) {
+        if (stage == DrvAPI::stage_t::STAGE_INIT) {
             ThreadStat *init_stats = &init_thread_stats_[tid];
             if (isPAddressL1SP(addr)) {
                 init_stats->atomic_l1sp->addData(1);
@@ -544,7 +537,7 @@ public:
             } else if (isPAddressRemotePXN(addr))  {
                 init_stats->atomic_remote_pxn->addData(1);
             }
-        } else if (phase == DrvAPI::phase_t::PHASE_EXEC) {
+        } else if (stage == DrvAPI::stage_t::STAGE_EXEC) {
             ThreadStat *exec_stats = &exec_thread_stats_[tid];
             if (isPAddressL1SP(addr)) {
                 exec_stats->atomic_l1sp->addData(1);
@@ -566,9 +559,9 @@ public:
     void addBusyCycleStat(uint64_t cycles) {
         total_busy_cycles_->addData(cycles);
 
-        if (phase_ == DrvAPI::phase_t::PHASE_INIT) {
+        if (stage_ == DrvAPI::stage_t::STAGE_INIT) {
             init_busy_cycles_->addData(cycles);
-        } else if (phase_ == DrvAPI::phase_t::PHASE_EXEC) {
+        } else if (stage_ == DrvAPI::stage_t::STAGE_EXEC) {
             exec_busy_cycles_->addData(cycles);
         }
     }
@@ -576,9 +569,9 @@ public:
     void addStallCycleStat(uint64_t cycles) {
         total_stall_cycles_->addData(cycles);
 
-        if (phase_ == DrvAPI::phase_t::PHASE_INIT) {
+        if (stage_ == DrvAPI::stage_t::STAGE_INIT) {
             init_stall_cycles_->addData(cycles);
-        } else if (phase_ == DrvAPI::phase_t::PHASE_EXEC) {
+        } else if (stage_ == DrvAPI::stage_t::STAGE_EXEC) {
             exec_stall_cycles_->addData(cycles);
         }
     }
@@ -615,7 +608,7 @@ private:
   std::shared_ptr<DrvSystem> system_callbacks_ = nullptr; //!< the system callbacks
   Clock::Handler<DrvCore> *clock_handler_; //!< the clock handler
   // statistics
-  DrvAPI::phase_t phase_; //!< the current phase
+  DrvAPI::stage_t stage_; //!< the current stage
   std::vector<ThreadStat> total_thread_stats_; //!< the thread statistics
   std::vector<ThreadStat> init_thread_stats_; //!< the thread statistics
   std::vector<ThreadStat> exec_thread_stats_; //!< the thread statistics

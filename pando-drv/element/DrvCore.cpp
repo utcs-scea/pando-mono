@@ -310,7 +310,7 @@ DrvCore::DrvCore(SST::ComponentId_t id, SST::Params& params)
   , loopback_(nullptr)
   , idle_cycles_(0)
   , core_on_(false)
-  , phase_(DrvAPI::phase_t::PHASE_OTHER)
+  , stage_(DrvAPI::stage_t::STAGE_OTHER)
   , system_callbacks_(std::make_shared<DrvSystem>(*this)) {
   id_ = params.find<int>("id", 0);
   pod_ = params.find<int>("pod", 0);
@@ -395,7 +395,7 @@ int DrvCore::selectReadyThread() {
     int thread_id = (last_thread_ + t + 1) % numThreads();
     DrvThread *thread = getThread(thread_id);
     auto & state = thread->getAPIThread().getState();
-    DrvAPI::phase_t phase = thread->getAPIThread().getPhase();
+    DrvAPI::stage_t stage = thread->getAPIThread().getStage();
     if (state->canResume()) {
       if (!selected) {
         output_->verbose(CALL_INFO, 2, DEBUG_CLK, "thread %d is ready\n", thread_id);
@@ -405,10 +405,10 @@ int DrvCore::selectReadyThread() {
         ThreadStat *total_stats = &total_thread_stats_[t];
         total_stats->stall_cycles_when_ready->addData(1);
 
-        if (phase == DrvAPI::phase_t::PHASE_INIT) {
+        if (stage == DrvAPI::stage_t::STAGE_INIT) {
           ThreadStat *init_stats = &init_thread_stats_[t];
           init_stats->stall_cycles_when_ready->addData(1);
-        } else if (phase == DrvAPI::phase_t::PHASE_EXEC) {
+        } else if (stage == DrvAPI::stage_t::STAGE_EXEC) {
           ThreadStat *exec_stats = &exec_thread_stats_[t];
           exec_stats->stall_cycles_when_ready->addData(1);
         }
@@ -433,7 +433,7 @@ void DrvCore::executeReadyThread() {
   idle_cycles_ = 0;
 
   DrvThread *thread = getThread(thread_id);
-  phase_ = thread->getAPIThread().getPhase();
+  stage_ = thread->getAPIThread().getStage();
 
   // execute the ready thread
   threads_[thread_id].execute(this);
@@ -490,12 +490,12 @@ void DrvCore::updateTagCycles(int times) {
         auto &total_thread_stats = total_thread_stats_[tid];
         total_thread_stats.tag_cycles->addDataNTimes(times, drv_thread.getAPIThread().getTag());
 
-        DrvAPI::phase_t phase = drv_thread.getAPIThread().getPhase();
+        DrvAPI::stage_t stage = drv_thread.getAPIThread().getStage();
 
-        if (phase == DrvAPI::phase_t::PHASE_INIT) {
+        if (stage == DrvAPI::stage_t::STAGE_INIT) {
             auto &init_thread_stats = init_thread_stats_[tid];
             init_thread_stats.tag_cycles->addDataNTimes(times, drv_thread.getAPIThread().getTag());
-        } else if (phase == DrvAPI::phase_t::PHASE_EXEC) {
+        } else if (stage == DrvAPI::stage_t::STAGE_EXEC) {
             auto &exec_thread_stats = exec_thread_stats_[tid];
             exec_thread_stats.tag_cycles->addDataNTimes(times, drv_thread.getAPIThread().getTag());
         }

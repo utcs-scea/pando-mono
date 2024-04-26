@@ -18,7 +18,7 @@
 #include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
-#include <pando-rt/program_phase.hpp>
+#include <pando-rt/program_stage.hpp>
 #include <pando-rt/sync/notification.hpp>
 
 void printUsageExit(char* argv0) {
@@ -37,7 +37,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   using ET = std::uint64_t;
   using Graph = galois::DistLocalCSR<VT, ET>;
 
-  PANDO_DRV_PHASE_INIT_BEGIN();
+  PANDO_DRV_STAGE_INIT_BEGIN();
 
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
@@ -87,7 +87,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   using ET = std::uint64_t;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
 
-  PANDO_DRV_PHASE_INIT_BEGIN();
+  PANDO_DRV_STAGE_INIT_BEGIN();
 
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
