@@ -89,6 +89,8 @@ ${DBG} sst -n ${HOST_THREADS} \
     --core-threads=${HARTS} \
     --drvx-stack-in-l1sp \
     --pxn-dram-size=${MAIN_MEMORY_SIZE} \
+    --all-stats \
+    --stats-load-level=5 \
     --verbose=5 \
     --debug-clock \
     ${PROG} $@

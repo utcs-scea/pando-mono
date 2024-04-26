@@ -63,6 +63,7 @@ parser.add_argument("--drvx-stack-in-l1sp", action="store_true", help="use l1sp 
 parser.add_argument("--drvr-isa-test", action="store_true", help="Running an ISA test")
 parser.add_argument("--test-name", type=str, default="", help="Name of the test")
 parser.add_argument("--core-stats", action="store_true", help="enable core statistics")
+parser.add_argument("--all-stats", action="store_true", help="enable all statistics")
 parser.add_argument("--stats-load-level", type=int, default=0, help="load level for statistics")
 parser.add_argument("--trace-remote-pxn-memory", action="store_true", help="trace remote pxn memory accesses")
 
