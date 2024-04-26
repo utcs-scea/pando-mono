@@ -5,7 +5,7 @@
 #define PANDO_RT_PROGRAM_PHASE_HPP_
 
 #ifdef PANDO_RT_USE_BACKEND_DRVX
-#include "DrvAPIMemory.hpp"
+#include "DrvAPIThread.hpp"
 
 namespace DrvAPI {
 extern phase_t program_phase;
@@ -14,7 +14,7 @@ void phaseInitBegin();
 void phaseInitEnd();
 void phaseExecBegin();
 void phaseExecEnd();
-} // namespace pando
+} // namespace DrvAPI
 
 #define PANDO_DRV_PHASE_INIT_BEGIN() {DrvAPI::phaseInitBegin();} 
 #define PANDO_DRV_PHASE_INIT_END() {DrvAPI::phaseInitEnd();}
