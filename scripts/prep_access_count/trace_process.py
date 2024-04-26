@@ -202,10 +202,11 @@ for host_id in range(host):
 for host_id in range(host):
     for phase in range(phase_total[host_id]):
         for src in range(host):
-            if waitgroup_cnt[host_id][phase][src] > load_cnt[host_id][phase][src]:
-                print("difference = ", waitgroup_cnt[host_id][phase][src] - load_cnt[host_id][phase][src])
             if waitgroup_cnt[host_id][phase][src] > 0:
-                load_cnt[host_id][phase][src] = load_cnt[host_id][phase][src] - waitgroup_cnt[host_id][phase][src] + 1
+                if waitgroup_cnt[host_id][phase][src] > load_cnt[host_id][phase][src]:
+                    load_cnt[host_id][phase][src] = 0
+                else:
+                    load_cnt[host_id][phase][src] = load_cnt[host_id][phase][src] - waitgroup_cnt[host_id][phase][src] + 1
 
 
 
