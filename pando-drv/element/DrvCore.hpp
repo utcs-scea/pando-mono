@@ -112,38 +112,22 @@ public:
       {"total_tag_cycles", "number of cycles spent executing with a tag", "count", 1},
       {"total_stall_cycles", "Number of stalled cycles", "count", 1},
       {"total_busy_cycles", "Number of busy cycles", "count", 1},
-      {"init_load_l1sp", "Number of loads to local L1SP", "count", 1},
-      {"init_store_l1sp", "Number of stores to local L1SP", "count", 1},
-      {"init_atomic_l1sp", "Number of atomics to local L1SP", "count", 1},
-      {"init_load_l2sp", "Number of loads to L2SP", "count", 1},
-      {"init_store_l2sp", "Number of stores to L2SP", "count", 1},
-      {"init_atomic_l2sp", "Number of atomics to L2SP", "count", 1},
-      {"init_load_dram", "Number of loads to DRAM", "count", 1},
-      {"init_store_dram", "Number of stores to DRAM", "count", 1},
-      {"init_atomic_dram", "Number of atomics to DRAM", "count", 1},
-      {"init_load_remote_pxn", "Number of loads to remote PXN", "count", 1},
-      {"init_store_remote_pxn", "Number of stores to remote PXN", "count", 1},
-      {"init_atomic_remote_pxn", "Number of atomics to remote PXN", "count", 1},
-      {"init_stall_cycles_when_ready", "Number of cycles stalled when a thread is ready", "count", 1},
-      {"init_tag_cycles", "number of cycles spent executing with a tag", "count", 1},
-      {"init_stall_cycles", "Number of stalled cycles", "count", 1},
-      {"init_busy_cycles", "Number of busy cycles", "count", 1},
-      {"exec_load_l1sp", "Number of loads to local L1SP", "count", 1},
-      {"exec_store_l1sp", "Number of stores to local L1SP", "count", 1},
-      {"exec_atomic_l1sp", "Number of atomics to local L1SP", "count", 1},
-      {"exec_load_l2sp", "Number of loads to L2SP", "count", 1},
-      {"exec_store_l2sp", "Number of stores to L2SP", "count", 1},
-      {"exec_atomic_l2sp", "Number of atomics to L2SP", "count", 1},
-      {"exec_load_dram", "Number of loads to DRAM", "count", 1},
-      {"exec_store_dram", "Number of stores to DRAM", "count", 1},
-      {"exec_atomic_dram", "Number of atomics to DRAM", "count", 1},
-      {"exec_load_remote_pxn", "Number of loads to remote PXN", "count", 1},
-      {"exec_store_remote_pxn", "Number of stores to remote PXN", "count", 1},
-      {"exec_atomic_remote_pxn", "Number of atomics to remote PXN", "count", 1},
-      {"exec_stall_cycles_when_ready", "Number of cycles stalled when a thread is ready", "count", 1},
-      {"exec_tag_cycles", "number of cycles spent executing with a tag", "count", 1},
-      {"exec_stall_cycles", "Number of stalled cycles", "count", 1},
-      {"exec_busy_cycles", "Number of busy cycles", "count", 1},
+      {"load_l1sp", "Number of loads to local L1SP", "count", 1},
+      {"store_l1sp", "Number of stores to local L1SP", "count", 1},
+      {"atomic_l1sp", "Number of atomics to local L1SP", "count", 1},
+      {"load_l2sp", "Number of loads to L2SP", "count", 1},
+      {"store_l2sp", "Number of stores to L2SP", "count", 1},
+      {"atomic_l2sp", "Number of atomics to L2SP", "count", 1},
+      {"load_dram", "Number of loads to DRAM", "count", 1},
+      {"store_dram", "Number of stores to DRAM", "count", 1},
+      {"atomic_dram", "Number of atomics to DRAM", "count", 1},
+      {"load_remote_pxn", "Number of loads to remote PXN", "count", 1},
+      {"store_remote_pxn", "Number of stores to remote PXN", "count", 1},
+      {"atomic_remote_pxn", "Number of atomics to remote PXN", "count", 1},
+      {"stall_cycles_when_ready", "Number of cycles stalled when a thread is ready", "count", 1},
+      {"tag_cycles", "number of cycles spent executing with a tag", "count", 1},
+      {"stall_cycles", "Number of stalled cycles", "count", 1},
+      {"busy_cycles", "Number of busy cycles", "count", 1},
     )
 
   /**
@@ -217,9 +201,14 @@ public:
   void configureSysConfig(SST::Params &params);
 
   /**
+   * configure phase statistics
+   */
+  void configurePhaseStatistics();
+
+  /**
    * configure statistics
    */
-  void configureStatistics(Params &params);
+  void configureStatistics();
 
   /**
    * select a ready thread
@@ -427,40 +416,23 @@ public:
      */
     void addLoadStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
-        ThreadStat *total_stats = &total_thread_stats_[tid];
         DrvAPI::stage_t stage = thread->getAPIThread().getStage();
-        if (isPAddressL1SP(addr)) {
-            total_stats->load_l1sp->addData(1);
-        } else if (isPAddressL2SP(addr)) {
-            total_stats->load_l2sp->addData(1);
-        } else if (isPAddressDRAM(addr)) {
-            total_stats->load_dram->addData(1);
-        } else if (isPAddressRemotePXN(addr))  {
-            traceRemotePxnMem(TRACE_REMOTE_PXN_LOAD, "read_req", addr, thread);
-            total_stats->load_remote_pxn->addData(1);
-        }
-
-        if (stage == DrvAPI::stage_t::STAGE_INIT) {
-            ThreadStat *init_stats = &init_thread_stats_[tid];
+        if (stage == DrvAPI::stage_t::STAGE_EXEC) {
+            ThreadStat *total_stats = &total_thread_stats_[tid];
+            ThreadStat *phase_stats = &(per_phase_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {
-                init_stats->load_l1sp->addData(1);
+                total_stats->load_l1sp->addData(1);
+                phase_stats->load_l1sp->addData(1);
             } else if (isPAddressL2SP(addr)) {
-                init_stats->load_l2sp->addData(1);
+                total_stats->load_l2sp->addData(1);
+                phase_stats->load_l2sp->addData(1);
             } else if (isPAddressDRAM(addr)) {
-                init_stats->load_dram->addData(1);
+                total_stats->load_dram->addData(1);
+                phase_stats->load_dram->addData(1);
             } else if (isPAddressRemotePXN(addr))  {
-                init_stats->load_remote_pxn->addData(1);
-            }
-        } else if (stage == DrvAPI::stage_t::STAGE_EXEC) {
-            ThreadStat *exec_stats = &exec_thread_stats_[tid];
-            if (isPAddressL1SP(addr)) {
-                exec_stats->load_l1sp->addData(1);
-            } else if (isPAddressL2SP(addr)) {
-                exec_stats->load_l2sp->addData(1);
-            } else if (isPAddressDRAM(addr)) {
-                exec_stats->load_dram->addData(1);
-            } else if (isPAddressRemotePXN(addr))  {
-                exec_stats->load_remote_pxn->addData(1);
+                traceRemotePxnMem(TRACE_REMOTE_PXN_LOAD, "read_req", addr, thread);
+                total_stats->load_remote_pxn->addData(1);
+                phase_stats->load_remote_pxn->addData(1);
             }
         }
     }
@@ -470,40 +442,23 @@ public:
      */
     void addStoreStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
-        ThreadStat *total_stats = &total_thread_stats_[tid];
         DrvAPI::stage_t stage = thread->getAPIThread().getStage();
-        if (isPAddressL1SP(addr)) {
-            total_stats->store_l1sp->addData(1);
-        } else if (isPAddressL2SP(addr)) {
-            total_stats->store_l2sp->addData(1);
-        } else if (isPAddressDRAM(addr)) {
-            total_stats->store_dram->addData(1);
-        } else if (isPAddressRemotePXN(addr)) {
-            traceRemotePxnMem(TRACE_REMOTE_PXN_STORE, "write_req", addr, thread);
-            total_stats->store_remote_pxn->addData(1);
-        }
-
-        if (stage == DrvAPI::stage_t::STAGE_INIT) {
-            ThreadStat *init_stats = &init_thread_stats_[tid];
+        if (stage == DrvAPI::stage_t::STAGE_EXEC) {
+            ThreadStat *total_stats = &total_thread_stats_[tid];
+            ThreadStat *phase_stats = &(per_phase_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {
-                init_stats->store_l1sp->addData(1);
+                total_stats->store_l1sp->addData(1);
+                phase_stats->store_l1sp->addData(1);
             } else if (isPAddressL2SP(addr)) {
-                init_stats->store_l2sp->addData(1);
+                total_stats->store_l2sp->addData(1);
+                phase_stats->store_l2sp->addData(1);
             } else if (isPAddressDRAM(addr)) {
-                init_stats->store_dram->addData(1);
-            } else if (isPAddressRemotePXN(addr))  {
-                init_stats->store_remote_pxn->addData(1);
-            }
-        } else if (stage == DrvAPI::stage_t::STAGE_EXEC) {
-            ThreadStat *exec_stats = &exec_thread_stats_[tid];
-            if (isPAddressL1SP(addr)) {
-                exec_stats->store_l1sp->addData(1);
-            } else if (isPAddressL2SP(addr)) {
-                exec_stats->store_l2sp->addData(1);
-            } else if (isPAddressDRAM(addr)) {
-                exec_stats->store_dram->addData(1);
-            } else if (isPAddressRemotePXN(addr))  {
-                exec_stats->store_remote_pxn->addData(1);
+                total_stats->store_dram->addData(1);
+                phase_stats->store_dram->addData(1);
+            } else if (isPAddressRemotePXN(addr)) {
+                traceRemotePxnMem(TRACE_REMOTE_PXN_STORE, "write_req", addr, thread);
+                total_stats->store_remote_pxn->addData(1);
+                phase_stats->store_remote_pxn->addData(1);
             }
         }
     }
@@ -513,40 +468,23 @@ public:
      */
     void addAtomicStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
-        ThreadStat *total_stats = &total_thread_stats_[tid];
         DrvAPI::stage_t stage = thread->getAPIThread().getStage();
-        if (isPAddressL1SP(addr)) {
-            total_stats->atomic_l1sp->addData(1);
-        } else if (isPAddressL2SP(addr)) {
-            total_stats->atomic_l2sp->addData(1);
-        } else if (isPAddressDRAM(addr)) {
-            total_stats->atomic_dram->addData(1);
-        } else if (isPAddressRemotePXN(addr))  {
-            traceRemotePxnMem(TRACE_REMOTE_PXN_ATOMIC, "atomic_req", addr, thread);
-            total_stats->atomic_remote_pxn->addData(1);
-        }
-
-        if (stage == DrvAPI::stage_t::STAGE_INIT) {
-            ThreadStat *init_stats = &init_thread_stats_[tid];
+        if (stage == DrvAPI::stage_t::STAGE_EXEC) {
+            ThreadStat *total_stats = &total_thread_stats_[tid];
+            ThreadStat *phase_stats = &(per_phase_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {
-                init_stats->atomic_l1sp->addData(1);
+                total_stats->atomic_l1sp->addData(1);
+                phase_stats->atomic_l1sp->addData(1);
             } else if (isPAddressL2SP(addr)) {
-                init_stats->atomic_l2sp->addData(1);
+                total_stats->atomic_l2sp->addData(1);
+                phase_stats->atomic_l2sp->addData(1);
             } else if (isPAddressDRAM(addr)) {
-                init_stats->atomic_dram->addData(1);
+                total_stats->atomic_dram->addData(1);
+                phase_stats->atomic_dram->addData(1);
             } else if (isPAddressRemotePXN(addr))  {
-                init_stats->atomic_remote_pxn->addData(1);
-            }
-        } else if (stage == DrvAPI::stage_t::STAGE_EXEC) {
-            ThreadStat *exec_stats = &exec_thread_stats_[tid];
-            if (isPAddressL1SP(addr)) {
-                exec_stats->atomic_l1sp->addData(1);
-            } else if (isPAddressL2SP(addr)) {
-                exec_stats->atomic_l2sp->addData(1);
-            } else if (isPAddressDRAM(addr)) {
-                exec_stats->atomic_dram->addData(1);
-            } else if (isPAddressRemotePXN(addr))  {
-                exec_stats->atomic_remote_pxn->addData(1);
+                traceRemotePxnMem(TRACE_REMOTE_PXN_ATOMIC, "atomic_req", addr, thread);
+                total_stats->atomic_remote_pxn->addData(1);
+                phase_stats->atomic_remote_pxn->addData(1);
             }
         }
     }
@@ -557,22 +495,16 @@ public:
     }
 
     void addBusyCycleStat(uint64_t cycles) {
-        total_busy_cycles_->addData(cycles);
-
-        if (stage_ == DrvAPI::stage_t::STAGE_INIT) {
-            init_busy_cycles_->addData(cycles);
-        } else if (stage_ == DrvAPI::stage_t::STAGE_EXEC) {
-            exec_busy_cycles_->addData(cycles);
+        if (stage_ == DrvAPI::stage_t::STAGE_EXEC) {
+            total_busy_cycles_->addData(cycles);
+            per_phase_busy_cycles_[phase_]->addData(cycles);
         }
     }
 
     void addStallCycleStat(uint64_t cycles) {
-        total_stall_cycles_->addData(cycles);
-
-        if (stage_ == DrvAPI::stage_t::STAGE_INIT) {
-            init_stall_cycles_->addData(cycles);
-        } else if (stage_ == DrvAPI::stage_t::STAGE_EXEC) {
-            exec_stall_cycles_->addData(cycles);
+        if (stage_ == DrvAPI::stage_t::STAGE_EXEC) {
+            total_stall_cycles_->addData(cycles);
+            per_phase_stall_cycles_[phase_]->addData(cycles);
         }
     }
 
@@ -610,14 +542,12 @@ private:
   // statistics
   DrvAPI::stage_t stage_; //!< the current stage
   std::vector<ThreadStat> total_thread_stats_; //!< the thread statistics
-  std::vector<ThreadStat> init_thread_stats_; //!< the thread statistics
-  std::vector<ThreadStat> exec_thread_stats_; //!< the thread statistics
+  std::vector<std::vector<ThreadStat>> per_phase_thread_stats_; //!< the thread statistics
+  int phase_; //!< the current phase
   Statistic<uint64_t> *total_busy_cycles_; //!< busy cycles
-  Statistic<uint64_t> *init_busy_cycles_; //!< busy cycles
-  Statistic<uint64_t> *exec_busy_cycles_; //!< busy cycles
   Statistic<uint64_t> *total_stall_cycles_; //!< stall cycles
-  Statistic<uint64_t> *init_stall_cycles_; //!< stall cycles
-  Statistic<uint64_t> *exec_stall_cycles_; //!< stall cycles
+  std::vector<Statistic<uint64_t>*> per_phase_busy_cycles_; //!< busy cycles
+  std::vector<Statistic<uint64_t>*> per_phase_stall_cycles_; //!< stall cycles
 public:
   DrvMemory* memory_;  //!< the memory hierarchy
   SST::TimeConverter *clocktc_; //!< the clock time converter
@@ -625,6 +555,7 @@ public:
   int id_; //!< the core id
   int pod_; //!< pod id of this core
   int pxn_; // !< pxn id of this core
+  int num_threads_; //!< number of threads on this core
 };
 }
 }
