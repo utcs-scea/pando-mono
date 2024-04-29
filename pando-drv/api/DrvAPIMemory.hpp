@@ -14,7 +14,7 @@ namespace DrvAPI
  *
  */
 template <typename T>
-T read(DrvAPIAddress address, stage_t stage)
+T read(DrvAPIAddress address, stage_t stage = STAGE_OTHER)
 {
     T result{};
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemReadConcrete<T>>(address));
@@ -32,7 +32,7 @@ T read(DrvAPIAddress address, stage_t stage)
  *
  */
 template <typename T>
-void write(DrvAPIAddress address, stage_t stage, T value)
+void write(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER)
 {
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemWriteConcrete<T>>(address, value));
     DrvAPIThread::current()->setStage(stage);
@@ -44,7 +44,7 @@ void write(DrvAPIAddress address, stage_t stage, T value)
  *
  */
 template <typename T>
-T atomic_swap(DrvAPIAddress address, stage_t stage, T value)
+T atomic_swap(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicSWAP>>(address, value));
@@ -61,7 +61,7 @@ T atomic_swap(DrvAPIAddress address, stage_t stage, T value)
  * @brief atomic add to a memory address
  */
 template <typename T>
-T atomic_add(DrvAPIAddress address, stage_t stage, T value)
+T atomic_add(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicADD>>(address, value));
@@ -78,7 +78,7 @@ T atomic_add(DrvAPIAddress address, stage_t stage, T value)
  * @brief atomic add to a memory address
  */
 template <typename T>
-T atomic_or(DrvAPIAddress address, stage_t stage, T value)
+T atomic_or(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicOR>>(address, value));
@@ -95,7 +95,7 @@ T atomic_or(DrvAPIAddress address, stage_t stage, T value)
  * @brief atomic compare and swap to a memory address
  */
 template <typename T>
-T atomic_cas(DrvAPIAddress address, stage_t stage, T compare, T value)
+T atomic_cas(DrvAPIAddress address, T compare, T value, stage_t stage = STAGE_OTHER)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcreteExt<T, DrvAPIMemAtomicCAS>>(address, value, compare));

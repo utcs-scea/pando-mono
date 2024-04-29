@@ -197,15 +197,15 @@ DrvAPIFunction* MakeDrvAPIFunction(const F & f)
 /**
  * @brief write a function pointer to Drv memory
  */
-inline void write_function_ptr(DrvAPIAddress addr, stage_t stage, DrvAPIFunction *f)
+inline void write_function_ptr(DrvAPIAddress addr, DrvAPIFunction *f, stage_t stage)
 {
   // write the function type id
-  write(addr, stage, f->getFunctionTypeId());
+  write(addr, f->getFunctionTypeId(), stage);
   addr += sizeof(DrvAPIFunctionTypeId);
   // write the function data
   std::size_t sz = f->getTypeInfo()->data_size;
   for (std::size_t i = 0; i < sz; ++i) {
-    write(addr + i, stage, ((char*)f)[i]);
+    write(addr + i, ((char*)f)[i], stage);
   }
 }
 

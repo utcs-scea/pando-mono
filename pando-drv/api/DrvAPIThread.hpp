@@ -14,7 +14,8 @@ namespace DrvAPI
 
 enum stage_t {
     STAGE_INIT,
-    STAGE_EXEC,
+    STAGE_EXEC_COMP,
+    STAGE_EXEC_COMM,
     STAGE_OTHER
 };
 

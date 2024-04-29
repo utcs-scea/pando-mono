@@ -16,7 +16,7 @@
 #include "global_ptr_fwd.hpp"
 #ifdef PANDO_RT_USE_BACKEND_DRVX
 #include "DrvAPIMemory.hpp"
-#include "../program_stage.hpp"
+#include "../drv_info.hpp"
 #endif // PANDO_RT_USE_BACKEND_DRVX
 
 namespace pando {
@@ -76,7 +76,7 @@ void load(GlobalAddress globalAddr, void* nativePtr) {
 template <typename T>
 void store(GlobalAddress globalAddr, const void* nativePtr) {
   const T* srcPtr = static_cast<const T*>(nativePtr);
-  DrvAPI::write<std::remove_cv_t<T>>(globalAddr, DrvAPI::program_stage, *srcPtr);
+  DrvAPI::write<std::remove_cv_t<T>>(globalAddr, *srcPtr, DrvAPI::program_stage);
 }
 
 #endif

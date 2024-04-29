@@ -34,7 +34,7 @@ target_sources(pando-rt
         ${CMAKE_CURRENT_SOURCE_DIR}/start.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/stdlib.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/wait.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/program_stage.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/drv_info.cpp
 )
 
 if(PANDO_RT_ENABLE_MEM_STAT STREQUAL "ON")

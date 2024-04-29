@@ -206,7 +206,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
   for (std::size_t i = 0; i < numBlocks; i++) {
     auto blockData = *(blockSrc + i);
     const auto offset = i * blockSize;
-    DrvAPI::write<BlockType>(blockDst + offset, DrvAPI::program_stage, blockData);
+    DrvAPI::write<BlockType>(blockDst + offset, blockData, DrvAPI::program_stage);
   }
 
   const auto bytesWritten = numBlocks * blockSize;
@@ -214,7 +214,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
   auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
   for (std::size_t i = 0; i < remainderBytes; i++) {
     auto byteData = *(byteSrc + i);
-    DrvAPI::write<std::byte>(byteDst + i, DrvAPI::program_stage, byteData);
+    DrvAPI::write<std::byte>(byteDst + i, byteData, DrvAPI::program_stage);
   }
 
 #endif // PANDO_RT_USE_BACKEND_PREP

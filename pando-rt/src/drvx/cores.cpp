@@ -46,7 +46,7 @@ Drvx::StaticMainMem<std::int64_t> numCoresReady;
 void Cores::initializeQueues() {
   // One hart per core does all the initialization. Use CAS to choose some/any hart for this
   // purpose.
-  if (DrvAPI::atomic_cas(&coreState, DrvAPI::stage_t::STAGE_OTHER, +CoreState::Stopped, +CoreState::Idle) ==
+  if (DrvAPI::atomic_cas(&coreState, +CoreState::Stopped, +CoreState::Idle) ==
       +CoreState::Stopped) {
     // initialize core object
     coreQueue = new TaskQueue;
@@ -55,7 +55,7 @@ void Cores::initializeQueues() {
     coreState = +CoreState::Ready;
 
     // CP waits for this variable to equal total number of cores in the PXN
-    DrvAPI::atomic_add(toNativeDrvPointerOnDram(numCoresReady, NodeIndex(0)), DrvAPI::stage_t::STAGE_OTHER, 1u);
+    DrvAPI::atomic_add(toNativeDrvPointerOnDram(numCoresReady, NodeIndex(0)), 1u);
   }
 
   // Other harts just wait until state is ready
@@ -67,7 +67,7 @@ void Cores::initializeQueues() {
 void Cores::finalizeQueues() {
   // One hart per core does all the finalization. Use CAS to choose some/any hart for this
   // purpose.
-  if (DrvAPI::atomic_cas(&coreState, DrvAPI::stage_t::STAGE_OTHER, +CoreState::Ready, +CoreState::Idle) == +CoreState::Ready) {
+  if (DrvAPI::atomic_cas(&coreState, +CoreState::Ready, +CoreState::Idle) == +CoreState::Ready) {
     coreState = +CoreState::Stopped;
 
     TaskQueue* queue = coreQueue;
@@ -99,7 +99,7 @@ void Cores::waitForCoresInit() {
 }
 
 void Cores::finalize() {
-  DrvAPI::atomic_add(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), DrvAPI::stage_t::STAGE_OTHER, 1u);
+  DrvAPI::atomic_add(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), 1u);
 }
 
 } // namespace pando
