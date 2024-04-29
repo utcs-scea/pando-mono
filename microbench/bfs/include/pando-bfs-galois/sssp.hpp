@@ -132,7 +132,6 @@ pando::Status SSSP_DLCSR(
   state.active = active;
   state.dist = 0;
 
-  PANDO_DRV_STAGE_INIT_END();
 #ifdef PANDO_STAT_TRACE_ENABLE
   PANDO_CHECK(galois::doAll(
       wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
@@ -140,7 +139,7 @@ pando::Status SSSP_DLCSR(
       }));
   PANDO_CHECK(wg.wait());
 #endif
-  PANDO_DRV_STAGE_EXEC_BEGIN();
+  PANDO_DRV_SET_STAGE_EXEC_COMP();
 
   while (!IsactiveIterationEmpty(phbfs)) {
 #ifdef DPRINTS
@@ -171,7 +170,7 @@ pando::Status SSSP_DLCSR(
       }));
   PANDO_CHECK(wg.wait());
 #endif
-  PANDO_DRV_STAGE_EXEC_END();
+  PANDO_DRV_SET_STAGE_OTHER();
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
@@ -307,7 +306,6 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
   std::cerr << "Source is on host " << srcHost << std::endl;
 #endif
 
-  PANDO_DRV_STAGE_INIT_END();
 #ifdef PANDO_STAT_TRACE_ENABLE
   PANDO_CHECK(galois::doAll(
       wgh, toRead, +[](MDWorkList<G>) {
@@ -315,7 +313,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
       }));
   PANDO_CHECK(wg.wait());
 #endif
-  PANDO_DRV_STAGE_EXEC_BEGIN();
+  PANDO_DRV_SET_STAGE_EXEC_COMP();
 
   *active = true;
   while (*active) {
@@ -332,6 +330,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
         }));
     PANDO_CHECK_RETURN(wg.wait());
 
+    PANDO_DRV_SET_STAGE_EXEC_COMM();
     graph.template sync<decltype(updateData), true, false>(updateData);
 
     galois::HostLocalStorage<pando::Array<bool>> masterBitSets = graph.getMasterBitSets();
@@ -347,6 +346,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 
     PANDO_CHECK_RETURN(wg.wait());
     graph.resetBitSets();
+    PANDO_DRV_SET_STAGE_EXEC_COMP();
 
 #ifdef DPRINTS
     std::cerr << "Iteration loop end:\t" << state.dist - 1 << std::endl;
@@ -360,7 +360,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
       }));
   PANDO_CHECK(wg.wait());
 #endif
-  PANDO_DRV_STAGE_EXEC_END();
+  PANDO_DRV_SET_STAGE_OTHER();
 
   if constexpr (COUNT_EDGE) {
     galois::doAll(
