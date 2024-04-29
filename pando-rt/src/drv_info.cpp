@@ -20,4 +20,10 @@ void setStageOther() {
   program_stage = stage_t::STAGE_OTHER;
 }
 
+int program_phase = 0;
+
+void setPhase(int phase) {
+  program_phase = phase;
+}
+
 } // namespace DrvAPI

@@ -34,7 +34,6 @@ target_sources(pando-rt
         ${CMAKE_CURRENT_SOURCE_DIR}/start.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/stdlib.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/wait.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/drv_info.cpp
 )
 
 if(PANDO_RT_ENABLE_MEM_STAT STREQUAL "ON")
@@ -76,6 +75,10 @@ if (PANDO_RT_BACKEND STREQUAL "PREP")
             pando-rt-prep
     )
 elseif (PANDO_RT_BACKEND STREQUAL "DRVX")
+    target_sources(pando-rt
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/drv_info.cpp
+    )
     add_subdirectory(drvx)
 
     # propagating public definitions of pando-rt-prep to pando-rt

@@ -18,6 +18,7 @@
 #include <pando-lib-galois/containers/thread_local_vector.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/vector.hpp>
+#include <pando-rt/drv_info.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/sync/atomic.hpp>
 
@@ -141,10 +142,13 @@ pando::Status SSSP_DLCSR(
 #endif
   PANDO_DRV_SET_STAGE_EXEC_COMP();
 
+  int phase = 0;
+
   while (!IsactiveIterationEmpty(phbfs)) {
 #ifdef DPRINTS
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
 #endif
+    PANDO_DRV_SET_PHASE(phase);
 
     // Take care of last loop
     state.dist++;
@@ -157,6 +161,8 @@ pando::Status SSSP_DLCSR(
       liftVoid(vec, clear);
     }
     PANDO_CHECK_RETURN(state.active.hostFlattenAppend(phbfs));
+
+    phase++;
 
 #ifdef DPRINTS
     std::cerr << "Iteration loop end:\t" << state.dist - 1 << std::endl;
@@ -315,11 +321,14 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 #endif
   PANDO_DRV_SET_STAGE_EXEC_COMP();
 
+  int phase = 0;
+
   *active = true;
   while (*active) {
 #ifdef DPRINTS
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
 #endif
+    PANDO_DRV_SET_PHASE(phase);
     *active = false;
 
     auto state = galois::make_tpl(graph, toWrite);
@@ -346,6 +355,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 
     PANDO_CHECK_RETURN(wg.wait());
     graph.resetBitSets();
+    phase++;
     PANDO_DRV_SET_STAGE_EXEC_COMP();
 
 #ifdef DPRINTS
