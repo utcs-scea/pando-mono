@@ -37,6 +37,87 @@ void show_mirrored_graph(pando::GlobalPtr<GraphMDL> graph_ptr) {
   }
 }
 
+pando::Status generate_mirrored_graph_stats(pando::GlobalPtr<GraphMDL> graph_ptr) {
+  std::ofstream stat_file;
+  std::string path = "data/graph_stats_MirroredDistLocalCSR.csv";
+
+  stat_file.open(path, std::ios::trunc);
+  if (!stat_file.is_open()) {
+    std::cerr << "Failed to open file:" << path << "\n";
+    return pando::Status::Error;
+  }
+
+  uint64_t num_hosts = pando::getPlaceDims().node.id;
+  std::cerr << "Successfully open file::: num_hosts = " << num_hosts << " \n";
+  galois::HostIndexedMap<uint64_t> num_masters_per_host{};
+  galois::HostIndexedMap<uint64_t> num_mirrors_per_host{};
+  galois::HostIndexedMap<uint64_t> num_vertices_per_host{};
+  galois::HostIndexedMap<uint64_t> num_edges_per_host{};
+  PANDO_CHECK_RETURN(num_masters_per_host.initialize());
+  PANDO_CHECK_RETURN(num_mirrors_per_host.initialize());
+  PANDO_CHECK_RETURN(num_vertices_per_host.initialize());
+  PANDO_CHECK_RETURN(num_edges_per_host.initialize());
+
+  // Initialize counts to 0
+  for (uint64_t i = 0; i < num_hosts; i++) {
+    num_masters_per_host[i] = 0;
+    num_mirrors_per_host[i] = 0;
+    num_vertices_per_host[i] = 0;
+    num_edges_per_host[i] = 0;
+  }
+
+  // Collect Data
+  std::cout << "Collecting vertex-edge data\n";
+  for (typename GraphMDL::VertexTopologyID vertex : graph_ptr->vertices()) {
+    uint64_t host_id = static_cast<std::uint64_t>(graph_ptr->getLocalityVertex(vertex).node.id);
+    num_vertices_per_host[host_id]++;
+    for (typename GraphMDL::EdgeHandle eh : graph_ptr->edges(vertex)) {
+      pando::GlobalPtr<typename GraphMDL::EdgeData> ptr = &graph_ptr->getEdgeData(eh);
+      uint64_t eh_host_id = static_cast<std::uint64_t>(galois::localityOf(ptr).node.id);
+      num_edges_per_host[eh_host_id]++;
+    }
+  }
+
+  std::cout << "Collecting master data \n";
+  galois::doAll(
+      graph_ptr, num_masters_per_host,
+      +[](pando::GlobalPtr<GraphMDL> graph_ptr, pando::GlobalRef<std::uint64_t> master_ref) {
+        GraphMDL graph = *graph_ptr;
+        master_ref = graph.getMasterSize();
+      });
+
+  std::cout << "Collecting mirror data \n";
+  galois::doAll(
+      graph_ptr, num_mirrors_per_host,
+      +[](pando::GlobalPtr<GraphMDL> graph_ptr, pando::GlobalRef<std::uint64_t> mirror_ref) {
+        GraphMDL graph = *graph_ptr;
+        mirror_ref = graph.getMirrorSize();
+      });
+
+  stat_file << "Host,Category,Count\n";
+  for (uint64_t i = 0; i < num_hosts; i++) {
+    uint64_t host_i_num_master = num_masters_per_host[i];
+    uint64_t host_i_num_mirror = num_mirrors_per_host[i];
+    uint64_t host_i_num_vert = num_vertices_per_host[i];
+    uint64_t host_i_num_edges = num_edges_per_host[i];
+    stat_file << i << ",Masters," << host_i_num_master << "\n";
+    stat_file << i << ",Mirrors," << host_i_num_mirror << "\n";
+    stat_file << i << ",Vertices," << host_i_num_vert << "\n";
+    stat_file << i << ",Edges," << host_i_num_edges << "\n";
+    std::cerr << "Host " << i << ": master, mirror, V, E = " << host_i_num_master << ", "
+              << host_i_num_mirror << ", " << host_i_num_vert << ", " << host_i_num_edges << "\n";
+  }
+
+  std::cerr << "De-initing and closing file\n";
+  num_masters_per_host.deinitialize();
+  num_mirrors_per_host.deinitialize();
+  num_vertices_per_host.deinitialize();
+  num_edges_per_host.deinitialize();
+
+  stat_file.close();
+  return pando::Status::Success;
+}
+
 template <typename GraphType>
 pando::Status generate_graph_stats(pando::GlobalPtr<GraphType> graph_ptr,
                                    GRAPH_TYPE graph_type_enum) {
@@ -98,18 +179,19 @@ void HBMainGraphCompare(pando::Notification::HandleType hb_done, pando::Array<ch
                         int64_t num_vertices, GRAPH_TYPE graph_type) {
   switch (graph_type) {
     case GRAPH_TYPE::MDLCSR: {
-      std::cout << "Creating graph ...\n";
+      std::cout << "Creating MDLCSR ...\n";
       GraphMDL graph = galois::initializeELDLCSR<GraphMDL, MirroredVT, ET>(filename, num_vertices);
       pando::GlobalPtr<GraphMDL> graph_ptr = static_cast<pando::GlobalPtr<GraphMDL>>(
           pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphMDL)));
       *graph_ptr = graph;
       std::cout << "Collecting Graph Stats ...\n";
-      show_mirrored_graph(graph_ptr);
+      PANDO_CHECK(generate_mirrored_graph_stats(graph_ptr));
       pando::deallocateMemory(graph_ptr, 1);
       graph.deinitialize();
       break;
     }
     case GRAPH_TYPE::DACSR: {
+      std::cout << "Creating DACSR ...\n";
       GraphDA graph = galois::initializeELDACSR<GraphDA, VT, ET>(filename, num_vertices);
       pando::GlobalPtr<GraphDA> graph_ptr = static_cast<pando::GlobalPtr<GraphDA>>(
           pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphDA)));
@@ -121,6 +203,7 @@ void HBMainGraphCompare(pando::Notification::HandleType hb_done, pando::Array<ch
       break;
     }
     default: {
+      std::cout << "Creating DLCSR ...\n";
       GraphDL graph = galois::initializeELDLCSR<GraphDL, VT, ET>(filename, num_vertices);
       pando::GlobalPtr<GraphDL> graph_ptr = static_cast<pando::GlobalPtr<GraphDL>>(
           pando::getDefaultMainMemoryResource()->allocate(sizeof(GraphDL)));
@@ -132,6 +215,7 @@ void HBMainGraphCompare(pando::Notification::HandleType hb_done, pando::Array<ch
       break;
     }
   }
+  std::cout << "DONE\n";
   hb_done.notify();
 }
 
