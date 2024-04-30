@@ -22,7 +22,7 @@ void edge_tc_counting(pando::GlobalPtr<Graph> graph_ptr, typename Graph::VertexT
   auto wgh = wg.getHandle();
   auto inner_state = galois::make_tpl(graph_ptr, v0, wgh, final_tri_count);
   galois::doAll(
-      inner_state, edge_range,
+      wgh, inner_state, edge_range,
       +[](decltype(inner_state) inner_state, typename Graph::EdgeHandle eh) {
         auto [graph_ptr, v0, wgh, final_tri_count] = inner_state;
 

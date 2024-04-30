@@ -20,6 +20,7 @@
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/utility/prefix_sum.hpp>
+#include <pando-lib-galois/utility/search.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
 
 #define COORDINATOR_ID    0
@@ -87,6 +88,60 @@ void intersect_dag_merge(galois::WaitGroup::HandleType wgh, pando::GlobalPtr<Gra
       q_it++;
     if (a == b)
       count++;
+  }
+  final_tri_count.add(count);
+  wgh.done();
+}
+
+template <typename GraphType>
+void intersect_dag_merge_double_binary(galois::WaitGroup::HandleType wgh,
+                                       pando::GlobalPtr<GraphType> graph_ptr,
+                                       typename GraphType::VertexTopologyID v0,
+                                       typename GraphType::VertexTopologyID v1,
+                                       galois::DAccumulator<uint64_t> final_tri_count) {
+  using VTopID = typename GraphType::VertexTopologyID;
+  using VTokID = typename GraphType::VertexTokenID;
+  using EdgeIt = typename GraphType::EdgeRange::iterator;
+  GraphType graph = *graph_ptr;
+  auto getTokIDFromEdgeIt = [&graph](EdgeIt it) -> VTokID {
+    VTopID dst = graph.getEdgeDst(*it);
+    return graph.getTokenID(dst);
+  };
+  auto lessEdgeItThanVTokID = [getTokIDFromEdgeIt](EdgeIt it, const VTokID& curr) -> bool {
+    return getTokIDFromEdgeIt(it) < curr;
+  };
+  uint64_t count = 0;
+  auto largeRange = graph.edges(v0);
+  auto smallRange = graph.edges(v1);
+  if (largeRange.size() < smallRange.size()) {
+    std::swap(largeRange, smallRange);
+  }
+  auto largeCurr = largeRange.begin();
+  const auto largeEnd = largeRange.end();
+  auto smallCurr = smallRange.begin();
+  const auto smallEnd = smallRange.end();
+  while (smallCurr != smallEnd && largeCurr != largeEnd) {
+    largeCurr = galois::lower_bound(largeCurr, largeEnd, getTokIDFromEdgeIt(smallCurr),
+                                    lessEdgeItThanVTokID);
+    if (largeCurr == largeEnd) {
+      break;
+    }
+    smallCurr = galois::lower_bound(smallCurr, smallEnd, getTokIDFromEdgeIt(largeCurr),
+                                    lessEdgeItThanVTokID);
+    if (smallCurr == smallEnd) {
+      break;
+    }
+    VTokID largeTok = getTokIDFromEdgeIt(largeCurr);
+    VTokID smallTok = getTokIDFromEdgeIt(smallCurr);
+    if (smallTok <= largeTok) {
+      smallCurr++;
+    }
+    if (smallTok >= largeTok) {
+      largeCurr++;
+    }
+    if (smallTok == largeTok) {
+      count++;
+    }
   }
   final_tri_count.add(count);
   wgh.done();

@@ -87,6 +87,10 @@ struct CountedIterator {
     return CountedIterator<It>{m_count + n, m_iter + n};
   }
 
+  friend bool operator-(const CountedIterator<It>& a, const CountedIterator<It>& b) {
+    return a.m_count - b.m_count;
+  }
+
   friend bool operator==(const CountedIterator<It>& a, const CountedIterator<It>& b) {
     return a.m_count == b.m_count && a.m_iter == b.m_iter;
   }
