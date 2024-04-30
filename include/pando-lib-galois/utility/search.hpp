@@ -25,7 +25,7 @@ template <typename RandomAccessIterator, typename T>
 RandomAccessIterator lower_bound(RandomAccessIterator start, RandomAccessIterator end,
                                  const T& val) {
   return lower_bound(
-      start, end, +[](RandomAccessIterator mid, const T& val) {
+      start, end, val, +[](RandomAccessIterator mid, const T& val) {
         return *mid < val;
       });
 }
