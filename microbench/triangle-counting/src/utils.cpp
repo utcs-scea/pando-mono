@@ -13,8 +13,7 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
   int32_t flag = 0;
   int32_t num_vertices = 0;
   int32_t tc_chunk = NO_CHUNK;
-  int32_t graph_type = DLCSR;
-  while ((flag = getopt(argc, argv, "v:i:c:g:")) != -1) {
+  while ((flag = getopt(argc, argv, "v:i:c:l")) != -1) {
     switch (flag) {
       case 'v':
         sscanf(optarg, "%d", &num_vertices);
@@ -23,21 +22,8 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
       case 'i':
         opts_ptr->elFile = std::string((const char*)optarg);
         break;
-      case 'g':
-        sscanf(optarg, "%d", &graph_type);
-        switch (graph_type) {
-          case 0:
-            opts_ptr->graph_type = DLCSR;
-            break;
-          case 1:
-            opts_ptr->graph_type = MDLCSR;
-            break;
-          case 2:
-            opts_ptr->graph_type = DACSR;
-            break;
-          default:
-            printUsageExit(argv[0]);
-        }
+      case 'l':
+        opts_ptr->load_balanced_graph = true;
         break;
       case 'c':
         sscanf(optarg, "%d", &tc_chunk);
@@ -59,7 +45,7 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
         printUsage(argv[0]);
         std::exit(0);
       case '?':
-        if (optopt == 'v' || optopt == 'i' || optopt == 'c' || optopt == 'g')
+        if (optopt == 'v' || optopt == 'i' || optopt == 'c')
           fprintf(stderr, "Option -%c requires an argument.\n", optopt);
         else if (isprint(optopt))
           fprintf(stderr, "Unknown option `-%c'.\n", optopt);
@@ -77,10 +63,8 @@ std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
 
 void printUsage(char* argv0) {
   std::cerr << "Usage: " << argv0 << " -i filepath -v numVertices" << std::endl;
-  std::cerr << "Can specify runtime algorithm with -c. Valid options: [0 (NO_CHUNK), 1 "
+  std::cerr << "\n Can specify runtime algorithm with -c. Valid options: [0 (NO_CHUNK), 1 "
                "(CHUNK_EDGES), 2 (CHUNK_VERTICES)]\n";
-  std::cerr << "\n Can specify graph_type with -g. Valid options: [0 (DistLocalCSR), 1 "
-               "(MirroredDistLocalCSR), 2 (DistArrayCSR))]\n";
 }
 
 void printUsageExit(char* argv0) {

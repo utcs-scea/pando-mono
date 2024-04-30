@@ -3,7 +3,7 @@
 #ifndef TRIANGLE_COUNTING_INCLUDE_TC_ALGOS_HPP_
 #define TRIANGLE_COUNTING_INCLUDE_TC_ALGOS_HPP_
 
-#include <tc_mdlcsr.hpp>
+#include "utils.hpp"
 
 template <typename GraphType>
 void tc_no_chunk(pando::GlobalPtr<GraphType> graph_ptr,
@@ -18,7 +18,7 @@ void tc_chunk_vertices(pando::GlobalPtr<GraphType> graph_ptr,
                        galois::DAccumulator<uint64_t> final_tri_count);
 
 void HBMainTC(pando::Notification::HandleType hb_done, pando::Array<char> filename,
-              int64_t num_vertices, TC_CHUNK tc_chunk, GRAPH_TYPE graph_type,
+              int64_t num_vertices, bool load_balanced_graph, TC_CHUNK tc_chunk,
               galois::DAccumulator<uint64_t> final_tri_count);
 
 #endif // TRIANGLE_COUNTING_INCLUDE_TC_ALGOS_HPP_

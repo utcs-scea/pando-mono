@@ -13,101 +13,46 @@
 
 #include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/containers/pod_local_storage.hpp>
-#include <pando-lib-galois/containers/thread_local_storage.hpp>
-#include <pando-lib-galois/containers/thread_local_vector.hpp>
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
-#include <pando-lib-galois/graphs/mirror_dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/utility/prefix_sum.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
-#include <pando-rt/containers/array.hpp>
 
 #define COORDINATOR_ID    0
 #define DEBUG             0
 #define BENCHMARK         1
+#define SORTED_EDGES      1
 #define TC_EMBEDDING_SZ   3
 #define OVERDECOMPOSITION 0
-#define SORTED_EDGES      1
 
 using ET = galois::ELEdge;
 using VT = galois::ELVertex;
-struct MirroredVT : VT {
-  galois::Array<pando::Vector<uint64_t>> queries;
-
-  constexpr MirroredVT() noexcept = default;
-  constexpr MirroredVT(MirroredVT&&) noexcept = default;
-  constexpr MirroredVT(const MirroredVT&) noexcept = default;
-  ~MirroredVT() = default;
-
-  constexpr MirroredVT& operator=(const MirroredVT&) noexcept = default;
-  constexpr MirroredVT& operator=(MirroredVT&&) noexcept = default;
-
-  explicit MirroredVT(ELVertex) {
-    PANDO_CHECK(queries.initialize(galois::getThreadsPerHost()));
-    galois::doAll(
-        queries, +[](pando::GlobalRef<pando::Vector<uint64_t>> thread_vector) {
-          PANDO_CHECK(fmap(thread_vector, initialize, 0));
-        });
-  }
-
-  void deinitialize() {
-    galois::doAll(
-        queries, +[](pando::GlobalRef<pando::Vector<uint64_t>> thread_vector) {
-          fmapVoid(thread_vector, deinitialize);
-        });
-    queries.deinitialize();
-  }
-
-  void clear() {
-    galois::doAll(
-        queries, +[](pando::GlobalRef<pando::Vector<uint64_t>> thread_vector) {
-          fmapVoid(thread_vector, clear);
-        });
-  }
-
-  uint64_t get_all_size() {
-    uint64_t total_sz = 0;
-    for (uint64_t i = 0; i < queries.size(); i++) {
-      total_sz += fmap(queries[i], size);
-    }
-    return total_sz;
-  }
-
-  pando::Status add_query(uint64_t new_query) {
-    auto indx = galois::getCurrentThreadIdx() % galois::getThreadsPerHost();
-    auto err = fmap(queries[indx], pushBack, new_query);
-    return err;
-  }
-};
-
 using GraphDL = galois::DistLocalCSR<VT, ET>;
-using GraphMDL = galois::MirrorDistLocalCSR<MirroredVT, ET>;
 using GraphDA = galois::DistArrayCSR<VT, ET>;
 
 enum TC_CHUNK { NO_CHUNK = 0, CHUNK_VERTICES = 1, CHUNK_EDGES = 2 };
-enum GRAPH_TYPE { DLCSR = 0, MDLCSR = 1, DACSR = 2 };
 
 struct CommandLineOptions {
   std::string elFile;
   int64_t num_vertices = 0;
+  bool load_balanced_graph = false;
   TC_CHUNK tc_chunk = TC_CHUNK::NO_CHUNK;
-  GRAPH_TYPE graph_type = GRAPH_TYPE::DLCSR;
 
   void print() {
     printf("******** CommandLineOptions ******** \n");
     std::cout << "elFile = " << elFile << '\n';
     std::cout << "num_vertices = " << num_vertices << '\n';
+    std::cout << "load_balanced_graph = " << load_balanced_graph << '\n';
     std::cout << "tc_chunk = " << tc_chunk << '\n';
-    std::cout << "graph_type = " << graph_type << '\n';
     printf("******** END CommandLineOptions ******** \n");
   }
 
   CommandLineOptions()
-      : elFile(""), num_vertices(0), tc_chunk(TC_CHUNK::NO_CHUNK), graph_type(GRAPH_TYPE::DLCSR) {}
+      : elFile(""), num_vertices(0), load_balanced_graph(false), tc_chunk(TC_CHUNK::NO_CHUNK) {}
 };
 
 std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv);
