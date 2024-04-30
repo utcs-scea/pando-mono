@@ -418,6 +418,8 @@ int DrvCore::selectReadyThread() {
     DrvThread *thread = getThread(thread_id);
     auto & state = thread->getAPIThread().getState();
     DrvAPI::stage_t stage = thread->getAPIThread().getStage();
+    int phase = thread->getAPIThread().getPhase();
+
     if (state->canResume()) {
       if (!selected) {
         output_->verbose(CALL_INFO, 2, DEBUG_CLK, "thread %d is ready\n", thread_id);
@@ -426,13 +428,13 @@ int DrvCore::selectReadyThread() {
       } else {
         if (stage == DrvAPI::stage_t::STAGE_EXEC_COMP) {
           ThreadStat *total_stats = &total_thread_stats_[t];
-          ThreadStat *phase_stats = &(per_phase_comp_thread_stats_[phase_][t]);
+          ThreadStat *phase_stats = &(per_phase_comp_thread_stats_[phase][t]);
           total_stats->stall_cycles_when_ready->addData(1);
           phase_stats->stall_cycles_when_ready->addData(1);
         }
         else if (stage == DrvAPI::stage_t::STAGE_EXEC_COMM) {
           ThreadStat *total_stats = &total_thread_stats_[t];
-          ThreadStat *phase_stats = &(per_phase_comm_thread_stats_[phase_][t]);
+          ThreadStat *phase_stats = &(per_phase_comm_thread_stats_[phase][t]);
           total_stats->stall_cycles_when_ready->addData(1);
           phase_stats->stall_cycles_when_ready->addData(1);
         }
@@ -456,9 +458,6 @@ void DrvCore::executeReadyThread() {
   }
   idle_cycles_ = 0;
 
-  DrvThread *thread = getThread(thread_id);
-  stage_ = thread->getAPIThread().getStage();
-
   // execute the ready thread
   threads_[thread_id].execute(this);
   last_thread_ = thread_id;
@@ -469,6 +468,17 @@ void DrvCore::executeReadyThread() {
 void DrvCore::handleThreadStateAfterYield(DrvThread *thread) {
   std::shared_ptr<DrvAPI::DrvAPIThreadState> &state = thread->getAPIThread().getState();
   std::shared_ptr<DrvAPI::DrvAPIMem> mem_req = std::dynamic_pointer_cast<DrvAPI::DrvAPIMem>(state);
+
+  stage_ = thread->getAPIThread().getStage();
+  phase_ = thread->getAPIThread().getPhase();
+  if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP || stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
+    if (phase_ >= static_cast<int>(per_phase_comp_thread_stats_.size())) {
+      int diff = phase_ - static_cast<int>(per_phase_comp_thread_stats_.size()) + 1;
+      for (int i = 0; i < diff; i++) {
+        configurePhaseStatistics();
+      }
+    }
+  }
 
   // handle memory requests
   if (mem_req) {

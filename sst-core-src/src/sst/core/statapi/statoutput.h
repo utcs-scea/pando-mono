@@ -72,7 +72,7 @@ public:
 
     virtual void output(StatisticBase* statistic, bool endOfSimFlag) = 0;
 
-    virtual bool supportsDynamicRegistration() const { return false; }
+    virtual bool supportsDynamicRegistration() const { return true; }
 
     /////////////////
     // Methods for Registering Fields (Called by Statistic Objects)

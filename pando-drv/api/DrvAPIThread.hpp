@@ -85,6 +85,20 @@ public:
   stage_t getStage() { return stage_; }
 
   /**
+   * @brief Set the phase
+   *
+   * @param phase
+   */
+  void setPhase(int phase) { phase_ = phase;}
+
+  /**
+   * @brief Get the phase
+   *
+   * @return int
+   */
+  int getPhase() { return phase_; }
+
+  /**
    * @brief Set the main function
    *
    * @param main
@@ -222,7 +236,8 @@ private:
   std::unique_ptr<coro_t::pull_type> thread_context_; //!< Thread context, coroutine that can be resumed
   coro_t::push_type *main_context_; //!< Main context, can be yielded back to
   std::shared_ptr<DrvAPIThreadState> state_; //!< Thread state
-  stage_t stage_; //!< Stage
+  stage_t stage_ = STAGE_OTHER; //!< Stage
+  int phase_ = 0; //!< Phase
   drv_api_main_t main_; //!< Main function
   int argc_;
   char **argv_;

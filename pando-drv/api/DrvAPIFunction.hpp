@@ -197,15 +197,15 @@ DrvAPIFunction* MakeDrvAPIFunction(const F & f)
 /**
  * @brief write a function pointer to Drv memory
  */
-inline void write_function_ptr(DrvAPIAddress addr, DrvAPIFunction *f, stage_t stage)
+inline void write_function_ptr(DrvAPIAddress addr, DrvAPIFunction *f, stage_t stage, int phase)
 {
   // write the function type id
-  write(addr, f->getFunctionTypeId(), stage);
+  write(addr, f->getFunctionTypeId(), stage, phase);
   addr += sizeof(DrvAPIFunctionTypeId);
   // write the function data
   std::size_t sz = f->getTypeInfo()->data_size;
   for (std::size_t i = 0; i < sz; ++i) {
-    write(addr + i, ((char*)f)[i], stage);
+    write(addr + i, ((char*)f)[i], stage, phase);
   }
 }
 
@@ -213,11 +213,11 @@ inline void write_function_ptr(DrvAPIAddress addr, DrvAPIFunction *f, stage_t st
  * @brief read a function pointer from Drv memory
  */
 inline DrvAPIFunction *
-read_function_ptr(DrvAPIAddress addr, stage_t stage)
+read_function_ptr(DrvAPIAddress addr, stage_t stage, int phase)
 {
   // read the type id
   DrvAPIFunctionTypeId type_id;
-  type_id = read<DrvAPIFunctionTypeId>(addr, stage);
+  type_id = read<DrvAPIFunctionTypeId>(addr, stage, phase);
   addr += sizeof(DrvAPIFunctionTypeId);
 
   // get the type info and allocate a buffer
@@ -231,7 +231,7 @@ read_function_ptr(DrvAPIAddress addr, stage_t stage)
 
   // read in the function data
   for (std::size_t i = 0; i < words; ++i) {
-    buf[i] = read<uint64_t>(addr + i*sizeof(uint64_t), stage);
+    buf[i] = read<uint64_t>(addr + i*sizeof(uint64_t), stage, phase);
   }
 
   // create new function

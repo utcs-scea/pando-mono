@@ -329,6 +329,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
 #endif
     PANDO_DRV_SET_PHASE(phase);
+    std::cout << "Phase: " << phase << std::endl;
     *active = false;
 
     auto state = galois::make_tpl(graph, toWrite);

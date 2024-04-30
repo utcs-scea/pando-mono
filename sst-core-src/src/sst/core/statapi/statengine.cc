@@ -152,6 +152,7 @@ StatisticProcessingEngine::registerStatisticCore(StatisticBase* stat)
                 stat->getFullStatName().c_str(), group.output->getStatisticOutputName().c_str(),
                 group.output->getStatisticOutputName().c_str());
         }
+/*
         else if ( stat->getRegisteredCollectionMode() != StatisticBase::STAT_MODE_DUMP_AT_END ) {
             m_output.fatal(
                 CALL_INFO, 1,
@@ -159,6 +160,7 @@ StatisticProcessingEngine::registerStatisticCore(StatisticBase* stat)
                 "Stats can only be registered dynamically in DUMP_AT_END mode with no periodic clock",
                 stat->getFullStatName().c_str());
         }
+*/
     }
 
     /* All checks pass.  Add the stat */

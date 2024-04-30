@@ -430,8 +430,7 @@ public:
      */
     void addLoadStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
-        DrvAPI::stage_t stage = thread->getAPIThread().getStage();
-        if (stage == DrvAPI::stage_t::STAGE_EXEC_COMP) {
+        if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP) {
             ThreadStat *total_stats = &total_thread_stats_[tid];
             ThreadStat *phase_stats = &(per_phase_comp_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {
@@ -449,7 +448,7 @@ public:
                 phase_stats->load_remote_pxn->addData(1);
             }
         }
-        else if (stage == DrvAPI::stage_t::STAGE_EXEC_COMM) {
+        else if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
             ThreadStat *total_stats = &total_thread_stats_[tid];
             ThreadStat *phase_stats = &(per_phase_comm_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {
@@ -474,8 +473,7 @@ public:
      */
     void addStoreStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
-        DrvAPI::stage_t stage = thread->getAPIThread().getStage();
-        if (stage == DrvAPI::stage_t::STAGE_EXEC_COMP) {
+        if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP) {
             ThreadStat *total_stats = &total_thread_stats_[tid];
             ThreadStat *phase_stats = &(per_phase_comp_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {
@@ -493,7 +491,7 @@ public:
                 phase_stats->store_remote_pxn->addData(1);
             }
         }
-        else if (stage == DrvAPI::stage_t::STAGE_EXEC_COMM) {
+        else if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
             ThreadStat *total_stats = &total_thread_stats_[tid];
             ThreadStat *phase_stats = &(per_phase_comm_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {
@@ -518,8 +516,7 @@ public:
      */
     void addAtomicStat(DrvAPI::DrvAPIPAddress addr, DrvThread *thread) {
         int tid = getThreadID(thread);
-        DrvAPI::stage_t stage = thread->getAPIThread().getStage();
-        if (stage == DrvAPI::stage_t::STAGE_EXEC_COMP) {
+        if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP) {
             ThreadStat *total_stats = &total_thread_stats_[tid];
             ThreadStat *phase_stats = &(per_phase_comp_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {
@@ -537,7 +534,7 @@ public:
                 phase_stats->atomic_remote_pxn->addData(1);
             }
         }
-        else if (stage == DrvAPI::stage_t::STAGE_EXEC_COMM) {
+        else if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
             ThreadStat *total_stats = &total_thread_stats_[tid];
             ThreadStat *phase_stats = &(per_phase_comm_thread_stats_[phase_][tid]);
             if (isPAddressL1SP(addr)) {

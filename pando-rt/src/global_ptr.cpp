@@ -151,14 +151,14 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
   auto blockSrc = srcGlobalAddr;
   for (std::size_t i = 0; i < numBlocks; i++) {
     const auto bytesOffset = i * blockSize;
-    *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset, DrvAPI::program_stage);
+    *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset, DrvAPI::program_stage, DrvAPI::program_phase);
   }
 
   const auto bytesRead = numBlocks * blockSize;
   auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
   auto byteSrc = srcGlobalAddr + bytesRead;
   for (std::size_t i = 0; i < remainderBytes; i++) {
-    *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i, DrvAPI::program_stage);
+    *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i, DrvAPI::program_stage, DrvAPI::program_phase);
   }
 
 #endif // PANDO_RT_USE_BACKEND_PREP
@@ -206,7 +206,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
   for (std::size_t i = 0; i < numBlocks; i++) {
     auto blockData = *(blockSrc + i);
     const auto offset = i * blockSize;
-    DrvAPI::write<BlockType>(blockDst + offset, blockData, DrvAPI::program_stage);
+    DrvAPI::write<BlockType>(blockDst + offset, blockData, DrvAPI::program_stage, DrvAPI::program_phase);
   }
 
   const auto bytesWritten = numBlocks * blockSize;
@@ -214,7 +214,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
   auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
   for (std::size_t i = 0; i < remainderBytes; i++) {
     auto byteData = *(byteSrc + i);
-    DrvAPI::write<std::byte>(byteDst + i, byteData, DrvAPI::program_stage);
+    DrvAPI::write<std::byte>(byteDst + i, byteData, DrvAPI::program_stage, DrvAPI::program_phase);
   }
 
 #endif // PANDO_RT_USE_BACKEND_PREP
