@@ -21,7 +21,7 @@ RandomAccessIterator lower_bound(RandomAccessIterator start, RandomAccessIterato
   return ub;
 }
 
-template <typename RandomAccessIterator, typename T, typename F>
+template <typename RandomAccessIterator, typename T>
 RandomAccessIterator lower_bound(RandomAccessIterator start, RandomAccessIterator end,
                                  const T& val) {
   return lower_bound(
