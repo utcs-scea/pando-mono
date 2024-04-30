@@ -26,7 +26,7 @@ def fix_file(filename):
         print(f"DONE Writing {output_file}\n")
 
 
-parser = argparse.ArgumentParser(prog="BenchMark", description="Benchmarks stuff")
+parser = argparse.ArgumentParser(prog="Edge List Cleaner", description="cleans edge lists takes in fname.el and outputs fname_out.el")
 parser.add_argument(
     "-i",
     "--inputEL",
