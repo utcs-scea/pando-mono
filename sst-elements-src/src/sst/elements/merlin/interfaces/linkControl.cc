@@ -145,9 +145,9 @@ LinkControl::LinkControl(ComponentId_t cid, Params &params, int vns) :
     // Register statistics
     packet_latency = registerStatistic<uint64_t>("packet_latency");
     send_bit_count = registerStatistic<uint64_t>("send_bit_count");
+    recv_bit_count = registerStatistic<uint64_t>("recv_bit_count");
     output_port_stalls = registerStatistic<uint64_t>("output_port_stalls");
     idle_time = registerStatistic<uint64_t>("idle_time");
-    // recv_bit_count = registerStatistic<uint64_t>("recv_bit_count");
 
     last_time = 0;
     last_recv_time = 0;
@@ -616,7 +616,7 @@ void LinkControl::handle_input(Event* ev)
         }
 
         SimTime_t lat = getCurrentSimTimeNano() - event->getInjectionTime();
-        // recv_bit_count->addData(event->getSizeInBits());
+        recv_bit_count->addData(event->getSizeInBits());
         packet_latency->addData(lat);
         if ( receiveFunctor != nullptr ) {
             bool keep = (*receiveFunctor)(vn);

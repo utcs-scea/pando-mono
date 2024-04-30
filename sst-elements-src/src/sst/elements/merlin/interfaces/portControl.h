@@ -79,7 +79,9 @@ public:
 
     // SST_ELI_DOCUMENT_STATISTICS(
     //     { "send_bit_count",     "Count number of bits sent on link", "bits", 1},
+    //     { "recv_bit_count",     "Count number of bits received on link", "bits", 1},
     //     { "send_packet_count",  "Count number of packets sent on link", "packets", 1},
+    //     { "recv_packet_count",  "Count number of packets received on link", "packets", 1},
     //     { "output_port_stalls", "Time output port is stalled (in units of core timebase)", "time in stalls", 1},
     //     { "idle_time",          "Number of (in unites of core timebas) that port was idle", "time spent idle", 1},
     //     { "width_adj_count",    "Number of times the width of a link was adjusted to change the power on the link", "times", 1},
@@ -213,7 +215,9 @@ private:
 
     // Statistics
     Statistic<uint64_t>* send_bit_count;
+    Statistic<uint64_t>* recv_bit_count;
     Statistic<uint64_t>* send_packet_count;
+    Statistic<uint64_t>* recv_packet_count;
     Statistic<uint64_t>* output_port_stalls;
     Statistic<uint64_t>* idle_time;
     Statistic<uint64_t>* width_adj_count;
