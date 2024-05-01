@@ -3,6 +3,7 @@
 ### Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. ###
 
 set(EXAMPLE_SOURCES
+  benchmark_pointer
 )
 
 function(add_example EXAMPLES)
