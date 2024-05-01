@@ -31,6 +31,7 @@ void tc_mdlcsr_noChunk(pando::GlobalPtr<GraphMDL> graph_ptr,
   auto state = galois::make_tpl(graph_ptr, final_tri_count);
 
   // Build wedges
+  PANDO_MEM_STAT_NEW_KERNEL("BuildWedgesStart");
   galois::doAll(
       graph_ptr, per_host_wk_remaining,
       +[](pando::GlobalPtr<GraphMDL> graph_ptr, pando::GlobalRef<std::uint64_t>) {
@@ -69,9 +70,11 @@ void tc_mdlcsr_noChunk(pando::GlobalPtr<GraphMDL> graph_ptr,
       });
 
   // SYNC
+  PANDO_MEM_STAT_NEW_KERNEL("SyncStart");
   graph.sync(updateMasters);
 
   // Lookup requests
+  PANDO_MEM_STAT_NEW_KERNEL("LookupRequestsStart");
   galois::doAll(
       state, per_host_wk_remaining, +[](decltype(state) state, pando::GlobalRef<std::uint64_t>) {
         auto [graph_ptr, _] = state;
@@ -101,6 +104,7 @@ void tc_mdlcsr_noChunk(pando::GlobalPtr<GraphMDL> graph_ptr,
       });
 
   // De-Initialize queries
+  PANDO_MEM_STAT_NEW_KERNEL("DeInitStart");
   galois::doAll(
       graph_ptr, graph.vertices(),
       +[](pando::GlobalPtr<GraphMDL> graph_ptr, typename GraphMDL::VertexTopologyID v0) {

@@ -18,7 +18,8 @@ make docker
 # These commands are run in the container `make docker` drops you into
 # If necessary, run: setarch -R /bin/bash
 
-PANDO_RT_ENABLE_MEM_STAT=ON BUILD_MICROBENCH=ON make setup
+PANDO_RT_ENABLE_MEM_TRACE=INTER-PXN PANDO_RT_ENABLE_MEM_STAT=ON \
+BUILD_MICROBENCH=ON make setup
 make -C dockerbuild -j8
 make run-tests
 ```
