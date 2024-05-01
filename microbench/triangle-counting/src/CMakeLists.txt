@@ -16,6 +16,7 @@ target_include_directories(pando-triangle-counting
 target_sources(pando-triangle-counting
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/utils.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/tc_mdlcsr.cpp
         ${CMAKE_CURRENT_LIST_DIR}/tc_algos.cpp
 )
 
