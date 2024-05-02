@@ -9,9 +9,11 @@ template <typename GraphType>
 void tc_no_chunk(pando::GlobalPtr<GraphType> graph_ptr,
                  galois::DAccumulator<uint64_t> final_tri_count);
 
+/**
 template <typename GraphType>
 void tc_chunk_edges(pando::GlobalPtr<GraphType> graph_ptr,
                     galois::DAccumulator<uint64_t> final_tri_count);
+*/
 
 template <typename GraphType>
 void tc_chunk_vertices(pando::GlobalPtr<GraphType> graph_ptr,
