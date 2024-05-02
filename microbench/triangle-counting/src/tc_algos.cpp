@@ -76,6 +76,7 @@ void tc_no_chunk(pando::GlobalPtr<GraphType> graph_ptr,
  * @param[in] graph_ptr Pointer to the in-memory graph
  * @param[in] final_tri_count Thread-safe counter
  */
+/**
 void tc_chunk_edges(pando::GlobalPtr<GraphDL> graph_ptr,
                     galois::DAccumulator<uint64_t> final_tri_count) {
   GraphDL graph = *graph_ptr;
@@ -122,6 +123,7 @@ void tc_chunk_edges(pando::GlobalPtr<GraphDL> graph_ptr,
   } while (work_remaining.reduce());
   work_remaining.deinitialize();
 }
+*/
 
 /**
  * @brief Runs Chunked Vertices Triangle Counting Algorithm on DistLocalCSRs (GraphDL)
@@ -227,9 +229,11 @@ void HBGraphDL(pando::Place thisPlace, pando::Array<char> filename, int64_t num_
     case TC_CHUNK::CHUNK_VERTICES:
       tc_chunk_vertices(graph_ptr, final_tri_count);
       break;
+    /**
     case TC_CHUNK::CHUNK_EDGES:
       tc_chunk_edges(graph_ptr, final_tri_count);
       break;
+    */
     default:
       tc_no_chunk<GraphDL>(graph_ptr, final_tri_count);
       break;
