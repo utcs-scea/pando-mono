@@ -1,6 +1,16 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
+function(pando_add_exec TARGET SOURCEFILE)
+  if (PANDO_RT_BACKEND STREQUAL "DRVX")
+    pando_add_executable(${TARGET} ${SOURCEFILE})
+    target_link_libraries(${TARGET} PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-lib-galois::pando-lib-galois>")
+  else()
+    pando_add_executable(${TARGET} ${SOURCEFILE})
+    target_link_libraries(${TARGET} PUBLIC pando-lib-galois::pando-lib-galois)
+  endif()
+endfunction()
+
 pando_add_driver_test(fail_tests fail_tests.cpp)
 
 add_subdirectory(containers)
@@ -12,9 +22,9 @@ add_subdirectory(sorts)
 add_subdirectory(utility)
 add_subdirectory(python)
 
-pando_add_executable(import_csrlist import_csrlist.cpp)
-pando_add_executable(import_dirOptCsrList import_dirOptCsrList.cpp)
-pando_add_executable(import_ifstream import_ifstream.cpp)
+pando_add_exec(import_csrlist import_csrlist.cpp)
+pando_add_exec(import_dirOptCsrList import_dirOptCsrList.cpp)
+pando_add_exec(import_ifstream import_ifstream.cpp)
 
 pando_add_bin_test(import_dirOptCsrList "-n 10 -f" ${pando-lib-galois_SOURCE_DIR}/graphs/repeats.el
   ${pando-lib-galois_SOURCE_DIR}/ok/repeats.el-import-dirOptCsrList-10.ok)
