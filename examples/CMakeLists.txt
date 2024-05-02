@@ -8,7 +8,11 @@ set(EXAMPLE_SOURCES
 
 function(add_example EXAMPLES)
     foreach(EXAMPLE IN LISTS EXAMPLES)
-      pando_add_executable(${EXAMPLE} ${EXAMPLE}.cpp)
+        message(${EXAMPLE})
+        add_executable(${EXAMPLE} ${EXAMPLE}.cpp)
+        target_link_libraries(${EXAMPLE} PRIVATE pando-lib-galois::pando-lib-galois)
+        pando_compiler_warnings(${EXAMPLE})
+        pando_compiler_options(${EXAMPLE})
     endforeach()
 endfunction()
 
