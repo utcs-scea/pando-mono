@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_LAYERS_FCN_HPP_
-#define PANDO_WF1_GALOIS_LAYERS_FCN_HPP_
+#ifndef PANDO_WF1_LAYERS_FCN_HPP_
+#define PANDO_WF1_LAYERS_FCN_HPP_
 
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
@@ -10,9 +10,9 @@
 #include <pando-rt/containers/array.hpp>
 #include <pando-rt/containers/vector.hpp>
 
-#include <pando-wf1-galois/graphs/gnngraph.hpp>
-#include <pando-wf1-galois/layers/layer.hpp>
-#include <pando-wf1-galois/math/gnnmath.hpp>
+#include <pando-wf1/graphs/gnngraph.hpp>
+#include <pando-wf1/layers/layer.hpp>
+#include <pando-wf1/math/gnnmath.hpp>
 
 namespace gnn {
 
@@ -228,4 +228,4 @@ private:
 
 } // namespace gnn
 
-#endif // PANDO_WF1_GALOIS_LAYERS_FCN_HPP_
+#endif // PANDO_WF1_LAYERS_FCN_HPP_

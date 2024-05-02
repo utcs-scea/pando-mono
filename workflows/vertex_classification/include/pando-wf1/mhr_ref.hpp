@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_MHR_REF_HPP_
-#define PANDO_WF1_GALOIS_MHR_REF_HPP_
+#ifndef PANDO_WF1_MHR_REF_HPP_
+#define PANDO_WF1_MHR_REF_HPP_
 
 #include <string>
 #include <utility>
@@ -13,7 +13,7 @@
 #include <pando-lib-galois/sorts/merge_sort.hpp>
 #include <pando-lib-galois/utility/pair.hpp>
 #include <pando-rt/containers/vector.hpp>
-#include <pando-wf1-galois/graphs/mhr_graph.hpp>
+#include <pando-wf1/graphs/mhr_graph.hpp>
 
 void debugPrint(const std::string& msg, const std::string& file, int line,
                 const std::string& func) {
@@ -180,4 +180,4 @@ public:
 
 } // namespace mhr_ref
 
-#endif // PANDO_WF1_GALOIS_MHR_REF_HPP_
+#endif // PANDO_WF1_MHR_REF_HPP_

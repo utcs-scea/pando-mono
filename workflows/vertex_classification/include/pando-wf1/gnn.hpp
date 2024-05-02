@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_GNN_HPP_
-#define PANDO_WF1_GALOIS_GNN_HPP_
+#ifndef PANDO_WF1_GNN_HPP_
+#define PANDO_WF1_GNN_HPP_
 
 #include <utility>
 
@@ -11,13 +11,13 @@
 
 #include <pando-rt/containers/vector.hpp>
 
-#include <pando-wf1-galois/gnntypes.hpp>
-#include <pando-wf1-galois/graphs/gnngraph.hpp>
-#include <pando-wf1-galois/layers/fcn.hpp>
-#include <pando-wf1-galois/layers/gcn.hpp>
-#include <pando-wf1-galois/layers/layer.hpp>
-#include <pando-wf1-galois/layers/softmax.hpp>
-#include <pando-wf1-galois/optimizer.hpp>
+#include <pando-wf1/gnntypes.hpp>
+#include <pando-wf1/graphs/gnngraph.hpp>
+#include <pando-wf1/layers/fcn.hpp>
+#include <pando-wf1/layers/gcn.hpp>
+#include <pando-wf1/layers/layer.hpp>
+#include <pando-wf1/layers/softmax.hpp>
+#include <pando-wf1/optimizer.hpp>
 
 namespace gnn {
 
@@ -352,4 +352,4 @@ private:
 
 } // namespace gnn
 
-#endif // PANDO_WF1_GALOIS_GNN_HPP_
+#endif // PANDO_WF1_GNN_HPP_

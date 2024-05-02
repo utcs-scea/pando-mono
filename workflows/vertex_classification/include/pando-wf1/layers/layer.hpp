@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_LAYERS_LAYER_HPP_
-#define PANDO_WF1_GALOIS_LAYERS_LAYER_HPP_
+#ifndef PANDO_WF1_LAYERS_LAYER_HPP_
+#define PANDO_WF1_LAYERS_LAYER_HPP_
 
 #include <math.h>
 #include <random>
@@ -14,8 +14,8 @@
 #include <pando-lib-galois/containers/per_host.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 
-#include <pando-wf1-galois/gnntypes.hpp>
-#include <pando-wf1-galois/optimizer.hpp>
+#include <pando-wf1/gnntypes.hpp>
+#include <pando-wf1/optimizer.hpp>
 
 namespace gnn {
 
@@ -477,4 +477,4 @@ protected:
 
 } // namespace gnn
 
-#endif // PANDO_WF1_GALOIS_LAYERS_LAYER_HPP_
+#endif // PANDO_WF1_LAYERS_LAYER_HPP_

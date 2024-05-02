@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#include <pando-wf1-galois/graphs/mhr_graph.hpp>
+#include <pando-wf1/graphs/mhr_graph.hpp>
 
 wf1::MHRNode wf1::ParseEmbeddingLine(const char* line) {
   return wf1::MHRNode(std::move(galois::splitLine(line, ',', EMBEDDING_FEATURE_SIZE + 1)));

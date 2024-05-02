@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_MATH_GNNMATH_HPP_
-#define PANDO_WF1_GALOIS_MATH_GNNMATH_HPP_
+#ifndef PANDO_WF1_MATH_GNNMATH_HPP_
+#define PANDO_WF1_MATH_GNNMATH_HPP_
 
 #include <utility>
 
@@ -10,7 +10,7 @@
 #include <pando-lib-galois/sync/atomic.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
 #include <pando-rt/containers/vector.hpp>
-#include <pando-wf1-galois/gnntypes.hpp>
+#include <pando-wf1/gnntypes.hpp>
 
 namespace gnn {
 
@@ -103,4 +103,4 @@ pando::Status multiplyMatricesPerHost(galois::PerHost<pando::Array<GNNFloat>> a,
 
 } // namespace gnn
 
-#endif // PANDO_WF1_GALOIS_MATH_GNNMATH_HPP_
+#endif // PANDO_WF1_MATH_GNNMATH_HPP_

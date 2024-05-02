@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_GRAPHS_GRAPHTYPES_HPP_
-#define PANDO_WF1_GALOIS_GRAPHS_GRAPHTYPES_HPP_
+#ifndef PANDO_WF1_GRAPHS_GRAPHTYPES_HPP_
+#define PANDO_WF1_GRAPHS_GRAPHTYPES_HPP_
 
 #include <limits>
 
@@ -91,4 +91,4 @@ public:
 
 } // namespace galois
 
-#endif // PANDO_WF1_GALOIS_GRAPHS_GRAPHTYPES_HPP_
+#endif // PANDO_WF1_GRAPHS_GRAPHTYPES_HPP_

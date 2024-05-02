@@ -7,8 +7,8 @@
 #include "pando-rt/pando-rt.hpp"
 #include "pando-rt/sync/notification.hpp"
 
-#include "pando-wf1-galois/gnn.hpp"
-#include "pando-wf1-galois/graphs/graphtypes.hpp"
+#include "pando-wf1/gnn.hpp"
+#include "pando-wf1/graphs/graphtypes.hpp"
 
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/import/ingest_wmd_csv.hpp>

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_OPTIMIZER_HPP_
-#define PANDO_WF1_GALOIS_OPTIMIZER_HPP_
+#ifndef PANDO_WF1_OPTIMIZER_HPP_
+#define PANDO_WF1_OPTIMIZER_HPP_
 
 #include <pando-rt/containers/vector.hpp>
 
-#include <pando-wf1-galois/gnntypes.hpp>
-#include <pando-wf1-galois/layers/layer.hpp>
+#include <pando-wf1/gnntypes.hpp>
+#include <pando-wf1/layers/layer.hpp>
 
 #include <pando-lib-galois/containers/per_host.hpp>
 
@@ -198,4 +198,4 @@ private:
 
 } // namespace gnn
 
-#endif // PANDO_WF1_GALOIS_OPTIMIZER_HPP_
+#endif // PANDO_WF1_OPTIMIZER_HPP_

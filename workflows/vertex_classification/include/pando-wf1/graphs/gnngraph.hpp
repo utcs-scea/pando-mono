@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_GRAPHS_GNNGRAPH_HPP_
-#define PANDO_WF1_GALOIS_GRAPHS_GNNGRAPH_HPP_
+#ifndef PANDO_WF1_GRAPHS_GNNGRAPH_HPP_
+#define PANDO_WF1_GRAPHS_GNNGRAPH_HPP_
 
 #include <algorithm>
 #include <limits>
@@ -18,8 +18,8 @@
 #include <pando-lib-galois/utility/counted_iterator.hpp>
 #include <pando-lib-galois/utility/dist_accumulator.hpp>
 
-#include <pando-wf1-galois/gnntypes.hpp>
-#include <pando-wf1-galois/minibatcher.hpp>
+#include <pando-wf1/gnntypes.hpp>
+#include <pando-wf1/minibatcher.hpp>
 
 /**
  * @file gnngraph.hpp
@@ -1186,4 +1186,4 @@ private:
 
 } // namespace gnn
 
-#endif // PANDO_WF1_GALOIS_GRAPHS_GNNGRAPH_HPP_
+#endif // PANDO_WF1_GRAPHS_GNNGRAPH_HPP_

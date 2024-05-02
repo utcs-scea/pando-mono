@@ -8,13 +8,13 @@
 
 #include "pando-rt/export.h"
 #include "pando-rt/pando-rt.hpp"
-#include "pando-wf1-galois/mhr_ref.hpp"
+#include "pando-wf1/mhr_ref.hpp"
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
 #include <pando-lib-galois/graphs/projection.hpp>
 #include <pando-lib-galois/utility/timer.hpp>
 #include <pando-rt/memory_resource.hpp>
-#include <pando-wf1-galois/graphs/mhr_graph.hpp>
+#include <pando-wf1/graphs/mhr_graph.hpp>
 
 #define TURING_AWARD  11020773
 #define DEEP_LEARNING 12090508

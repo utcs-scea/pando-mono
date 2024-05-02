@@ -8,22 +8,14 @@ project(
     pando-wf1
     VERSION       0.1.0
     DESCRIPTION   "Workflow 1 Galois implementation for PANDO"
-    HOMEPAGE_URL  "https://github.com/AMDResearch/PANDO-wf1-gal-root"
     LANGUAGES     CXX
 )
 
-set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
-set(BUILD_TESTING OFF)
-add_subdirectory(Galois)
-set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
-install(TARGETS pando-lib-galois)
-
 # CMake modules
-list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/pando-rt/cmake/Modules)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # helper functions
-include(cmake/PANDOCompilerOptions.cmake)
+include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOCompilerOptions.cmake)
 
 # disable in-source builds to avoid source tree corruption
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
@@ -43,30 +35,27 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif ()
 
 # target
-add_library(pando-wf1-galois STATIC)
-add_library(pando-wf1-galois::pando-wf1-galois ALIAS pando-wf1-galois)
+pando_add_library(pando-wf1)
 
 # headers
 include(GenerateExportHeader)
-generate_export_header(pando-wf1-galois EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/include/pando-wf1-galois/export.h)
+generate_export_header(pando-wf1 EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/include/pando-wf1/export.h)
 
-target_include_directories(pando-wf1-galois
+target_include_directories(pando-wf1
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pando-wf1-galois>"
+        "$<BUILD_INTERFACE:${pando-lib-galois_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${pando-rt_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/pando-wf1>"
         "$<INSTALL_INTERFACE:include>"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
-set(PUBLIC_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-wf1-galois/example.hpp
-)
-
 # library properties
-set_target_properties(pando-wf1-galois
+set_target_properties(pando-wf1
     PROPERTIES
-        CXX_STANDARD                17
+        CXX_STANDARD                23
         CXX_STANDARD_REQUIRED       ON
         CXX_EXTENSIONS              OFF
         CXX_VISIBILITY_PRESET       hidden
@@ -74,8 +63,8 @@ set_target_properties(pando-wf1-galois
         POSITION_INDEPENDENT_CODE   ON
         VERSION                     "${PROJECT_VERSION}"
         SOVERSION                   "${PROJECT_VERSION_MAJOR}"
-        EXPORT_NAME                 pando-wf1-galois
-        OUTPUT_NAME                 pando-wf1-galois
+        EXPORT_NAME                 pando-wf1
+        OUTPUT_NAME                 pando-wf1
         PUBLIC_HEADER               "${PUBLIC_HEADERS}"
         # enable RPATH during both build and installation; use relative RPATH as well
         SKIP_BUILD_RPATH            FALSE
@@ -95,19 +84,7 @@ add_subdirectory(src)
 # tests
 option(BUILD_TESTING "Build tests." ON)
 if (BUILD_TESTING)
-    include(cmake/PANDOTesting.cmake)
+    include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOTesting.cmake)
     enable_testing()
-    add_subdirectory(test)
-endif ()
-
-# examples
-option(BUILD_EXAMPLES "Build examples" ON)
-if (BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif ()
-
-# documentation
-option(BUILD_DOCS "Build documentation" ON)
-if (BUILD_DOCS)
-    add_subdirectory(docs)
+    # add_subdirectory(test)
 endif ()

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_GRAPHS_MHR_GRAPH_HPP_
-#define PANDO_WF1_GALOIS_GRAPHS_MHR_GRAPH_HPP_
+#ifndef PANDO_WF1_GRAPHS_MHR_GRAPH_HPP_
+#define PANDO_WF1_GRAPHS_MHR_GRAPH_HPP_
 
 #include <pando-rt/export.h>
 
@@ -153,4 +153,4 @@ struct MHRGraphProjection {
 
 } // namespace wf1
 
-#endif // PANDO_WF1_GALOIS_GRAPHS_MHR_GRAPH_HPP_
+#endif // PANDO_WF1_GRAPHS_MHR_GRAPH_HPP_

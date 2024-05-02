@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_LAYERS_SOFTMAX_HPP_
-#define PANDO_WF1_GALOIS_LAYERS_SOFTMAX_HPP_
+#ifndef PANDO_WF1_LAYERS_SOFTMAX_HPP_
+#define PANDO_WF1_LAYERS_SOFTMAX_HPP_
 
 #include <limits>
 
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/vector.hpp>
-#include <pando-wf1-galois/layers/layer.hpp>
+#include <pando-wf1/layers/layer.hpp>
 
 namespace gnn {
 
@@ -166,4 +166,4 @@ public:
 
 } // namespace gnn
 
-#endif // PANDO_WF1_GALOIS_LAYERS_SOFTMAX_HPP_
+#endif // PANDO_WF1_LAYERS_SOFTMAX_HPP_

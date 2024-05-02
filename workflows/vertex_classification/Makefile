@@ -4,7 +4,7 @@
 SHELL := /bin/bash
 
 UNAME ?= $(shell whoami)
-IMAGE_NAME ?= ${UNAME}-pando-wf1-galois
+IMAGE_NAME ?= ${UNAME}-pando-wf1
 VERSION ?= latest
 LIB_IMAGE_NAME ?= ${UNAME}-pando-galois
 LIB_VERSION ?= $(shell cd Galois && git log --pretty="%h" -1 Dockerfile.dev)
@@ -68,7 +68,7 @@ setup:
   -B ${BUILD_DIR} \
 	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
   -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-  -DCMAKE_INSTALL_PREFIX=/opt/pando-wf1-galois \
+  -DCMAKE_INSTALL_PREFIX=/opt/pando-wf1 \
   -DBUILD_TESTING=ON \
   -DBUILD_EXAMPLES=ON \
   -DBUILD_DOCS=OFF && \
@@ -80,7 +80,7 @@ setup:
 	-DPANDO_PREP_GASNET_CONDUIT=mpi \
 	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
   -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-  -DCMAKE_INSTALL_PREFIX=/opt/pando-wf1-galois \
+  -DCMAKE_INSTALL_PREFIX=/opt/pando-wf1 \
   -DBUILD_TESTING=ON \
   -DBUILD_EXAMPLES=OFF \
   -DBUILD_DOCS=OFF

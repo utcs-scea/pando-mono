@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#ifndef PANDO_WF1_GALOIS_MHR_HPP_
-#define PANDO_WF1_GALOIS_MHR_HPP_
+#ifndef PANDO_WF1_MHR_HPP_
+#define PANDO_WF1_MHR_HPP_
 
 #include <string>
 #include <utility>
@@ -196,4 +196,4 @@ public:
   }
 };
 } // namespace mhr
-#endif // PANDO_WF1_GALOIS_MHR_HPP_
+#endif // PANDO_WF1_MHR_HPP_

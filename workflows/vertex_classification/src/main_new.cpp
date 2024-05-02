@@ -6,8 +6,8 @@
 #include "pando-rt/export.h"
 #include "pando-rt/pando-rt.hpp"
 #include "pando-rt/sync/notification.hpp"
-#include "pando-wf1-galois/gnn.hpp"
-#include "pando-wf1-galois/graph_reader/import.hpp"
+#include "pando-wf1/gnn.hpp"
+#include "pando-wf1/graph_reader/import.hpp"
 
 #include <pando-lib-galois/graphs/dist_array_csr.hpp>
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
