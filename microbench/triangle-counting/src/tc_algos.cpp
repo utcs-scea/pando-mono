@@ -20,20 +20,24 @@ void edge_tc_counting(pando::GlobalPtr<Graph> graph_ptr, typename Graph::VertexT
   galois::WaitGroup wg;
   PANDO_CHECK(wg.initialize(0));
   auto wgh = wg.getHandle();
-  auto inner_state = galois::make_tpl(graph_ptr, v0, wgh, final_tri_count);
+  auto innerState = galois::make_tpl(graph_ptr, v0, wgh, final_tri_count);
+  Graph graph = *graph_ptr;
   galois::doAll(
-      inner_state, edge_range,
-      +[](decltype(inner_state) inner_state, typename Graph::EdgeHandle eh) {
-        auto [graph_ptr, v0, wgh, final_tri_count] = inner_state;
-
+      wgh, innerState, edge_range,
+      +[](decltype(innerState) innerState, typename Graph::EdgeHandle eh) {
+        auto [graph_ptr, v0, wgh, final_tri_count] = innerState;
         Graph g = *graph_ptr;
-        wgh.addOne();
         typename Graph::VertexTopologyID v1 = fmap(g, getEdgeDst, eh);
-        bool v0_higher_degree = fmap(g, getNumEdges, v0) >= fmap(g, getNumEdges, v1);
-        pando::Place locality =
-            v0_higher_degree ? fmap(g, getLocalityVertex, v0) : fmap(g, getLocalityVertex, v1);
-        PANDO_CHECK(pando::executeOn(locality, &intersect_dag_merge<Graph>, wgh, graph_ptr, v0, v1,
-                                     final_tri_count));
+        wgh.addOne();
+        intersect_dag_merge<Graph>(wgh, graph_ptr, v0, v1, final_tri_count);
+      },
+      [&graph](decltype(innerState) innerState, typename Graph::EdgeHandle eh) -> pando::Place {
+        auto v0 = std::get<1>(innerState);
+        typename Graph::VertexTopologyID v1 = fmap(graph, getEdgeDst, eh);
+        bool v0_higher_degree = fmap(graph, getNumEdges, v0) >= fmap(graph, getNumEdges, v1);
+        pando::Place locality = v0_higher_degree ? fmap(graph, getLocalityVertex, v0)
+                                                 : fmap(graph, getLocalityVertex, v1);
+        return locality;
       });
   PANDO_CHECK(wg.wait());
 }
@@ -128,7 +132,6 @@ void tc_chunk_edges(pando::GlobalPtr<GraphDL> graph_ptr,
 void tc_chunk_vertices(pando::GlobalPtr<GraphDL> graph_ptr,
                        galois::DAccumulator<uint64_t> final_tri_count) {
   GraphDL graph = *graph_ptr;
-  uint64_t num_hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
   uint64_t query_sz = 1;
   uint64_t iters = 0;
 
