@@ -63,7 +63,7 @@ jobs:
           PANDO_CONTAINER_ENV="-e=PANDO_PREP_L1SP_HART=16384"
         fi
         if [ ${{ matrix.project }} == 'ROOT' ]; then
-          PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=ROOT_TESTS=ON"
+          PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=ROOT_TESTS=ON -e=BUILD_EXAMPES=ON"
         fi
         if [ ${{ matrix.project }} == 'GALOIS' ]; then
           PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=GALOIS_TESTS=ON"

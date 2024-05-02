@@ -8,8 +8,15 @@ set(EXAMPLE_SOURCES
 
 function(add_example EXAMPLES)
     foreach(EXAMPLE IN LISTS EXAMPLES)
-      pando_add_executable(${EXAMPLE})
-      pando_link_library(${EXAMPLE})
+      if (PANDO_RT_BACKEND STREQUAL "DRVX")
+          add_library(${EXAMPLE} SHARED ${EXAMPLE}.cpp)
+          target_link_libraries(${TARGET} PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-lib-galois::pando-lib-galois>")
+      else()
+        add_executable(${EXAMPLE} ${EXAMPLE}.cpp)
+        target_link_libraries(${EXAMPLE} PUBLIC pando-lib-galois::pando-lib-galois)
+      endif()
+      pando_compiler_warnings(${EXAMPLE})
+      pando_compiler_options(${EXAMPLE})
     endforeach()
 endfunction()
 

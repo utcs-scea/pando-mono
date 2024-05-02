@@ -24,7 +24,6 @@ struct HalfEdge {
 
 struct Vertex {
   pando::GlobalPtr<HalfEdge> edgeBegin;
-  uint64_t iterator_offset = 0;
 };
 } // namespace galois
 
