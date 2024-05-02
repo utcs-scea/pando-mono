@@ -19,16 +19,18 @@
 template <typename T>
 struct CacheRef {
   pando::GlobalPtr<T> globalPtr;
-  NodeIndex cacheLoc;
+  pando::NodeIndex cacheLoc;
   T* cachePtr;
 
 private:
   bool tryToCache() {
-    if (cacheLoc == pando::getNodeDims() &&
-        pando::getCurrentNode() == (auto nodeIndex = pando::extractNodeIndex(globalPtr))) {
-      cacheLoc = nodeIndex;
-      cachePtr = globalPtr.operator->();
-      return true;
+    if (cacheLoc == pando::getNodeDims()) {
+      auto nodeIndex = pando::extractNodeIndex(globalPtr.address);
+      if (pando::getCurrentNode() == nodeIndex) {
+        cacheLoc = nodeIndex;
+        cachePtr = globalPtr.operator->();
+        return true;
+      }
     }
     return false;
   }
