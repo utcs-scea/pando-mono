@@ -16,17 +16,20 @@
  * This benchmarks various types of pointer dereferences
  */
 
+std::uint64_t currentLocation = 100;
+std::uint64_t nodeDims = 100;
+
 template <typename T>
 struct CacheRef {
   pando::GlobalPtr<T> globalPtr;
-  pando::NodeIndex cacheLoc;
+  std::uint64_t cacheLoc;
   T* cachePtr;
 
 private:
   bool tryToCache() {
-    if (cacheLoc == pando::getNodeDims()) {
-      auto nodeIndex = pando::extractNodeIndex(globalPtr.address);
-      if (pando::getCurrentNode() == nodeIndex) {
+    if (cacheLoc == nodeDims) {
+      std::uint64_t nodeIndex = pando::extractNodeIndex(globalPtr.address).id;
+      if (currentLocation == nodeIndex) {
         cacheLoc = nodeIndex;
         cachePtr = globalPtr.operator->();
         return true;
@@ -37,7 +40,7 @@ private:
 
 public:
   operator T() const {
-    if (cacheLoc == pando::getCurrentNode() || tryToCache()) {
+    if (cacheLoc == currentLocation || tryToCache()) {
       return *cachePtr;
     } else {
       return *globalPtr;
@@ -45,7 +48,7 @@ public:
   }
 
   CacheRef<T> operator=(const T& value) {
-    if (cacheLoc == pando::getCurrentNode() || tryToCache()) {
+    if (cacheLoc == currentLocation || tryToCache()) {
       *cachePtr = value;
     } else {
       *globalPtr = value;
@@ -54,7 +57,7 @@ public:
   }
   template <typename U>
   CacheRef<T> operator+=(const U& y) {
-    if (cacheLoc == pando::getCurrentNode() || tryToCache()) {
+    if (cacheLoc == currentLocation || tryToCache()) {
       *cachePtr += y;
     } else {
       *globalPtr += y;
@@ -81,6 +84,8 @@ enum POINTER : std::uint64_t { REGULAR = 0x1 << 0, GLOBALPTR = 0x1 << 1, CACHEPT
 
 int pandoMain(int argc, char** argv) {
   auto thisPlace = pando::getCurrentPlace();
+  currentLocation = thisPlace.node.id;
+  nodeDims = pando::getNodeDims().id;
   if (thisPlace.node.id == 0) {
     galois::HostLocalStorageHeap::HeapInit();
     galois::PodLocalStorageHeap::HeapInit();
@@ -127,7 +132,7 @@ int pandoMain(int argc, char** argv) {
     // Initialize CachePtr
     CachePtr<std::uint64_t> cptr;
     pando::LocalStorageGuard<std::uint64_t> cptrGuard(cptr.ref.globalPtr, 1);
-    cptr.ref.cacheLoc = pando::getNodeDims();
+    cptr.ref.cacheLoc = nodeDims;
 
     std::array<std::uint64_t, 16> simpleArr;
     for (std::uint64_t i = 0; i < simpleArr.size(); i++) {
