@@ -7,6 +7,7 @@
 
 #include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/containers/pod_local_storage.hpp>
+#include <pando-rt/memory/address_translation.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
 
@@ -18,17 +19,31 @@
 template <typename T>
 struct CacheRef {
   pando::GlobalPtr<T> globalPtr;
-  bool valid;
+  NodeIndex cacheLoc;
   T* cachePtr;
+
+private:
+  bool tryToCache() {
+    if (cacheLoc == pando::getNodeDims() &&
+        pando::getCurrentNode() == (auto nodeIndex = pando::extractNodeIndex(globalPtr))) {
+      cacheLoc = nodeIndex;
+      cachePtr = globalPtr.operator->();
+      return true;
+    }
+    return false;
+  }
+
+public:
   operator T() const {
-    if (valid) {
+    if (cacheLoc == pando::getCurrentNode() || tryToCache()) {
       return *cachePtr;
     } else {
       return *globalPtr;
     }
   }
+
   CacheRef<T> operator=(const T& value) {
-    if (valid) {
+    if (cacheLoc == pando::getCurrentNode() || tryToCache()) {
       *cachePtr = value;
     } else {
       *globalPtr = value;
@@ -37,7 +52,7 @@ struct CacheRef {
   }
   template <typename U>
   CacheRef<T> operator+=(const U& y) {
-    if (valid) {
+    if (cacheLoc == pando::getCurrentNode() || tryToCache()) {
       *cachePtr += y;
     } else {
       *globalPtr += y;
@@ -110,10 +125,7 @@ int pandoMain(int argc, char** argv) {
     // Initialize CachePtr
     CachePtr<std::uint64_t> cptr;
     pando::LocalStorageGuard<std::uint64_t> cptrGuard(cptr.ref.globalPtr, 1);
-    if (pando::localityOf(cptr.ref.globalPtr).node.id == 0) {
-      cptr.ref.valid = (ptrTypes & CACHEPTR) ? true : false;
-      cptr.ref.cachePtr = cptr.ref.globalPtr.operator->();
-    }
+    cptr.ref.cacheLoc = pando::getNodeDims();
 
     std::array<std::uint64_t, 16> simpleArr;
     for (std::uint64_t i = 0; i < simpleArr.size(); i++) {
