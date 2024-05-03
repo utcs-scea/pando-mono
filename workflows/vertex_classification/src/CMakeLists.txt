@@ -16,50 +16,50 @@ target_sources(pando-wf1
 
 if (PANDO_RT_BACKEND STREQUAL "DRVX")
     add_library(wf1 SHARED ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-    add_library(mhr SHARED ${CMAKE_CURRENT_SOURCE_DIR}/mhr_main.cpp)
-    add_library(wf1-lp SHARED ${CMAKE_CURRENT_SOURCE_DIR}/lp.cpp)
+    # add_library(mhr SHARED ${CMAKE_CURRENT_SOURCE_DIR}/mhr_main.cpp)
+    # add_library(wf1-lp SHARED ${CMAKE_CURRENT_SOURCE_DIR}/lp.cpp)
     target_link_libraries(wf1
         PUBLIC
             "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-wf1::pando-wf1>"
     )
-    target_link_libraries(mhr
-        PUBLIC
-            "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-wf1::pando-wf1>"
-    )
-    target_link_libraries(wf1-lp
-        PUBLIC
-            "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-wf1::pando-wf1>"
-    )
+    # target_link_libraries(mhr
+    #     PUBLIC
+    #         "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-wf1::pando-wf1>"
+    # )
+    # target_link_libraries(wf1-lp
+    #     PUBLIC
+    #         "$<LINK_LIBRARY:WHOLE_ARCHIVE,pando-wf1::pando-wf1>"
+    # )
 else()
     add_executable(wf1 ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-    add_executable(mhr ${CMAKE_CURRENT_SOURCE_DIR}/mhr_main.cpp)
-    add_executable(wf1-lp ${CMAKE_CURRENT_SOURCE_DIR}/lp.cpp)
+    # add_executable(mhr ${CMAKE_CURRENT_SOURCE_DIR}/mhr_main.cpp)
+    # add_executable(wf1-lp ${CMAKE_CURRENT_SOURCE_DIR}/lp.cpp)
     target_link_libraries(wf1
         PUBLIC
             pando-wf1::pando-wf1
     )
-    target_link_libraries(mhr
-        PUBLIC
-            pando-wf1::pando-wf1
-    )
-    target_link_libraries(wf1-lp
-        PUBLIC
-            pando-wf1::pando-wf1
-    )
+    # target_link_libraries(mhr
+    #     PUBLIC
+    #         pando-wf1::pando-wf1
+    # )
+    # target_link_libraries(wf1-lp
+    #     PUBLIC
+    #         pando-wf1::pando-wf1
+    # )
 endif()
 
 target_include_directories(wf1
     PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}/../include
 )
-target_include_directories(mhr
-    PUBLIC
-        ${CMAKE_CURRENT_BINARY_DIR}/../include
-)
-target_include_directories(wf1-lp
-    PUBLIC
-        ${CMAKE_CURRENT_BINARY_DIR}/../include
-)
+# target_include_directories(mhr
+#     PUBLIC
+#         ${CMAKE_CURRENT_BINARY_DIR}/../include
+# )
+# target_include_directories(wf1-lp
+#     PUBLIC
+#         ${CMAKE_CURRENT_BINARY_DIR}/../include
+# )
 
 ##target_include_directories(mhr
 ##    PUBLIC

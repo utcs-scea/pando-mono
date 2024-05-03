@@ -297,8 +297,9 @@ public:
    * IDs to a local array, shuffle it, and then chooses vertices with IDs from
    * array[0] to array[# of a vertex type] as the type.
    */
-  void RandomMaskSampling(std::uint64_t sampleSize, galois::PerHost<pando::Array<bool>>& mask) {
-    galois::PerHost<pando::Array<std::uint64_t>> allVertices;
+  void RandomMaskSampling(std::uint64_t sampleSize,
+                          galois::HostIndexedMap<pando::Array<bool>>& mask) {
+    galois::HostIndexedMap<pando::Array<std::uint64_t>> allVertices;
     PANDO_CHECK(allVertices.initialize());
 
     // Fills vertice local IDs to each per-host arrays.
@@ -324,13 +325,11 @@ public:
             av[i] = av[j];
             av[j] = temp;
           }
-          avRef = av;
         });
 
     struct TplOut {
       std::uint64_t ss;
-      galois::PerHost<pando::Array<bool>> masks;
-      galois::PerHost<pando::Array<std::uint64_t>> avs;
+      galois::HostIndexedMap<pando::Array<bool>> masks;
     };
 
     struct TplIn {
@@ -351,7 +350,7 @@ public:
           std::uint32_t numLocalSample = ss / numHosts;
           numLocalSample += (ss % numHosts > host) ? 1 : 0;
 
-          pando::Array<bool> mask = fmap(tpl.masks, get, host);
+          pando::Array<bool> mask = *fmap(tpl.masks, get, host);
 
           galois::doAll(
               TplIn{numLocalSample, mask, av}, galois::IotaRange(0, numLocalSample),
@@ -367,8 +366,7 @@ public:
 #if false
     for (std::uint32_t host = 0; host < static_cast<std::uint32_t>(pando::getPlaceDims().node.id);
          ++host) {
-      pando::GlobalRef<pando::Array<bool>> maskRef = fmap(mask, get, host);
-      pando::Array<bool> mask = maskRef;
+      pando::Array<bool> mask = *fmap(mask, get, host);
       for (std::uint64_t i = 0; i < mask.size(); ++i) {
         std::cout << "host:" << host << ", i:" << i << ", item:" << mask[i] << "\n";
       }
@@ -410,7 +408,7 @@ public:
     std::uint64_t totalDegree{0};
     for (std::uint32_t host = 0; host < static_cast<std::uint32_t>(pando::getPlaceDims().node.id);
          ++host) {
-      pando::GlobalRef<pando::Array<std::uint64_t>> vdRef = fmap(this->vertexDegree_, get, host);
+      pando::GlobalRef<pando::Array<std::uint64_t>> vdRef = *fmap(this->vertexDegree_, get, host);
       pando::Array<std::uint64_t> vd = vdRef;
       std::cout << "Host size:" << vd.size() << "\n";
       for (std::uint64_t i = 0; i < vd.size(); ++i) {
@@ -426,7 +424,7 @@ public:
    * @brief Returns vertex type masks; for example, if the current phase is `GNNPhase::kTran`, it
    * returns a per-host array that marks vertices sampled for training.
    */
-  galois::PerHost<pando::Array<bool>> GetVertexTypeMask(const GNNPhase currentPhase) {
+  galois::HostIndexedMap<pando::Array<bool>> GetVertexTypeMask(const GNNPhase currentPhase) {
     switch (currentPhase) {
       case GNNPhase::kTrain:
         return this->trainingVertices_;
@@ -444,13 +442,13 @@ public:
   pando::Array<bool> GetVertexTypeMask(const GNNPhase currentPhase, std::uint32_t host) {
     switch (currentPhase) {
       case GNNPhase::kTrain:
-        return fmap(this->trainingVertices_, get, host);
+        return *fmap(this->trainingVertices_, get, host);
       case GNNPhase::kTest:
-        return fmap(this->testVertices_, get, host);
+        return *fmap(this->testVertices_, get, host);
       case GNNPhase::kValidate:
-        return fmap(this->validationVertices_, get, host);
+        return *fmap(this->validationVertices_, get, host);
       case GNNPhase::kBatch:
-        return fmap(this->batchVertices_, get, host);
+        return *fmap(this->batchVertices_, get, host);
       default:
         std::cerr << "[GNNGraph] Failed to find a requested vertex mask\n" << std::flush;
         pando::exit(EXIT_FAILURE);
@@ -523,7 +521,7 @@ public:
 
     struct Tpl {
       InnerGraph g;
-      galois::PerHost<pando::Vector<VertexDenseID>> idMapping;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> idMapping;
     };
 
     galois::doAll(
@@ -538,7 +536,8 @@ public:
           // This vector is initialized once and is reused during epochs
           // FYI, its size is the number of original vertices to avoid reallocation.
           // Values indexed non-sampled vertex IDs are set to the index type's max value.
-          pando::GlobalRef<pando::Vector<VertexDenseID>> idMapping = fmap(tpl.idMapping, get, host);
+          pando::GlobalRef<pando::Vector<VertexDenseID>> idMapping =
+              *fmap(tpl.idMapping, get, host);
           PANDO_CHECK(fmap(idMapping, initialize, numLocalVertices));
         });
   }
@@ -550,10 +549,10 @@ public:
     struct Tpl {
       InnerGraph g;
       bool useSubgraph;
-      galois::PerHost<pando::Vector<VertexDenseID>> sampledSrcs;
-      galois::PerHost<pando::Vector<VertexDenseID>> sampledDsts;
-      galois::PerHost<VertexDenseID> numSampledVertices;
-      galois::PerHost<pando::Vector<VertexDenseID>> idMapping;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledSrcs;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledDsts;
+      galois::HostIndexedMap<VertexDenseID> numSampledVertices;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> idMapping;
     };
 
     galois::doAll(
@@ -563,11 +562,11 @@ public:
           std::uint32_t host = pando::getCurrentPlace().node.id;
           pando::Array<bool> sv = svRef;
           bool useSubgraph = tpl.useSubgraph;
-          pando::GlobalRef<pando::Vector<VertexDenseID>> sss = fmap(tpl.sampledSrcs, get, host);
-          pando::GlobalRef<pando::Vector<VertexDenseID>> sds = fmap(tpl.sampledDsts, get, host);
+          pando::GlobalRef<pando::Vector<VertexDenseID>> sss = *fmap(tpl.sampledSrcs, get, host);
+          pando::GlobalRef<pando::Vector<VertexDenseID>> sds = *fmap(tpl.sampledDsts, get, host);
 
           pando::GlobalRef<VertexDenseID> numSampledVertices =
-              fmap(tpl.numSampledVertices, get, host);
+              *fmap(tpl.numSampledVertices, get, host);
           numSampledVertices = 0;
           galois::doAll(
               sv, +[](pando::GlobalRef<bool> v) {
@@ -599,7 +598,7 @@ public:
           */
 
           // Initialize a mapping between an original graph to a subgraph to max
-          pando::Vector<VertexDenseID> idMapping = fmap(tpl.idMapping, get, host);
+          pando::Vector<VertexDenseID> idMapping = *fmap(tpl.idMapping, get, host);
           galois::doAll(
               idMapping, +[](pando::GlobalRef<VertexDenseID> v) {
                 v = std::numeric_limits<VertexDenseID>::max();
@@ -623,8 +622,8 @@ public:
 
     struct Tpl {
       InnerGraph g;
-      galois::PerHost<pando::Array<bool>> sampled;
-      galois::PerHost<pando::Array<bool>> mask;
+      galois::HostIndexedMap<pando::Array<bool>> sampled;
+      galois::HostIndexedMap<pando::Array<bool>> mask;
       galois::DAccumulator<VertexDenseID> accum;
     };
 
@@ -637,8 +636,8 @@ public:
         this->dGraph_.vertices(), +[](Tpl tpl, VertexTopologyID v) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
-          pando::Array<bool> sampled = fmap(tpl.sampled, get, host);
-          pando::Array<bool> mask = fmap(tpl.mask, get, host);
+          pando::Array<bool> sampled = *fmap(tpl.sampled, get, host);
+          pando::Array<bool> mask = *fmap(tpl.mask, get, host);
           galois::DAccumulator<VertexDenseID> accum = tpl.accum;
           VertexDenseID vid = fmap(tpl.g, getVertexLocalIndex, v);
 
@@ -670,24 +669,24 @@ public:
    * @brief Samples outgoing edges and vertices from seed vertices.
    * Different from `SampleEdges()`, all layers will use the same sampled graph.
    */
-  galois::PerHost<VertexDenseID> SampleEdges() {
+  galois::HostIndexedMap<VertexDenseID> SampleEdges() {
     std::cout << "[GNNGraph] Starts graph sampling\n" << std::flush;
     // TODO(hc): This is parallelized only in PXN level.
     // AGILE WF1 VC asynchronously samples edges per each vertex in parallel.
     // This version needs to increase parallelism to the vertex level.
 
-    galois::PerHost<pando::Vector<VertexDenseID>> frontier;
+    galois::HostIndexedMap<pando::Vector<VertexDenseID>> frontier;
     PANDO_CHECK(frontier.initialize());
 
     struct Tpl {
       InnerGraph g;
-      galois::PerHost<pando::Array<bool>> svs;
+      galois::HostIndexedMap<pando::Array<bool>> svs;
       galois::DAccumulator<VertexDenseID> accum;
-      galois::PerHost<pando::Array<bool>> subgraph;
-      galois::PerHost<pando::Vector<VertexDenseID>> idMapping;
-      galois::PerHost<pando::Vector<VertexDenseID>> sampledSrcs;
-      galois::PerHost<pando::Vector<VertexDenseID>> sampledDsts;
-      galois::PerHost<VertexDenseID> numSampledVertices;
+      galois::HostIndexedMap<pando::Array<bool>> subgraph;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> idMapping;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledSrcs;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledDsts;
+      galois::HostIndexedMap<VertexDenseID> numSampledVertices;
       bool useSubgraph;
     };
 
@@ -716,19 +715,19 @@ public:
           levels[3] = 0;
 
           // Get a local sampled vertex array
-          pando::Array<bool> sv = fmap(tpl.svs, get, host);
+          pando::Array<bool> sv = *fmap(tpl.svs, get, host);
 
           pando::GlobalRef<LCSR> localGraph = lift(tpl.g, getLocalCSR);
           EdgeDenseID numSampledEdges{0}, numSampledVertices{0};
 
           // Sampled source/destination vertices
-          pando::GlobalRef<pando::Vector<VertexDenseID>> sss = fmap(tpl.sampledSrcs, get, host);
-          pando::GlobalRef<pando::Vector<VertexDenseID>> sds = fmap(tpl.sampledDsts, get, host);
+          pando::GlobalRef<pando::Vector<VertexDenseID>> sss = *fmap(tpl.sampledSrcs, get, host);
+          pando::GlobalRef<pando::Vector<VertexDenseID>> sds = *fmap(tpl.sampledDsts, get, host);
 
           // Subgraph local ID
           VertexDenseID sid{0};
           // Mapping between original graph to subgraph
-          pando::Vector<VertexDenseID> mapping = fmap(tpl.idMapping, get, host);
+          pando::Vector<VertexDenseID> mapping = *fmap(tpl.idMapping, get, host);
 
           PANDO_CHECK(frontier.initialize(0));
           // Push seed vertices to the frontier vector
@@ -827,7 +826,7 @@ public:
           std::cout << "[GNNGraph] PXN " << host << ": Num sampled vertices:" << numSampledVertices
                     << "\n";
 
-          fmap(tpl.numSampledVertices, get, host) = numSampledVertices;
+          *fmap(tpl.numSampledVertices, get, host) = numSampledVertices;
 
           // Accumulate the number of local sampled vertifces
           galois::DAccumulator<VertexDenseID> accum = tpl.accum;
@@ -863,10 +862,10 @@ public:
    */
   void ConstructSubgraph() {
     struct Tpl {
-      galois::PerHost<pando::Vector<VertexDenseID>> sampledSrcs;
-      galois::PerHost<pando::Vector<VertexDenseID>> sampledDsts;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledSrcs;
+      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledDsts;
       bool useSubgraph;
-      galois::PerHost<VertexDenseID> numSampledVertices;
+      galois::HostIndexedMap<VertexDenseID> numSampledVertices;
     };
 
     // Construct a matrix corresponding to a subgraph
@@ -875,12 +874,12 @@ public:
         this->subgraph_, +[](Tpl tpl, pando::GlobalRef<pando::Array<bool>> subgraphRef) {
           pando::Place currPlace = pando::getCurrentPlace();
           std::uint32_t host = currPlace.node.id;
-          VertexDenseID numSampledVertices = fmap(tpl.numSampledVertices, get, host);
+          VertexDenseID numSampledVertices = *fmap(tpl.numSampledVertices, get, host);
           VertexDenseID subgraphDim = numSampledVertices * numSampledVertices;
 
           // Sampled source/destination vertices
-          pando::GlobalRef<pando::Vector<VertexDenseID>> sss = fmap(tpl.sampledSrcs, get, host);
-          pando::GlobalRef<pando::Vector<VertexDenseID>> sds = fmap(tpl.sampledDsts, get, host);
+          pando::GlobalRef<pando::Vector<VertexDenseID>> sss = *fmap(tpl.sampledSrcs, get, host);
+          pando::GlobalRef<pando::Vector<VertexDenseID>> sds = *fmap(tpl.sampledDsts, get, host);
           VertexDenseID numSampledEdges = lift(sss, size);
 
           pando::Array<bool> subgraph = subgraphRef;
@@ -948,14 +947,14 @@ public:
    * @brief Get subgraph adjacent matrix.
    */
   pando::Array<bool> GetSubgraph(std::uint32_t host) {
-    return fmap(this->subgraph_, get, host);
+    return *fmap(this->subgraph_, get, host);
   }
 
   /**
    * @brief Get the number of vertices of the local subgraph
    */
   VertexDenseID GetSubgraphSize(std::uint32_t host) {
-    return fmap(this->numSampledVertices_, get, host);
+    return *fmap(this->numSampledVertices_, get, host);
   }
 
   /**
@@ -964,7 +963,7 @@ public:
    */
   VertexDenseID GetVIdFromSubgraphVId(std::uint32_t host, VertexDenseID subgraphVId) {
     pando::GlobalRef<pando::Vector<VertexDenseID>> mappingRef =
-        fmap(this->subgraphIdMapping_, get, host);
+        *fmap(this->subgraphIdMapping_, get, host);
     return fmap(mappingRef, get, subgraphVId);
   }
 
@@ -1012,7 +1011,7 @@ public:
    * @brief Calculate accuracy.
    */
   std::pair<VertexDenseID, VertexDenseID> GetGlobalAccuracy(
-      galois::PerHost<pando::Array<GNNFloat>>& predictions, GNNPhase phase) {
+      galois::HostIndexedMap<pando::Array<GNNFloat>>& predictions, GNNPhase phase) {
     galois::DAccumulator<VertexDenseID> totalAccum, correctAccum;
     PANDO_CHECK(totalAccum.initialize());
     PANDO_CHECK(correctAccum.initialize());
@@ -1040,7 +1039,7 @@ public:
 
     galois::doAll(
         Tpl{phase, *this, totalAccum, correctAccum}, predictions,
-        +[](Tpl tpl, pando::Array<GNNFloat> predictions) {
+        +[](Tpl tpl, pando::GlobalRef<pando::Array<GNNFloat>> predictions) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
           pando::Array<bool> mask = fmap(tpl.g, GetVertexTypeMask, tpl.phase, host);
@@ -1147,14 +1146,14 @@ private:
   /// @brief Length of the Vertex embedding
   LayerDimension vertexFeatureLength_;
   /// @brief Vertex embeddings
-  galois::PerHost<pando::Vector<GNNFloat>> vertexFeatures_;
+  galois::HostIndexedMap<pando::Vector<GNNFloat>> vertexFeatures_;
   /// @brief Number of classes for vertexs/edges
   LayerDimension numClasses_;
   /// @brief Vertex type masks: training, testing, validation
-  galois::PerHost<pando::Array<bool>> trainingVertices_;
-  galois::PerHost<pando::Array<bool>> testVertices_;
-  galois::PerHost<pando::Array<bool>> validationVertices_;
-  galois::PerHost<pando::Array<bool>> batchVertices_;
+  galois::HostIndexedMap<pando::Array<bool>> trainingVertices_;
+  galois::HostIndexedMap<pando::Array<bool>> testVertices_;
+  galois::HostIndexedMap<pando::Array<bool>> validationVertices_;
+  galois::HostIndexedMap<pando::Array<bool>> batchVertices_;
   /// @brief Number of vertices for each type
   std::uint64_t numTrainingVertices_;
   std::uint64_t numTestingVertices_;
@@ -1164,22 +1163,22 @@ private:
   GNNRange testVertexRange_;
   GNNRange validationVertexRange_;
   /// @brief Degree for each vertex
-  galois::PerHost<pando::Array<EdgeDenseID>> vertexDegree_;
+  galois::HostIndexedMap<pando::Array<EdgeDenseID>> vertexDegree_;
   /// @brief Minibatch generator
   pando::GlobalPtr<MinibatchGenerator<InnerGraph>> trainMinibatcher_;
   pando::GlobalPtr<MinibatchGenerator<InnerGraph>> testMinibatcher_;
   /// @brief Per-host sampled vertices
-  galois::PerHost<pando::Array<bool>> sampledVertices_;
+  galois::HostIndexedMap<pando::Array<bool>> sampledVertices_;
   /// @brief True if a subgraph has been constructed and is used
   bool useSubgraph_;
-  galois::PerHost<pando::Array<bool>> subgraph_;
+  galois::HostIndexedMap<pando::Array<bool>> subgraph_;
   /// @brief Per-host subgraph vertex ID mapping to original graph vertex ID
-  galois::PerHost<pando::Vector<VertexDenseID>> subgraphIdMapping_;
+  galois::HostIndexedMap<pando::Vector<VertexDenseID>> subgraphIdMapping_;
   /// @brief Per-host sampled source and destination
-  galois::PerHost<pando::Vector<VertexDenseID>> sampledSrcs_;
-  galois::PerHost<pando::Vector<VertexDenseID>> sampledDsts_;
+  galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledSrcs_;
+  galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledDsts_;
   /// @brief The number of sampled vertices for each host
-  galois::PerHost<VertexDenseID> numSampledVertices_;
+  galois::HostIndexedMap<VertexDenseID> numSampledVertices_;
 };
 
 } // namespace graph

@@ -68,7 +68,7 @@ public:
    * @brief Allocates and initialize layers.
    */
   void InitializeLayers(pando::GlobalPtr<Graph> dGraphPtr) {
-    galois::PerHost<pando::Array<GNNFloat>> backwardOutputMatrix;
+    galois::HostIndexedMap<pando::Array<GNNFloat>> backwardOutputMatrix;
     struct Tpl {
       LayerDimension inColumnLen;
       LayerDimension outColumnLen;
@@ -103,7 +103,7 @@ public:
 
       // Per-host layer dimension; Each PXN materializes and uses different matrices
       // with different dimensions
-      galois::PerHost<gnn::GNNLayerDimensions> dimension;
+      galois::HostIndexedMap<gnn::GNNLayerDimensions> dimension;
       PANDO_CHECK(dimension.initialize());
       galois::doAll(
           Tpl{inColumnLen, outColumnLen, dGraphPtr}, dimension,
@@ -141,7 +141,7 @@ public:
 
     // Per-host layer dimension; Each PXN materializes and uses different matrices
     // with different dimensions
-    galois::PerHost<gnn::GNNLayerDimensions> sfMaxDim;
+    galois::HostIndexedMap<gnn::GNNLayerDimensions> sfMaxDim;
     PANDO_CHECK(sfMaxDim.initialize());
     galois::doAll(
         Tpl{inColumnLen, outColumnLen, dGraphPtr}, sfMaxDim,
@@ -191,10 +191,11 @@ public:
         VertexDenseID seedVertices = this->gnnGraphPtr_->PrepareNextTrainMinibatch();
         // Sample edges and vertices from seed vertices
         // Construct a subgraph with them
-        galois::PerHost<VertexDenseID> numSampledVertices = this->gnnGraphPtr_->SampleEdges();
+        galois::HostIndexedMap<VertexDenseID> numSampledVertices =
+            this->gnnGraphPtr_->SampleEdges();
         this->CorrectRowCounts(numSampledVertices);
         // Start the inference phase
-        galois::PerHost<pando::Array<GNNFloat>> forwardOutput = this->DoInference();
+        galois::HostIndexedMap<pando::Array<GNNFloat>> forwardOutput = this->DoInference();
         // Calculate accuracy
         std::pair<VertexDenseID, VertexDenseID> accuracyPair =
             this->gnnGraphPtr_->GetGlobalAccuracy(forwardOutput, GNNPhase::kBatch);
@@ -283,8 +284,8 @@ private:
    * @details This method consecutively performs the forward phase for each layer.
    * An output of the layer is an input of the next layer.
    */
-  galois::PerHost<pando::Array<GNNFloat>> DoInference() {
-    galois::PerHost<pando::Array<GNNFloat>> layerInput;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> DoInference() {
+    galois::HostIndexedMap<pando::Array<GNNFloat>> layerInput;
     for (uint32_t l = 0; l < this->gcnLayers_.size(); ++l) {
       pando::GlobalPtr<GraphConvolutionalLayer<Graph>> gcn = this->gcnLayers_[l];
       bool isLastLayer = (l == this->gcnLayers_.size() - 1) ? true : false;
@@ -306,7 +307,7 @@ private:
    */
   void GradientPropagation() {
     // Calculate softmax gradient
-    galois::PerHost<pando::Array<GNNFloat>> prevLayerGradient =
+    galois::HostIndexedMap<pando::Array<GNNFloat>> prevLayerGradient =
         this->softmaxLayer_->BackwardPhase(this->gnnGraphPtr_);
     for (std::uint32_t l = this->gcnLayers_.size(); l > 0; l--) {
       pando::GlobalPtr<GraphConvolutionalLayer<Graph>> gcn = this->gcnLayers_[l - 1];
@@ -321,7 +322,7 @@ private:
    * @brief Graph sampling changes the number of rows for each layer.
    * This method reflects the new dimension of each layer.
    */
-  void CorrectRowCounts(galois::PerHost<VertexDenseID> newRows) {
+  void CorrectRowCounts(galois::HostIndexedMap<VertexDenseID> newRows) {
     std::uint32_t layerOffset{0};
     for (std::uint32_t l = this->gcnLayers_.size(); l > 0; l--) {
       pando::GlobalPtr<GraphConvolutionalLayer<Graph>> gcn = this->gcnLayers_[l - 1];

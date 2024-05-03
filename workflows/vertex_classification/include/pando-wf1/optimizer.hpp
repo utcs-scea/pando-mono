@@ -9,7 +9,7 @@
 #include <pando-wf1/gnntypes.hpp>
 #include <pando-wf1/layers/layer.hpp>
 
-#include <pando-lib-galois/containers/per_host.hpp>
+#include <pando-lib-galois/containers/host_indexed_map.hpp>
 
 namespace gnn {
 
@@ -49,9 +49,9 @@ public:
     PANDO_CHECK(this->beta2Power_.initialize());
 
     struct Tpl {
-      galois::PerHost<pando::Array<pando::Array<GNNFloat>>> sm;
-      galois::PerHost<pando::Array<GNNFloat>> b1;
-      galois::PerHost<pando::Array<GNNFloat>> b2;
+      galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> sm;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> b1;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> b2;
       std::uint32_t numLayers;
       pando::Vector<LayerDimension> optDim;
       AdamConfiguration config;
@@ -60,13 +60,12 @@ public:
     galois::doAll(
         Tpl{this->secondMoments_, this->beta1Power_, this->beta2Power_, numTrainableLayers,
             trainableLayerSizes, this->config_},
-        this->firstMoments_,
-        +[](Tpl tpl, pando::GlobalRef<pando::Array<pando::Array<GNNFloat>>> fmRef) {
+        this->firstMoments_, +[](Tpl tpl, pando::Array<pando::Array<GNNFloat>> fmRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
-          pando::GlobalRef<pando::Array<pando::Array<GNNFloat>>> smRef = fmap(tpl.sm, get, host);
-          pando::GlobalRef<pando::Array<GNNFloat>> b1Ref = fmap(tpl.b1, get, host);
-          pando::GlobalRef<pando::Array<GNNFloat>> b2Ref = fmap(tpl.b2, get, host);
+          pando::GlobalRef<pando::Array<pando::Array<GNNFloat>>> smRef = *fmap(tpl.sm, get, host);
+          pando::GlobalRef<pando::Array<GNNFloat>> b1Ref = *fmap(tpl.b1, get, host);
+          pando::GlobalRef<pando::Array<GNNFloat>> b2Ref = *fmap(tpl.b2, get, host);
 
           std::uint32_t numLayers = tpl.numLayers;
 
@@ -118,17 +117,17 @@ public:
   /**
    * @brief Update weight matrices.
    */
-  void GradientDescent(galois::PerHost<GNNLayerDimensions> dim,
-                       galois::PerHost<pando::Array<GNNFloat>>& derivatives,
-                       galois::PerHost<pando::Array<GNNFloat>>& inputMatrix,
+  void GradientDescent(galois::HostIndexedMap<GNNLayerDimensions> dim,
+                       galois::HostIndexedMap<pando::Array<GNNFloat>>& derivatives,
+                       galois::HostIndexedMap<pando::Array<GNNFloat>>& inputMatrix,
                        std::uint32_t layerNumber) {
     struct Tpl {
-      galois::PerHost<pando::Array<pando::Array<GNNFloat>>> fm;
-      galois::PerHost<pando::Array<pando::Array<GNNFloat>>> sm;
-      galois::PerHost<pando::Array<GNNFloat>> inGradMat;
-      galois::PerHost<pando::Array<GNNFloat>> b1p;
-      galois::PerHost<pando::Array<GNNFloat>> b2p;
-      galois::PerHost<GNNLayerDimensions> dim;
+      galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> fm;
+      galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> sm;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> inGradMat;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> b1p;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> b2p;
+      galois::HostIndexedMap<GNNLayerDimensions> dim;
       AdamConfiguration config;
       std::uint32_t layerNumber;
     };
@@ -146,24 +145,24 @@ public:
     galois::doAll(
         Tpl{this->firstMoments_, this->secondMoments_, derivatives, this->beta1Power_,
             this->beta2Power_, dim, this->config_, layerNumber},
-        inputMatrix, +[](Tpl tpl, pando::Array<GNNFloat> inMat) {
+        inputMatrix, +[](Tpl tpl, pando::GlobalRef<pando::Array<GNNFloat>> inMatRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
           std::uint32_t l = tpl.layerNumber;
-          pando::Array<pando::Array<GNNFloat>> fm = fmap(tpl.fm, get, host);
-          pando::Array<pando::Array<GNNFloat>> sm = fmap(tpl.sm, get, host);
+          pando::Array<pando::Array<GNNFloat>> fm = *fmap(tpl.fm, get, host);
+          pando::Array<pando::Array<GNNFloat>> sm = *fmap(tpl.sm, get, host);
           pando::Array<GNNFloat> ifm = fm[l];
           pando::Array<GNNFloat> ism = sm[l];
-          pando::Array<GNNFloat> b1pArr = fmap(tpl.b1p, get, host);
-          pando::Array<GNNFloat> b2pArr = fmap(tpl.b1p, get, host);
+          pando::Array<GNNFloat> b1pArr = *fmap(tpl.b1p, get, host);
+          pando::Array<GNNFloat> b2pArr = *fmap(tpl.b1p, get, host);
           GNNFloat b1p = b1pArr[l];
           GNNFloat b2p = b2pArr[l];
-          pando::Array<GNNFloat> inGradMat = fmap(tpl.inGradMat, get, host);
-          GNNLayerDimensions dim = fmap(tpl.dim, get, host);
+          pando::Array<GNNFloat> inGradMat = *fmap(tpl.inGradMat, get, host);
+          GNNLayerDimensions dim = *fmap(tpl.dim, get, host);
           LayerDimension inGradMatDim = dim.inputColumns * dim.outputColumns;
 
           galois::doAll(
-              InnerTpl{tpl.config, inMat, inGradMat, ifm, ism, b1p, b2p},
+              InnerTpl{tpl.config, inMatRef, inGradMat, ifm, ism, b1p, b2p},
               galois::IotaRange(0, inGradMatDim), +[](InnerTpl tpl, LayerDimension i) {
                 AdamConfiguration config = tpl.config;
                 // weight decay:
@@ -190,10 +189,10 @@ private:
   /// @brief Adam optimizer configurations
   AdamConfiguration config_;
   /// @brief Adaptive Adam optimizer parameters
-  galois::PerHost<pando::Array<pando::Array<GNNFloat>>> firstMoments_;
-  galois::PerHost<pando::Array<pando::Array<GNNFloat>>> secondMoments_;
-  galois::PerHost<pando::Array<GNNFloat>> beta1Power_;
-  galois::PerHost<pando::Array<GNNFloat>> beta2Power_;
+  galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> firstMoments_;
+  galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> secondMoments_;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> beta1Power_;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> beta2Power_;
 };
 
 } // namespace gnn

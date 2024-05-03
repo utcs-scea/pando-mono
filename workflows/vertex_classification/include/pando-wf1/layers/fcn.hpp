@@ -25,8 +25,9 @@ public:
   constexpr FullyConnectedLayer() : GNNLayer<InnerGraph>() {}
 
   void initialize(std::uint32_t layerNumber,
-                  galois::PerHost<pando::Array<GNNFloat>>& backwardOutputMatrix,
-                  galois::PerHost<GNNLayerDimensions>& dimensions, bool useDropout, bool useReLU) {
+                  galois::HostIndexedMap<pando::Array<GNNFloat>>& backwardOutputMatrix,
+                  galois::HostIndexedMap<GNNLayerDimensions>& dimensions, bool useDropout,
+                  bool useReLU) {
     this->useDropout_ = useDropout;
     this->useReLU_ = useReLU;
 
@@ -74,8 +75,8 @@ public:
 
           auto [perHostTmpin1, perHostTmpin2] = tpl;
 
-          pando::GlobalRef<pando::Array<GNNFloat>> tmpin1 = fmap(perHostTmpin1, get, host);
-          pando::GlobalRef<pando::Array<GNNFloat>> tmpout = fmap(perHostTmpin2, get, host);
+          pando::GlobalRef<pando::Array<GNNFloat>> tmpin1 = *fmap(perHostTmpin1, get, host);
+          pando::GlobalRef<pando::Array<GNNFloat>> tmpout = *fmap(perHostTmpin2, get, host);
 
           PANDO_CHECK(fmap(tmpin1, initialize, inDim));
           PANDO_CHECK(fmap(tmpout, initialize, gradDim));
@@ -85,8 +86,8 @@ public:
   /**
    * @brief Start the forward phase of the FCN layer.
    */
-  const galois::PerHost<pando::Array<GNNFloat>> ForwardPhase(
-      galois::PerHost<pando::Array<GNNFloat>>& inputEmbeddings) {
+  const galois::HostIndexedMap<pando::Array<GNNFloat>> ForwardPhase(
+      galois::HostIndexedMap<pando::Array<GNNFloat>>& inputEmbeddings) {
     if (this->useDropout_) {
       this->DoDropout(inputEmbeddings, this->tempInputMatrix1_);
     }
@@ -100,8 +101,8 @@ public:
   /**
    * @brief Start the backward phase of the FCN layer.
    */
-  galois::PerHost<pando::Array<GNNFloat>> BackwardPhase(
-      galois::PerHost<pando::Array<GNNFloat>>& inputGradients) {
+  galois::HostIndexedMap<pando::Array<GNNFloat>> BackwardPhase(
+      galois::HostIndexedMap<pando::Array<GNNFloat>>& inputGradients) {
     if (this->useReLU_) {
       this->ReLUActivationDerivative(inputGradients);
     }
@@ -122,8 +123,8 @@ public:
    * @brief Update vertex embeddings by multiplying the current vertex embeddings times
    * this layer's weight matrix.
    */
-  void UpdateEmbedding(galois::PerHost<pando::Array<GNNFloat>>& inputEmbeddings,
-                       galois::PerHost<pando::Array<GNNFloat>>& outputMatrix) {
+  void UpdateEmbedding(galois::HostIndexedMap<pando::Array<GNNFloat>>& inputEmbeddings,
+                       galois::HostIndexedMap<pando::Array<GNNFloat>>& outputMatrix) {
     gnn::multiplyMatricesPerHost(inputEmbeddings, this->layerWeights_, outputMatrix,
                                  this->dimensions_);
   }
@@ -133,9 +134,9 @@ public:
    * So, transposed input embeddings (input column x input row) x gradient (input row x output
    * column)
    */
-  void CalculateWeightGradient(galois::PerHost<pando::Array<GNNFloat>>& inputEmbeddings,
-                               galois::PerHost<pando::Array<GNNFloat>>& inputGradients,
-                               galois::PerHost<pando::Array<GNNFloat>>& outputMatrix) {
+  void CalculateWeightGradient(galois::HostIndexedMap<pando::Array<GNNFloat>>& inputEmbeddings,
+                               galois::HostIndexedMap<pando::Array<GNNFloat>>& inputGradients,
+                               galois::HostIndexedMap<pando::Array<GNNFloat>>& outputMatrix) {
     using galois::make_tpl;
 
     auto outTpl = make_tpl(this->dimensions_, inputEmbeddings, inputGradients);
@@ -146,9 +147,9 @@ public:
 
           auto [perHostDim, perHostInMat, perHostInGradMat] = tpl;
 
-          GNNLayerDimensions dim = fmap(perHostDim, get, host);
-          pando::Array<GNNFloat> inMat = fmap(perHostInMat, get, host);
-          pando::Array<GNNFloat> inGradMat = fmap(perHostInGradMat, get, host);
+          GNNLayerDimensions dim = *fmap(perHostDim, get, host);
+          pando::Array<GNNFloat> inMat = *fmap(perHostInMat, get, host);
+          pando::Array<GNNFloat> inGradMat = *fmap(perHostInGradMat, get, host);
 
           // Reset an out matrix
           galois::doAll(
@@ -176,8 +177,8 @@ public:
    * @brief This calculates layer embedding gradient.
    * So, gradient (input row x output column) x transposed weight (output column x input columns)
    */
-  void CalculateLayerGradient(galois::PerHost<pando::Array<GNNFloat>>& inputGradients,
-                              galois::PerHost<pando::Array<GNNFloat>>& outputMatrix) {
+  void CalculateLayerGradient(galois::HostIndexedMap<pando::Array<GNNFloat>>& inputGradients,
+                              galois::HostIndexedMap<pando::Array<GNNFloat>>& outputMatrix) {
     using galois::make_tpl;
 
     auto outTpl = make_tpl(this->dimensions_, inputGradients, this->layerWeights_);
@@ -199,9 +200,9 @@ public:
               });
 
           auto [perHostDim, perHostInGradMat, perHostWeightMat] = tpl;
-          GNNLayerDimensions dim = fmap(perHostDim, get, host);
-          pando::Array<GNNFloat> inGradMat = fmap(perHostInGradMat, get, host);
-          pando::Array<GNNFloat> weightMat = fmap(perHostWeightMat, get, host);
+          GNNLayerDimensions dim = *fmap(perHostDim, get, host);
+          pando::Array<GNNFloat> inGradMat = *fmap(perHostInGradMat, get, host);
+          pando::Array<GNNFloat> weightMat = *fmap(perHostWeightMat, get, host);
 
           auto inTpl = make_tpl(dim, outMat, inGradMat, weightMat);
 
@@ -220,8 +221,8 @@ public:
   }
 
 private:
-  galois::PerHost<pando::Array<GNNFloat>> tempInputMatrix1_;
-  galois::PerHost<pando::Array<GNNFloat>> tempOutputMatrix_;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> tempInputMatrix1_;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> tempOutputMatrix_;
   bool useDropout_;
   bool useReLU_;
 };

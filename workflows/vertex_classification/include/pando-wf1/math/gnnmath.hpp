@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <pando-lib-galois/containers/per_host.hpp>
+#include <pando-lib-galois/containers/host_indexed_map.hpp>
 #include <pando-lib-galois/sync/atomic.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
 #include <pando-rt/containers/vector.hpp>
@@ -30,10 +30,10 @@ private:
  *
  */
 template <bool isPull = false, bool cIsAlreadyZeroInit = false>
-pando::Status multiplyMatricesPerHost(galois::PerHost<pando::Array<GNNFloat>> a,
-                                      galois::PerHost<pando::Array<GNNFloat>> b,
-                                      galois::PerHost<pando::Array<GNNFloat>> c,
-                                      galois::PerHost<gnn::GNNLayerDimensions> dims) {
+pando::Status multiplyMatricesPerHost(galois::HostIndexedMap<pando::Array<GNNFloat>> a,
+                                      galois::HostIndexedMap<pando::Array<GNNFloat>> b,
+                                      galois::HostIndexedMap<pando::Array<GNNFloat>> c,
+                                      galois::HostIndexedMap<gnn::GNNLayerDimensions> dims) {
   using galois::make_tpl;
   assert(a != c);
   assert(b != c);
@@ -47,9 +47,9 @@ pando::Status multiplyMatricesPerHost(galois::PerHost<pando::Array<GNNFloat>> a,
         auto wgh = wg.getHandle();
         uint64_t host = pando::getCurrentPlace().node.id;
         auto [a, b, c] = tpl;
-        AF localA = fmap(a, get, host);
-        AF localB = fmap(b, get, host);
-        AF localC = fmap(c, get, host);
+        AF localA = *fmap(a, get, host);
+        AF localB = *fmap(b, get, host);
+        AF localC = *fmap(c, get, host);
 
         if constexpr (!isPull && !cIsAlreadyZeroInit) {
           PANDO_CHECK(galois::doAll(

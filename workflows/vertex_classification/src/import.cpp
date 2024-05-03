@@ -24,7 +24,7 @@ galois::ParsedEdges<wf1::MHREdge> wf1::ParseRelationLine(const char* line) {
     PANDO_CHECK_RETURN(localMap.initialize(
         1000, pando::Place{pando::NodeIndex(host), pando::anyPod, pando::anyCore},
         pando::MemoryType::Main));
-    features.get(host) = localMap;
+    features[host] = localMap;
   }
   pando::Status err = importFeatures(parser);
   if (err != pando::Status::Success) {
@@ -35,7 +35,7 @@ galois::ParsedEdges<wf1::MHREdge> wf1::ParseRelationLine(const char* line) {
 
 void wf1::RelationFeatures::deinitialize() {
   for (uint64_t host = 0; host < features.size(); host++) {
-    galois::HashTable<MHRGraph::VertexTokenID, pando::Vector<double>> localMap = features.get(host);
+    galois::HashTable<MHRGraph::VertexTokenID, pando::Vector<double>> localMap = features[host];
     localMap.deinitialize();
   }
   features.deinitialize();
@@ -44,7 +44,7 @@ void wf1::RelationFeatures::deinitialize() {
 pando::Vector<double> wf1::RelationFeatures::getRelationFeature(
     wf1::MHRGraph::VertexTokenID relationID) {
   pando::Vector<double> relationFeatures;
-  if (!fmap(features.getLocal(), get, relationID, relationFeatures)) {
+  if (!fmap(*features.getLocal(), get, relationID, relationFeatures)) {
     PANDO_ABORT("bad relation feature id lookup");
   }
   return relationFeatures;
@@ -93,7 +93,7 @@ pando::Vector<double> wf1::RelationFeatures::getRelationFeature(
       for (uint64_t i = 0; i < localFeatures.size(); i++) {
         localFeatures[i] = feature.features[i];
       }
-      PANDO_CHECK_RETURN(fmap(features.get(host), put, feature.id, localFeatures));
+      PANDO_CHECK_RETURN(fmap(features[host], put, feature.id, localFeatures));
     }
     feature.deinitialize();
     currentLine = nextLine;

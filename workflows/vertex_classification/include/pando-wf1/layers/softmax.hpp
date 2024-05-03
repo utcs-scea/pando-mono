@@ -29,8 +29,8 @@ public:
   constexpr SoftmaxLayer<InnerGraph>& operator=(SoftmaxLayer<InnerGraph>&&) noexcept = default;
 
   void initialize(std::uint32_t layerNumber,
-                  galois::PerHost<pando::Array<GNNFloat>>& backwardOutputMatrix,
-                  galois::PerHost<GNNLayerDimensions> dimensions) {
+                  galois::HostIndexedMap<pando::Array<GNNFloat>>& backwardOutputMatrix,
+                  galois::HostIndexedMap<GNNLayerDimensions> dimensions) {
     std::cout << "[Softmax] Starts initialization\n" << std::flush;
     GNNLayer<InnerGraph>::initialize(layerNumber, backwardOutputMatrix, dimensions, false);
     std::cout << "[Softmax] Starts initialization [DONE]\n" << std::flush;
@@ -39,13 +39,13 @@ public:
   /**
    * @brief Start the forward phase of the softmax layer.
    */
-  const galois::PerHost<pando::Array<GNNFloat>> ForwardPhase(
-      galois::PerHost<pando::Array<GNNFloat>> inputEmbeddings,
+  const galois::HostIndexedMap<pando::Array<GNNFloat>> ForwardPhase(
+      galois::HostIndexedMap<pando::Array<GNNFloat>> inputEmbeddings,
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr) {
     struct Tpl {
-      galois::PerHost<GNNLayerDimensions> dim;
-      galois::PerHost<pando::Array<GNNFloat>> outMat;
-      galois::PerHost<pando::Array<GNNFloat>> inMat;
+      galois::HostIndexedMap<GNNLayerDimensions> dim;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> outMat;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> inMat;
       std::uint64_t numClasses;
     };
 
@@ -72,13 +72,14 @@ public:
     galois::doAll(
         Tpl{this->dimensions_, this->backwardOutputMatrix_, inputEmbeddings,
             lift(*gPtr, GetNumClasses)},
-        this->backwardOutputMatrix_, +[](Tpl tpl, pando::Array<GNNFloat> outMat) {
+        this->backwardOutputMatrix_,
+        +[](Tpl tpl, pando::GlobalRef<pando::Array<GNNFloat>> outMatRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
-          pando::Array<GNNFloat> inMat = fmap(tpl.inMat, get, host);
-          GNNLayerDimensions dim = fmap(tpl.dim, get, host);
+          pando::Array<GNNFloat> inMat = *fmap(tpl.inMat, get, host);
+          GNNLayerDimensions dim = *fmap(tpl.dim, get, host);
 
           galois::doAll(
-              InnerTpl{inMat, outMat, tpl.numClasses}, galois::IotaRange(0, dim.inputRows),
+              InnerTpl{inMat, outMatRef, tpl.numClasses}, galois::IotaRange(0, dim.inputRows),
               +[](InnerTpl tpl, LayerDimension i) {
                 // Get an inferred vertex class
                 std::uint64_t numClasses = tpl.numClasses;
@@ -126,7 +127,7 @@ public:
    * Derivation of the full combined derivative is not there,
    * but some empirical inspection showed that this is likely correct.
    */
-  galois::PerHost<pando::Array<GNNFloat>> BackwardPhase(
+  galois::HostIndexedMap<pando::Array<GNNFloat>> BackwardPhase(
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr) {
     struct InnerTpl {
       graph::GNNGraph<InnerGraph> g;
@@ -135,13 +136,13 @@ public:
 
     galois::doAll(
         static_cast<graph::GNNGraph<InnerGraph>>(*gPtr), this->backwardOutputMatrix_,
-        +[](graph::GNNGraph<InnerGraph> g, pando::Array<GNNFloat> outMat) {
+        +[](graph::GNNGraph<InnerGraph> g, pando::GlobalRef<pando::Array<GNNFloat>> outMatRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
           VertexDenseID subgraphSize = fmap(g, GetSubgraphSize, host);
 
           galois::doAll(
-              InnerTpl{g, outMat}, galois::IotaRange(0, subgraphSize),
+              InnerTpl{g, outMatRef}, galois::IotaRange(0, subgraphSize),
               +[](InnerTpl tpl, VertexDenseID subVid) {
                 std::uint32_t host = pando::getCurrentPlace().node.id;
 

@@ -11,7 +11,7 @@
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 
-#include <pando-lib-galois/containers/per_host.hpp>
+#include <pando-lib-galois/containers/host_indexed_map.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 
 #include <pando-wf1/gnntypes.hpp>
@@ -36,8 +36,8 @@ public:
   constexpr GNNLayer<Graph>& operator=(GNNLayer<Graph>&&) noexcept = default;
 
   void initialize(std::uint32_t layerNumber,
-                  galois::PerHost<pando::Array<GNNFloat>>& backwardOutputMatrix,
-                  galois::PerHost<GNNLayerDimensions>& dimensions, bool needWeight) {
+                  galois::HostIndexedMap<pando::Array<GNNFloat>>& backwardOutputMatrix,
+                  galois::HostIndexedMap<GNNLayerDimensions>& dimensions, bool needWeight) {
     this->layerNumber_ = layerNumber;
     this->backwardOutputMatrix_ = backwardOutputMatrix;
     this->dimensions_ = dimensions;
@@ -65,11 +65,11 @@ public:
     }
 
     struct Tpl {
-      galois::PerHost<pando::Array<GNNFloat>> fwMat;
-      galois::PerHost<pando::Array<bool>> reluMat;
-      galois::PerHost<pando::Array<bool>> doMat;
-      galois::PerHost<pando::Array<GNNFloat>> lwMat;
-      galois::PerHost<pando::Array<GNNFloat>> lwgMat;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> fwMat;
+      galois::HostIndexedMap<pando::Array<bool>> reluMat;
+      galois::HostIndexedMap<pando::Array<bool>> doMat;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> lwMat;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> lwgMat;
       bool needWeight;
     };
 
@@ -86,11 +86,11 @@ public:
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
           // Get local matrices
-          pando::GlobalRef<pando::Array<GNNFloat>> fwMat = fmap(tpl.fwMat, get, host);
-          pando::GlobalRef<pando::Array<bool>> reluMat = fmap(tpl.reluMat, get, host);
-          pando::GlobalRef<pando::Array<bool>> doMat = fmap(tpl.doMat, get, host);
-          pando::GlobalRef<pando::Array<GNNFloat>> lwMat = fmap(tpl.lwMat, get, host);
-          pando::GlobalRef<pando::Array<GNNFloat>> lwgMat = fmap(tpl.lwgMat, get, host);
+          pando::GlobalRef<pando::Array<GNNFloat>> fwMat = *fmap(tpl.fwMat, get, host);
+          pando::GlobalRef<pando::Array<bool>> reluMat = *fmap(tpl.reluMat, get, host);
+          pando::GlobalRef<pando::Array<bool>> doMat = *fmap(tpl.doMat, get, host);
+          pando::GlobalRef<pando::Array<GNNFloat>> lwMat = *fmap(tpl.lwMat, get, host);
+          pando::GlobalRef<pando::Array<GNNFloat>> lwgMat = *fmap(tpl.lwgMat, get, host);
 
           PANDO_CHECK(fmap(fwMat, initialize, outputDim));
           PANDO_CHECK(fmap(reluMat, initialize, outputDim));
@@ -118,12 +118,13 @@ public:
     std::cout << "[GNNLayer] Initializes weight matrix by Glorot-Bengio\n" << std::flush;
     galois::doAll(
         this->layerNumber_, this->layerWeights_,
-        +[](std::uint32_t layerNum, pando::Array<GNNFloat> lw) {
-          GNNFloat maxVal = std::sqrt(6.0) / std::sqrt(lift(lw, size));
+        +[](std::uint32_t layerNum, pando::GlobalRef<pando::Array<GNNFloat>> lwRef) {
+          GNNFloat maxVal = std::sqrt(6.0) / std::sqrt(lift(lwRef, size));
           std::default_random_engine rng(1 + layerNum);
           std::uniform_real_distribution<GNNFloat> dist(-maxVal, maxVal);
 
-          for (LayerDimension i = 0; i < lw.size(); ++i) {
+          pando::Array<GNNFloat> lw = lwRef;
+          for (LayerDimension i = 0; i < lift(lwRef, size); ++i) {
             lw[i] = dist(rng);
           }
         });
@@ -147,8 +148,8 @@ public:
    * @brief Perform dropout over an embedding in which drops some features by setting 0 while
    * rescale other features.
    */
-  void DoDropout(galois::PerHost<pando::Array<GNNFloat>>& inputToDropout,
-                 galois::PerHost<pando::Array<GNNFloat>>& outputMatrix) {
+  void DoDropout(galois::HostIndexedMap<pando::Array<GNNFloat>>& inputToDropout,
+                 galois::HostIndexedMap<pando::Array<GNNFloat>>& outputMatrix) {
 #if 0
     for (std::uint32_t host = 0; host < static_cast<std::uint32_t>(pando::getPlaceDims().node.id);
          ++host) {
@@ -187,9 +188,9 @@ public:
         });
 
     struct OutTpl {
-      galois::PerHost<GNNLayerDimensions> dimensions;
-      galois::PerHost<pando::Array<GNNFloat>> outEmbed;
-      galois::PerHost<pando::Array<GNNFloat>> inEmbed;
+      galois::HostIndexedMap<GNNLayerDimensions> dimensions;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> outEmbed;
+      galois::HostIndexedMap<pando::Array<GNNFloat>> inEmbed;
       GNNFloat scale;
     };
 
@@ -202,16 +203,16 @@ public:
 
     galois::doAll(
         OutTpl{this->dimensions_, outputMatrix, inputToDropout, scale}, this->dropoutMask_,
-        +[](OutTpl tpl, pando::Array<bool> mask) {
+        +[](OutTpl tpl, pando::GlobalRef<pando::Array<bool>> maskRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
-          GNNLayerDimensions dimension = fmap(tpl.dimensions, get, host);
-          pando::Array<GNNFloat> outEmbed = fmap(tpl.outEmbed, get, host);
-          pando::Array<GNNFloat> inEmbed = fmap(tpl.inEmbed, get, host);
+          GNNLayerDimensions dimension = *fmap(tpl.dimensions, get, host);
+          pando::Array<GNNFloat> outEmbed = *fmap(tpl.outEmbed, get, host);
+          pando::Array<GNNFloat> inEmbed = *fmap(tpl.inEmbed, get, host);
           LayerDimension indexRange = dimension.inputColumns * dimension.inputRows;
 
           galois::doAll(
-              InnerTpl{outEmbed, inEmbed, mask, tpl.scale}, galois::IotaRange(0, indexRange),
+              InnerTpl{outEmbed, inEmbed, maskRef, tpl.scale}, galois::IotaRange(0, indexRange),
               +[](InnerTpl tpl, LayerDimension i) {
                 pando::Array<GNNFloat> outEmbed = tpl.outEmbed;
                 pando::Array<GNNFloat> inEmbed = tpl.inEmbed;
@@ -265,11 +266,13 @@ public:
 
     galois::doAll(
         this->forwardOutputMatrix_, this->reluActivation_,
-        +[](galois::PerHost<pando::Array<GNNFloat>> fwOuts, pando::Array<bool> reluAct) {
+        +[](galois::HostIndexedMap<pando::Array<GNNFloat>> fwOuts,
+            pando::GlobalRef<pando::Array<bool>> reluActRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
-          pando::Array<GNNFloat> fwOut = fmap(fwOuts, get, host);
+          pando::Array<GNNFloat> fwOut = *fmap(fwOuts, get, host);
 
+          pando::Array<bool> reluAct = reluActRef;
           // Reset a ReLU activation matrix
           galois::doAll(
               reluAct, +[](pando::GlobalRef<bool> v) {
@@ -277,7 +280,7 @@ public:
               });
 
           galois::doAll(
-              InnerTpl{fwOut, reluAct}, galois::IotaRange(0, fwOut.size()),
+              InnerTpl{fwOut, reluActRef}, galois::IotaRange(0, fwOut.size()),
               +[](InnerTpl tpl, LayerDimension i) {
                 pando::GlobalRef<GNNFloat> v = tpl.fwOut[i];
                 pando::GlobalRef<bool> activated = tpl.reluAct[i];
@@ -309,7 +312,7 @@ public:
    */
   void LeakyReLUActivation() {
     galois::doAll(
-        this->forwardOutputMatrix_, +[](pando::Array<GNNFloat> fwOut) {
+        this->forwardOutputMatrix_, +[](pando::GlobalRef<pando::Array<GNNFloat>> fwOut) {
           galois::doAll(
               fwOut, +[](pando::GlobalRef<GNNFloat> v) {
                 if (v < GNNFloat{0}) {
@@ -322,7 +325,7 @@ public:
   /**
    * @brief Get the current layer's forward output matrix.
    */
-  galois::PerHost<pando::Array<GNNFloat>> GetForwardOutputMatrix() {
+  galois::HostIndexedMap<pando::Array<GNNFloat>> GetForwardOutputMatrix() {
     return this->forwardOutputMatrix_;
   }
 
@@ -336,10 +339,10 @@ public:
   /**
    * @brief Inactive gradients of the features that had been inactived by ReLU
    */
-  void ReLUActivationDerivative(galois::PerHost<pando::Array<GNNFloat>>& gradient) {
+  void ReLUActivationDerivative(galois::HostIndexedMap<pando::Array<GNNFloat>>& gradient) {
     struct Tpl {
-      galois::PerHost<GNNLayerDimensions> dim;
-      galois::PerHost<pando::Array<bool>> mask;
+      galois::HostIndexedMap<GNNLayerDimensions> dim;
+      galois::HostIndexedMap<pando::Array<bool>> mask;
     };
 
     struct InnerTpl {
@@ -360,15 +363,15 @@ public:
 
     galois::doAll(
         Tpl{this->dimensions_, this->reluActivation_}, gradient,
-        +[](Tpl tpl, pando::Array<GNNFloat> grad) {
+        +[](Tpl tpl, pando::GlobalRef<pando::Array<GNNFloat>> gradRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
-          GNNLayerDimensions dim = fmap(tpl.dim, get, host);
+          GNNLayerDimensions dim = *fmap(tpl.dim, get, host);
           LayerDimension outMatDim = dim.outputRows * dim.outputColumns;
-          pando::Array<bool> mask = fmap(tpl.mask, get, host);
+          pando::Array<bool> mask = *fmap(tpl.mask, get, host);
 
           galois::doAll(
-              InnerTpl{mask, grad}, galois::IotaRange(0, outMatDim),
+              InnerTpl{mask, gradRef}, galois::IotaRange(0, outMatDim),
               +[](InnerTpl tpl, LayerDimension i) {
                 // ReLU inactivated this feature, and so does not reflect its gradient
                 if (!tpl.mask[i]) {
@@ -395,8 +398,8 @@ public:
    */
   void DoDropoutDerivative() {
     struct Tpl {
-      galois::PerHost<GNNLayerDimensions> dim;
-      galois::PerHost<pando::Array<bool>> mask;
+      galois::HostIndexedMap<GNNLayerDimensions> dim;
+      galois::HostIndexedMap<pando::Array<bool>> mask;
     };
 
     struct InnerTpl {
@@ -406,16 +409,16 @@ public:
 
     galois::doAll(
         Tpl{this->dimensions_, this->dropoutMask_}, this->backwardOutputMatrix_,
-        +[](Tpl tpl, pando::Array<GNNFloat> outMat) {
+        +[](Tpl tpl, pando::GlobalRef<pando::Array<GNNFloat>> outMatRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
-          GNNLayerDimensions dim = fmap(tpl.dim, get, host);
-          pando::Array<bool> mask = fmap(tpl.mask, get, host);
+          GNNLayerDimensions dim = *fmap(tpl.dim, get, host);
+          pando::Array<bool> mask = *fmap(tpl.mask, get, host);
 
           LayerDimension inMatDim = dim.inputColumns * dim.inputRows;
 
           galois::doAll(
-              InnerTpl{outMat, mask}, galois::IotaRange(0, inMatDim),
+              InnerTpl{outMatRef, mask}, galois::IotaRange(0, inMatDim),
               +[](InnerTpl tpl, LayerDimension i) {
                 if (tpl.mask[i]) {
                   tpl.outMat[i] = tpl.outMat[i] * 2;
@@ -440,11 +443,12 @@ public:
    * (Without this, each phase would use dummy values to calculate inference
    *  and gradient descent)
    */
-  void ResizeRowDimension(galois::PerHost<VertexDenseID> newRowDim) {
+  void ResizeRowDimension(galois::HostIndexedMap<VertexDenseID> newRowDim) {
     galois::doAll(
         newRowDim, this->dimensions_,
-        +[](galois::PerHost<VertexDenseID> newRowDim, pando::GlobalRef<GNNLayerDimensions> dim) {
-          VertexDenseID newRow = fmap(newRowDim, get, pando::getCurrentPlace().node.id);
+        +[](galois::HostIndexedMap<VertexDenseID> newRowDim,
+            pando::GlobalRef<GNNLayerDimensions> dim) {
+          VertexDenseID newRow = *fmap(newRowDim, get, pando::getCurrentPlace().node.id);
           GNNLayerDimensions newDim = dim;
           newDim.inputRows = newRow;
           newDim.outputRows = newRow;
@@ -456,23 +460,23 @@ protected:
   /// @brief Layer ID starting from 0
   std::uint32_t layerNumber_;
   /// @brief Per-host forward output matrices
-  galois::PerHost<pando::Array<GNNFloat>> forwardOutputMatrix_;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> forwardOutputMatrix_;
   /// @brief Per-host backward output matrices
-  galois::PerHost<pando::Array<GNNFloat>> backwardOutputMatrix_;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> backwardOutputMatrix_;
   /// @brief Per-host input/output dimensions
-  galois::PerHost<GNNLayerDimensions> dimensions_;
+  galois::HostIndexedMap<GNNLayerDimensions> dimensions_;
   /// @brief Per-host weight matrices
-  galois::PerHost<pando::Array<GNNFloat>> layerWeights_;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> layerWeights_;
   /// @brief Per-host weight gradient matrices
-  galois::PerHost<pando::Array<GNNFloat>> layerWeightGradients_;
+  galois::HostIndexedMap<pando::Array<GNNFloat>> layerWeightGradients_;
   /// @brief It is true if this layer requires weight (e.g., GCN)
   bool needWeight_{false};
   /// @brief Per-host dropout mask matrices
-  galois::PerHost<pando::Array<bool>> dropoutMask_;
+  galois::HostIndexedMap<pando::Array<bool>> dropoutMask_;
   /// @brief Random number generator for dropout
   RandomNumberGenerator dropoutSampler_;
   /// @brief Per-host ReLU activation matrices
-  galois::PerHost<pando::Array<bool>> reluActivation_;
+  galois::HostIndexedMap<pando::Array<bool>> reluActivation_;
 };
 
 } // namespace gnn
