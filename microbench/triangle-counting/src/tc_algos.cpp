@@ -139,7 +139,7 @@ void tc_chunk_vertices(pando::GlobalPtr<Graph> graph_ptr,
   PANDO_CHECK(work_remaining.initialize());
 
   // Initialize vertexlist offsets to 0
-  galois::HostIndexedMap<uint64_t> per_host_iterator_offsets{};
+  galois::HostLocalStorage<uint64_t> per_host_iterator_offsets{};
   PANDO_CHECK(per_host_iterator_offsets.initialize());
   galois::doAll(
       per_host_iterator_offsets, +[](pando::GlobalRef<std::uint64_t> host_vertex_iter_offset_ref) {

@@ -21,7 +21,7 @@ void tc_mdlcsr_noChunk(pando::GlobalPtr<GraphMDL> graph_ptr,
   // Init states
   GraphMDL graph = *graph_ptr;
 
-  galois::HostIndexedMap<uint64_t> per_host_wk_remaining{};
+  galois::HostLocalStorage<uint64_t> per_host_wk_remaining{};
   PANDO_CHECK(per_host_wk_remaining.initialize());
   galois::doAll(
       per_host_wk_remaining, +[](pando::GlobalRef<std::uint64_t> wk_remaining_host_i) {
