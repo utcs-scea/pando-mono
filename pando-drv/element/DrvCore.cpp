@@ -208,57 +208,126 @@ void DrvCore::configureOtherLinks(SST::Params &params) {
 void DrvCore::configurePhaseStatistics() {
     output_->verbose(CALL_INFO, 1, DEBUG_INIT, "configuring phase statistics\n");
 
-    std::vector<ThreadStat> phase_comp_thread_stats;
-    phase_comp_thread_stats.resize(num_threads_);
-    for (int thread = 0; thread < num_threads_; thread++) {
-        ThreadStat *thread_stat = &phase_comp_thread_stats[thread];
-        std::string subid = "phase_" + std::to_string(phase_) + "_thread_" + std::to_string(thread);
-        thread_stat->load_l1sp = registerStatistic<uint64_t>("phase_comp_load_l1sp", subid);
-        thread_stat->load_l2sp = registerStatistic<uint64_t>("phase_comp_load_l2sp", subid);
-        thread_stat->load_dram = registerStatistic<uint64_t>("phase_comp_load_dram", subid);
-        thread_stat->load_remote_pxn = registerStatistic<uint64_t>("phase_comp_load_remote_pxn", subid);
-        thread_stat->store_l1sp = registerStatistic<uint64_t>("phase_comp_store_l1sp", subid);
-        thread_stat->store_l2sp = registerStatistic<uint64_t>("phase_comp_store_l2sp", subid);
-        thread_stat->store_dram = registerStatistic<uint64_t>("phase_comp_store_dram", subid);
-        thread_stat->store_remote_pxn = registerStatistic<uint64_t>("phase_comp_store_remote_pxn", subid);
-        thread_stat->atomic_l1sp = registerStatistic<uint64_t>("phase_comp_atomic_l1sp", subid);
-        thread_stat->atomic_l2sp = registerStatistic<uint64_t>("phase_comp_atomic_l2sp", subid);
-        thread_stat->atomic_dram = registerStatistic<uint64_t>("phase_comp_atomic_dram", subid);
-        thread_stat->atomic_remote_pxn = registerStatistic<uint64_t>("phase_comp_atomic_remote_pxn", subid);
-        thread_stat->stall_cycles_when_ready = registerStatistic<uint64_t>("phase_comp_stall_cycles_when_ready", subid);
-        thread_stat->tag_cycles = registerStatistic<uint64_t>("phase_comp_tag_cycles", subid);
-    }
-    per_phase_comp_thread_stats_.push_back(phase_comp_thread_stats);
+    for (int phase = 0; phase < phase_max_; phase++) {
+      std::vector<ThreadStat> phase_comp_thread_stats;
+      phase_comp_thread_stats.resize(num_threads_);
+      for (int thread = 0; thread < num_threads_; thread++) {
+          ThreadStat *thread_stat = &phase_comp_thread_stats[thread];
+          std::string subid = "phase_" + std::to_string(phase) + "_thread_" + std::to_string(thread);
+          thread_stat->load_l1sp = registerStatistic<uint64_t>("phase_comp_load_l1sp", subid);
+          thread_stat->load_l2sp = registerStatistic<uint64_t>("phase_comp_load_l2sp", subid);
+          thread_stat->load_dram = registerStatistic<uint64_t>("phase_comp_load_dram", subid);
+          thread_stat->load_remote_pxn = registerStatistic<uint64_t>("phase_comp_load_remote_pxn", subid);
+          thread_stat->store_l1sp = registerStatistic<uint64_t>("phase_comp_store_l1sp", subid);
+          thread_stat->store_l2sp = registerStatistic<uint64_t>("phase_comp_store_l2sp", subid);
+          thread_stat->store_dram = registerStatistic<uint64_t>("phase_comp_store_dram", subid);
+          thread_stat->store_remote_pxn = registerStatistic<uint64_t>("phase_comp_store_remote_pxn", subid);
+          thread_stat->atomic_l1sp = registerStatistic<uint64_t>("phase_comp_atomic_l1sp", subid);
+          thread_stat->atomic_l2sp = registerStatistic<uint64_t>("phase_comp_atomic_l2sp", subid);
+          thread_stat->atomic_dram = registerStatistic<uint64_t>("phase_comp_atomic_dram", subid);
+          thread_stat->atomic_remote_pxn = registerStatistic<uint64_t>("phase_comp_atomic_remote_pxn", subid);
+          thread_stat->stall_cycles_when_ready = registerStatistic<uint64_t>("phase_comp_stall_cycles_when_ready", subid);
+          thread_stat->tag_cycles = registerStatistic<uint64_t>("phase_comp_tag_cycles", subid);
 
-    std::vector<ThreadStat> phase_comm_thread_stats;
-    phase_comm_thread_stats.resize(num_threads_);
-    for (int thread = 0; thread < num_threads_; thread++) {
-        ThreadStat *thread_stat = &phase_comm_thread_stats[thread];
-        std::string subid = "phase_" + std::to_string(phase_) + "_thread_" + std::to_string(thread);
-        thread_stat->load_l1sp = registerStatistic<uint64_t>("phase_comm_load_l1sp", subid);
-        thread_stat->load_l2sp = registerStatistic<uint64_t>("phase_comm_load_l2sp", subid);
-        thread_stat->load_dram = registerStatistic<uint64_t>("phase_comm_load_dram", subid);
-        thread_stat->load_remote_pxn = registerStatistic<uint64_t>("phase_comm_load_remote_pxn", subid);
-        thread_stat->store_l1sp = registerStatistic<uint64_t>("phase_comm_store_l1sp", subid);
-        thread_stat->store_l2sp = registerStatistic<uint64_t>("phase_comm_store_l2sp", subid);
-        thread_stat->store_dram = registerStatistic<uint64_t>("phase_comm_store_dram", subid);
-        thread_stat->store_remote_pxn = registerStatistic<uint64_t>("phase_comm_store_remote_pxn", subid);
-        thread_stat->atomic_l1sp = registerStatistic<uint64_t>("phase_comm_atomic_l1sp", subid);
-        thread_stat->atomic_l2sp = registerStatistic<uint64_t>("phase_comm_atomic_l2sp", subid);
-        thread_stat->atomic_dram = registerStatistic<uint64_t>("phase_comm_atomic_dram", subid);
-        thread_stat->atomic_remote_pxn = registerStatistic<uint64_t>("phase_comm_atomic_remote_pxn", subid);
-        thread_stat->stall_cycles_when_ready = registerStatistic<uint64_t>("phase_comm_stall_cycles_when_ready", subid);
-        thread_stat->tag_cycles = registerStatistic<uint64_t>("phase_comm_tag_cycles", subid);
-    }
-    per_phase_comm_thread_stats_.push_back(phase_comm_thread_stats);
+          thread_stat->load_l1sp->setFlagResetCountOnOutput(true);
+          thread_stat->load_l2sp->setFlagResetCountOnOutput(true);
+          thread_stat->load_dram->setFlagResetCountOnOutput(true);
+          thread_stat->load_remote_pxn->setFlagResetCountOnOutput(true);
+          thread_stat->store_l1sp->setFlagResetCountOnOutput(true);
+          thread_stat->store_l2sp->setFlagResetCountOnOutput(true);
+          thread_stat->store_dram->setFlagResetCountOnOutput(true);
+          thread_stat->store_remote_pxn->setFlagResetCountOnOutput(true);
+          thread_stat->atomic_l1sp->setFlagResetCountOnOutput(true);
+          thread_stat->atomic_l2sp->setFlagResetCountOnOutput(true);
+          thread_stat->atomic_dram->setFlagResetCountOnOutput(true);
+          thread_stat->atomic_remote_pxn->setFlagResetCountOnOutput(true);
+          thread_stat->stall_cycles_when_ready->setFlagResetCountOnOutput(true);
+          thread_stat->tag_cycles->setFlagResetCountOnOutput(true);
 
-    Statistic<uint64_t> *phase_busy_cycles;
-    Statistic<uint64_t> *phase_stall_cycles;
-    std::string subid = "phase_" + std::to_string(phase_);
-    phase_busy_cycles = registerStatistic<uint64_t>("phase_busy_cycles", subid);
-    phase_stall_cycles = registerStatistic<uint64_t>("phase_stall_cycles", subid);
-    per_phase_busy_cycles_.push_back(phase_busy_cycles);
-    per_phase_stall_cycles_.push_back(phase_stall_cycles);
+          thread_stat->load_l1sp->setFlagClearDataOnOutput(true);
+          thread_stat->load_l2sp->setFlagClearDataOnOutput(true);
+          thread_stat->load_dram->setFlagClearDataOnOutput(true);
+          thread_stat->load_remote_pxn->setFlagClearDataOnOutput(true);
+          thread_stat->store_l1sp->setFlagClearDataOnOutput(true);
+          thread_stat->store_l2sp->setFlagClearDataOnOutput(true);
+          thread_stat->store_dram->setFlagClearDataOnOutput(true);
+          thread_stat->store_remote_pxn->setFlagClearDataOnOutput(true);
+          thread_stat->atomic_l1sp->setFlagClearDataOnOutput(true);
+          thread_stat->atomic_l2sp->setFlagClearDataOnOutput(true);
+          thread_stat->atomic_dram->setFlagClearDataOnOutput(true);
+          thread_stat->atomic_remote_pxn->setFlagClearDataOnOutput(true);
+          thread_stat->stall_cycles_when_ready->setFlagClearDataOnOutput(true);
+          thread_stat->tag_cycles->setFlagClearDataOnOutput(true);
+      }
+      per_phase_comp_thread_stats_.push_back(phase_comp_thread_stats);
+
+      std::vector<ThreadStat> phase_comm_thread_stats;
+      phase_comm_thread_stats.resize(num_threads_);
+      for (int thread = 0; thread < num_threads_; thread++) {
+          ThreadStat *thread_stat = &phase_comm_thread_stats[thread];
+          std::string subid = "phase_" + std::to_string(phase) + "_thread_" + std::to_string(thread);
+          thread_stat->load_l1sp = registerStatistic<uint64_t>("phase_comm_load_l1sp", subid);
+          thread_stat->load_l2sp = registerStatistic<uint64_t>("phase_comm_load_l2sp", subid);
+          thread_stat->load_dram = registerStatistic<uint64_t>("phase_comm_load_dram", subid);
+          thread_stat->load_remote_pxn = registerStatistic<uint64_t>("phase_comm_load_remote_pxn", subid);
+          thread_stat->store_l1sp = registerStatistic<uint64_t>("phase_comm_store_l1sp", subid);
+          thread_stat->store_l2sp = registerStatistic<uint64_t>("phase_comm_store_l2sp", subid);
+          thread_stat->store_dram = registerStatistic<uint64_t>("phase_comm_store_dram", subid);
+          thread_stat->store_remote_pxn = registerStatistic<uint64_t>("phase_comm_store_remote_pxn", subid);
+          thread_stat->atomic_l1sp = registerStatistic<uint64_t>("phase_comm_atomic_l1sp", subid);
+          thread_stat->atomic_l2sp = registerStatistic<uint64_t>("phase_comm_atomic_l2sp", subid);
+          thread_stat->atomic_dram = registerStatistic<uint64_t>("phase_comm_atomic_dram", subid);
+          thread_stat->atomic_remote_pxn = registerStatistic<uint64_t>("phase_comm_atomic_remote_pxn", subid);
+          thread_stat->stall_cycles_when_ready = registerStatistic<uint64_t>("phase_comm_stall_cycles_when_ready", subid);
+          thread_stat->tag_cycles = registerStatistic<uint64_t>("phase_comm_tag_cycles", subid);
+
+          thread_stat->load_l1sp->setFlagResetCountOnOutput(true);
+          thread_stat->load_l2sp->setFlagResetCountOnOutput(true);
+          thread_stat->load_dram->setFlagResetCountOnOutput(true);
+          thread_stat->load_remote_pxn->setFlagResetCountOnOutput(true);
+          thread_stat->store_l1sp->setFlagResetCountOnOutput(true);
+          thread_stat->store_l2sp->setFlagResetCountOnOutput(true);
+          thread_stat->store_dram->setFlagResetCountOnOutput(true);
+          thread_stat->store_remote_pxn->setFlagResetCountOnOutput(true);
+          thread_stat->atomic_l1sp->setFlagResetCountOnOutput(true);
+          thread_stat->atomic_l2sp->setFlagResetCountOnOutput(true);
+          thread_stat->atomic_dram->setFlagResetCountOnOutput(true);
+          thread_stat->atomic_remote_pxn->setFlagResetCountOnOutput(true);
+          thread_stat->stall_cycles_when_ready->setFlagResetCountOnOutput(true);
+          thread_stat->tag_cycles->setFlagResetCountOnOutput(true);
+
+          thread_stat->load_l1sp->setFlagClearDataOnOutput(true);
+          thread_stat->load_l2sp->setFlagClearDataOnOutput(true);
+          thread_stat->load_dram->setFlagClearDataOnOutput(true);
+          thread_stat->load_remote_pxn->setFlagClearDataOnOutput(true);
+          thread_stat->store_l1sp->setFlagClearDataOnOutput(true);
+          thread_stat->store_l2sp->setFlagClearDataOnOutput(true);
+          thread_stat->store_dram->setFlagClearDataOnOutput(true);
+          thread_stat->store_remote_pxn->setFlagClearDataOnOutput(true);
+          thread_stat->atomic_l1sp->setFlagClearDataOnOutput(true);
+          thread_stat->atomic_l2sp->setFlagClearDataOnOutput(true);
+          thread_stat->atomic_dram->setFlagClearDataOnOutput(true);
+          thread_stat->atomic_remote_pxn->setFlagClearDataOnOutput(true);
+          thread_stat->stall_cycles_when_ready->setFlagClearDataOnOutput(true);
+          thread_stat->tag_cycles->setFlagClearDataOnOutput(true);
+      }
+      per_phase_comm_thread_stats_.push_back(phase_comm_thread_stats);
+
+      Statistic<uint64_t> *phase_busy_cycles;
+      Statistic<uint64_t> *phase_stall_cycles;
+      std::string subid = "phase_" + std::to_string(phase);
+      phase_busy_cycles = registerStatistic<uint64_t>("phase_busy_cycles", subid);
+      phase_stall_cycles = registerStatistic<uint64_t>("phase_stall_cycles", subid);
+
+      phase_busy_cycles->setFlagResetCountOnOutput(true);
+      phase_stall_cycles->setFlagResetCountOnOutput(true);
+
+      phase_busy_cycles->setFlagClearDataOnOutput(true);
+      phase_stall_cycles->setFlagClearDataOnOutput(true);
+
+      per_phase_busy_cycles_.push_back(phase_busy_cycles);
+      per_phase_stall_cycles_.push_back(phase_stall_cycles);
+    }
 }
 
 /**
@@ -336,11 +405,13 @@ DrvCore::DrvCore(SST::ComponentId_t id, SST::Params& params)
   , core_on_(false)
   , stage_(DrvAPI::stage_t::STAGE_OTHER)
   , phase_(0)
+  , stat_dump_cnt_(0)
   , system_callbacks_(std::make_shared<DrvSystem>(*this)) {
   id_ = params.find<int>("id", 0);
   pod_ = params.find<int>("pod", 0);
   pxn_ = params.find<int>("pxn", 0);
   num_threads_ = params.find<int>("threads", 1);
+  phase_max_ = params.find<int>("phase_max", 1);
   registerAsPrimaryComponent();
   primaryComponentDoNotEndSim();
   configureOutput(params);
@@ -417,8 +488,6 @@ int DrvCore::selectReadyThread() {
     int thread_id = (last_thread_ + t + 1) % numThreads();
     DrvThread *thread = getThread(thread_id);
     auto & state = thread->getAPIThread().getState();
-    DrvAPI::stage_t stage = thread->getAPIThread().getStage();
-    int phase = thread->getAPIThread().getPhase();
 
     if (state->canResume()) {
       if (!selected) {
@@ -426,15 +495,15 @@ int DrvCore::selectReadyThread() {
         selected = true;
         return_thread_id =  thread_id;
       } else {
-        if (stage == DrvAPI::stage_t::STAGE_EXEC_COMP) {
+        if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP) {
           ThreadStat *total_stats = &total_thread_stats_[t];
-          ThreadStat *phase_stats = &(per_phase_comp_thread_stats_[phase][t]);
+          ThreadStat *phase_stats = &(per_phase_comp_thread_stats_[phase_][t]);
           total_stats->stall_cycles_when_ready->addData(1);
           phase_stats->stall_cycles_when_ready->addData(1);
         }
-        else if (stage == DrvAPI::stage_t::STAGE_EXEC_COMM) {
+        else if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
           ThreadStat *total_stats = &total_thread_stats_[t];
-          ThreadStat *phase_stats = &(per_phase_comm_thread_stats_[phase][t]);
+          ThreadStat *phase_stats = &(per_phase_comm_thread_stats_[phase_][t]);
           total_stats->stall_cycles_when_ready->addData(1);
           phase_stats->stall_cycles_when_ready->addData(1);
         }
@@ -469,21 +538,34 @@ void DrvCore::handleThreadStateAfterYield(DrvThread *thread) {
   std::shared_ptr<DrvAPI::DrvAPIThreadState> &state = thread->getAPIThread().getState();
   std::shared_ptr<DrvAPI::DrvAPIMem> mem_req = std::dynamic_pointer_cast<DrvAPI::DrvAPIMem>(state);
 
-  stage_ = thread->getAPIThread().getStage();
-  phase_ = thread->getAPIThread().getPhase();
-  if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP || stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
-    if (phase_ >= static_cast<int>(per_phase_comp_thread_stats_.size())) {
-      int diff = phase_ - static_cast<int>(per_phase_comp_thread_stats_.size()) + 1;
-      for (int i = 0; i < diff; i++) {
-        configurePhaseStatistics();
-      }
-    }
-  }
-
   // handle memory requests
   if (mem_req) {
     // for now; do nothing
     memory_->sendRequest(this, thread, mem_req);
+    return;
+  }
+
+  // handle set stage
+  std::shared_ptr<DrvAPI::DrvAPISetStage> set_stage_req = std::dynamic_pointer_cast<DrvAPI::DrvAPISetStage>(state);
+  if (set_stage_req) {
+    output_->verbose(CALL_INFO, 1, DEBUG_CLK, "setting stage to %d\n", set_stage_req->getStage());
+    stage_ = set_stage_req->getStage();
+    set_stage_req->complete();
+    return;
+  }
+
+  // handle increment phase
+  std::shared_ptr<DrvAPI::DrvAPIIncrementPhase> increment_phase_req = std::dynamic_pointer_cast<DrvAPI::DrvAPIIncrementPhase>(state);
+  if (increment_phase_req) {
+    output_->verbose(CALL_INFO, 1, DEBUG_CLK, "phase increment\n");
+    phase_ = (phase_ + 1) % phase_max_;
+    if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP || stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
+      if (phase_ == 0) {
+        outputPhaseStatistics();
+      }
+    }
+
+    increment_phase_req->complete();
     return;
   }
 
@@ -520,8 +602,7 @@ void DrvCore::updateTagCycles(int times) {
     }
 
     for (auto &drv_thread : threads_) {
-        DrvAPI::stage_t stage = drv_thread.getAPIThread().getStage();
-        if (stage == DrvAPI::stage_t::STAGE_EXEC_COMP || stage == DrvAPI::stage_t::STAGE_EXEC_COMM) {
+        if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP || stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
           int tid = getThreadID(&drv_thread);
           auto &total_thread_stats = total_thread_stats_[tid];
           total_thread_stats.tag_cycles->addDataNTimes(times, drv_thread.getAPIThread().getTag());

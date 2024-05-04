@@ -26,6 +26,7 @@ libdrvapi-sources += $(DRV_DIR)/api/DrvAPIThreadState.cpp
 libdrvapi-sources += $(DRV_DIR)/api/DrvAPIAddressToNative.cpp
 libdrvapi-sources += $(DRV_DIR)/api/DrvAPINativeToAddress.cpp
 libdrvapi-sources += $(DRV_DIR)/api/DrvAPIGlobal.cpp
+libdrvapi-sources += $(DRV_DIR)/api/DrvAPIMemory.cpp
 libdrvapi-objects := $(patsubst %.cpp,%.o,$(libdrvapi-sources))
 libdrvapi-headers := $(DRV_DIR)/api/DrvAPIAddress.hpp
 libdrvapi-headers += $(DRV_DIR)/api/DrvAPIAddressMap.hpp

@@ -92,4 +92,5 @@ ${DBG} sst -n ${HOST_THREADS} \
     --pxn-dram-size=${MAIN_MEMORY_SIZE} \
     --all-stats \
     --stats-load-level=5 \
+    --stats-preallocated-phase=2 \
     ${PROG} $@

@@ -14,12 +14,10 @@ namespace DrvAPI
  *
  */
 template <typename T>
-T read(DrvAPIAddress address, stage_t stage = STAGE_OTHER, int phase = 0)
+T read(DrvAPIAddress address)
 {
     T result{};
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemReadConcrete<T>>(address));
-    DrvAPIThread::current()->setStage(stage);
-    DrvAPIThread::current()->setPhase(phase);
     DrvAPIThread::current()->yield();
     auto read_req = std::dynamic_pointer_cast<DrvAPIMemRead>(DrvAPIThread::current()->getState());
     if (read_req) {
@@ -33,11 +31,9 @@ T read(DrvAPIAddress address, stage_t stage = STAGE_OTHER, int phase = 0)
  *
  */
 template <typename T>
-void write(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER, int phase = 0)
+void write(DrvAPIAddress address, T value)
 {
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemWriteConcrete<T>>(address, value));
-    DrvAPIThread::current()->setStage(stage);
-    DrvAPIThread::current()->setPhase(phase);
     DrvAPIThread::current()->yield();
 }
 
@@ -46,12 +42,10 @@ void write(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER, int phas
  *
  */
 template <typename T>
-T atomic_swap(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER, int phase = 0)
+T atomic_swap(DrvAPIAddress address, T value)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicSWAP>>(address, value));
-    DrvAPIThread::current()->setStage(stage);
-    DrvAPIThread::current()->setPhase(phase);
     DrvAPIThread::current()->yield();
     auto atomic_req = std::dynamic_pointer_cast<DrvAPIMemAtomic>(DrvAPIThread::current()->getState());
     if (atomic_req) {
@@ -64,12 +58,10 @@ T atomic_swap(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER, int p
  * @brief atomic add to a memory address
  */
 template <typename T>
-T atomic_add(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER, int phase = 0)
+T atomic_add(DrvAPIAddress address, T value)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicADD>>(address, value));
-    DrvAPIThread::current()->setStage(stage);
-    DrvAPIThread::current()->setPhase(phase);
     DrvAPIThread::current()->yield();
     auto atomic_req = std::dynamic_pointer_cast<DrvAPIMemAtomic>(DrvAPIThread::current()->getState());
     if (atomic_req) {
@@ -82,12 +74,10 @@ T atomic_add(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER, int ph
  * @brief atomic add to a memory address
  */
 template <typename T>
-T atomic_or(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER, int phase = 0)
+T atomic_or(DrvAPIAddress address, T value)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcrete<T, DrvAPIMemAtomicOR>>(address, value));
-    DrvAPIThread::current()->setStage(stage);
-    DrvAPIThread::current()->setPhase(phase);
     DrvAPIThread::current()->yield();
     auto atomic_req = std::dynamic_pointer_cast<DrvAPIMemAtomic>(DrvAPIThread::current()->getState());
     if (atomic_req) {
@@ -100,12 +90,10 @@ T atomic_or(DrvAPIAddress address, T value, stage_t stage = STAGE_OTHER, int pha
  * @brief atomic compare and swap to a memory address
  */
 template <typename T>
-T atomic_cas(DrvAPIAddress address, T compare, T value, stage_t stage = STAGE_OTHER, int phase = 0)
+T atomic_cas(DrvAPIAddress address, T compare, T value)
 {
     T result = 0;
     DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemAtomicConcreteExt<T, DrvAPIMemAtomicCAS>>(address, value, compare));
-    DrvAPIThread::current()->setStage(stage);
-    DrvAPIThread::current()->setPhase(phase);
     DrvAPIThread::current()->yield();
     auto atomic_req = std::dynamic_pointer_cast<DrvAPIMemAtomic>(DrvAPIThread::current()->getState());
     if (atomic_req) {
@@ -113,6 +101,18 @@ T atomic_cas(DrvAPIAddress address, T compare, T value, stage_t stage = STAGE_OT
     }
     return result;
 }
+
+/**
+ * @brief set the stage
+ *
+ */
+extern void set_stage(stage_t stage);
+
+/**
+ * @brief increment the phase
+ *
+ */
+extern void increment_phase();
 
 /**
  * @brief memory fence

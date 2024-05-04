@@ -61,6 +61,14 @@ StatisticProcessingEngine::stat_outputs_simulation_end()
     }
 }
 
+void
+StatisticProcessingEngine::output_to_stat_file(std::string str)
+{
+    for ( auto& so : m_statOutputs ) {
+        so->outputToStatFile(str);
+    }
+}
+
 
 void
 StatisticProcessingEngine::setup(Simulation_impl* sim, ConfigGraph* graph)
@@ -152,7 +160,6 @@ StatisticProcessingEngine::registerStatisticCore(StatisticBase* stat)
                 stat->getFullStatName().c_str(), group.output->getStatisticOutputName().c_str(),
                 group.output->getStatisticOutputName().c_str());
         }
-/*
         else if ( stat->getRegisteredCollectionMode() != StatisticBase::STAT_MODE_DUMP_AT_END ) {
             m_output.fatal(
                 CALL_INFO, 1,
@@ -160,7 +167,6 @@ StatisticProcessingEngine::registerStatisticCore(StatisticBase* stat)
                 "Stats can only be registered dynamically in DUMP_AT_END mode with no periodic clock",
                 stat->getFullStatName().c_str());
         }
-*/
     }
 
     /* All checks pass.  Add the stat */
@@ -204,6 +210,8 @@ StatisticProcessingEngine::endOfSimulation()
     // Looping all the statistic groups and outputting them
     // will cause all of this code to be executed anyway
     // so really we are double dumping the end-of-time stats
+
+    output_to_stat_file("Simulation End");
 
     // Output the Event based Statistics
     for ( StatisticBase* stat : m_EventStatisticArray ) {

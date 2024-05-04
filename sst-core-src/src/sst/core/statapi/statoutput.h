@@ -72,7 +72,7 @@ public:
 
     virtual void output(StatisticBase* statistic, bool endOfSimFlag) = 0;
 
-    virtual bool supportsDynamicRegistration() const { return true; }
+    virtual bool supportsDynamicRegistration() const { return false; }
 
     /////////////////
     // Methods for Registering Fields (Called by Statistic Objects)
@@ -106,6 +106,9 @@ protected:
     /** Indicate to Statistic Output that simulation has ended.
      * Allows object to perform any shutdown required. */
     virtual void endOfSimulation() = 0;
+
+    /** write to the output stat file */
+    virtual void outputToStatFile(std::string str) = 0;
 
 private:
     // Start / Stop of register Fields

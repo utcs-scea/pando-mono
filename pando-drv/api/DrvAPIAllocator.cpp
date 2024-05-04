@@ -24,14 +24,14 @@ struct global_memory_data {
 DRV_API_REF_CLASS_BEGIN(global_memory_data)
     DRV_API_REF_CLASS_DATA_MEMBER(global_memory_data, base)
     DRV_API_REF_CLASS_DATA_MEMBER(global_memory_data, status)
-    void init(DrvAPIMemoryType type, stage_t stage = STAGE_OTHER, int phase = 0) {
+    void init(DrvAPIMemoryType type) {
         // 1. check if initialized
        int64_t s = status();
        if (s == STATUS_INIT) {
              return;
        }
        // 2. check if I should initialize
-       s = DrvAPI::atomic_cas(&status(), STATUS_UNINIT, STATUS_INIT_IN_PROCESS, stage, phase);
+       s = DrvAPI::atomic_cas(&status(), STATUS_UNINIT, STATUS_INIT_IN_PROCESS);
        if (s == STATUS_UNINIT) {
              DrvAPISection &section = DrvAPI::DrvAPISection::GetSection(type);
              DrvAPIAddress sz = static_cast<DrvAPIAddress>(section.getSize());
@@ -51,10 +51,10 @@ DRV_API_REF_CLASS_BEGIN(global_memory_data)
            s = status();
        }
     }
-    DrvAPIPointer<void> allocate(size_t size, stage_t stage = STAGE_OTHER, int phase = 0) {
+    DrvAPIPointer<void> allocate(size_t size) {
         // size should be 8-byte aligned
         size = (size + 7) & ~7;
-        uint64_t addr = DrvAPI::atomic_add<uint64_t>(&base(), size, stage, phase);
+        uint64_t addr = DrvAPI::atomic_add<uint64_t>(&base(), size);
         return DrvAPIPointer<void>(addr);
     }
 DRV_API_REF_CLASS_END(global_memory_data)

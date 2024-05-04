@@ -46,6 +46,7 @@ public:
       {"id", "ID for the core", "0"},
       {"pod", "Pod ID of this core", "0"},
       {"pxn", "PXN ID of this core", "0"},
+      {"phase_max", "Number of preallocated phases for statistic", "1"},
       {"stack_in_l1sp", "Use modeled memory backing store for stack", "0"},
       {"dram_base", "Base address of DRAM", "0x80000000"},
       {"dram_size", "Size of DRAM", "0x100000000"},
@@ -559,6 +560,13 @@ public:
         performGlobalStatisticOutput();
     }
 
+    void outputPhaseStatistics() {
+        output_->verbose(CALL_INFO, 1, DEBUG_CLK, "writing phase statistics\n");
+        performStatFileOutput("Dump " + std::to_string(stat_dump_cnt_));
+        stat_dump_cnt_++;
+        performGlobalStatisticOutput();
+    }
+
     void addBusyCycleStat(uint64_t cycles) {
         if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP || stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
             total_busy_cycles_->addData(cycles);
@@ -579,10 +587,6 @@ public:
 
     const DrvSysConfig &sysConfig() const {
         return sys_config_;
-    }
-
-    void incrementPhase() {
-        phase_++;
     }
 
 private:
@@ -618,6 +622,7 @@ private:
   Statistic<uint64_t> *total_stall_cycles_; //!< stall cycles
   std::vector<Statistic<uint64_t>*> per_phase_busy_cycles_; //!< busy cycles
   std::vector<Statistic<uint64_t>*> per_phase_stall_cycles_; //!< stall cycles
+  int stat_dump_cnt_; //!< number of statistics dumps
 public:
   DrvMemory* memory_;  //!< the memory hierarchy
   SST::TimeConverter *clocktc_; //!< the clock time converter
@@ -626,6 +631,8 @@ public:
   int pod_; //!< pod id of this core
   int pxn_; // !< pxn id of this core
   int num_threads_; //!< number of threads on this core
+
+  int phase_max_; //!< number of preallocated statistics
 };
 }
 }

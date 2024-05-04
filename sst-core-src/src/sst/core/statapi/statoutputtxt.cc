@@ -145,6 +145,13 @@ StatisticOutputTextBase::endOfSimulation()
     closeFile();
 }
 
+void
+StatisticOutputTextBase::outputToStatFile(std::string str)
+{
+    print("%s", str.c_str());
+    print("\n");
+}
+
 
 void
 StatisticOutputTextBase::implStartOutputEntries(StatisticBase* statistic)

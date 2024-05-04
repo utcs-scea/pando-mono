@@ -507,6 +507,11 @@ protected:
      */
     void performGlobalStatisticOutput();
 
+    /** Writes a string to the stat ouput file
+     * @param str - String to write.
+     */
+    void performStatFileOutput(std::string str);
+
     /** Registers a profiling point.
         This function will register a profiling point.
         @param point Point to resgister

@@ -12,13 +12,6 @@
 namespace DrvAPI
 {
 
-enum stage_t {
-    STAGE_INIT,
-    STAGE_EXEC_COMP,
-    STAGE_EXEC_COMM,
-    STAGE_OTHER
-};
-
 class DrvAPIThread
 {
 public:
@@ -69,34 +62,6 @@ public:
    * @return std::shared_ptr<DrvAPIThreadState>
    */
   std::shared_ptr<DrvAPIThreadState> &getState() { return state_; }
-
-  /**
-   * @brief Set the stage
-   *
-   * @param stage
-   */
-  void setStage(stage_t stage) { stage_ = stage;}
-
-  /**
-   * @brief Get the stage
-   *
-   * @return stage_t
-   */
-  stage_t getStage() { return stage_; }
-
-  /**
-   * @brief Set the phase
-   *
-   * @param phase
-   */
-  void setPhase(int phase) { phase_ = phase;}
-
-  /**
-   * @brief Get the phase
-   *
-   * @return int
-   */
-  int getPhase() { return phase_; }
 
   /**
    * @brief Set the main function
@@ -236,8 +201,6 @@ private:
   std::unique_ptr<coro_t::pull_type> thread_context_; //!< Thread context, coroutine that can be resumed
   coro_t::push_type *main_context_; //!< Main context, can be yielded back to
   std::shared_ptr<DrvAPIThreadState> state_; //!< Thread state
-  stage_t stage_ = STAGE_OTHER; //!< Stage
-  int phase_ = 0; //!< Phase
   drv_api_main_t main_; //!< Main function
   int argc_;
   char **argv_;

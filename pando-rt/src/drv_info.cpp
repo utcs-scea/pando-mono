@@ -1,29 +1,25 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
+#ifdef PANDO_RT_USE_BACKEND_DRVX
 #include "pando-rt/drv_info.hpp"
 
 namespace DrvAPI {
-
-stage_t program_stage = stage_t::STAGE_OTHER;
-
 void setStageInit() {
-  program_stage = stage_t::STAGE_INIT;
+  set_stage(stage_t::STAGE_INIT);
 }
 void setStageExecComp() {
-  program_stage = stage_t::STAGE_EXEC_COMP;
+  set_stage(stage_t::STAGE_EXEC_COMP);
 }
 void setStageExecComm() {
-  program_stage = stage_t::STAGE_EXEC_COMM;
+  set_stage(stage_t::STAGE_EXEC_COMM);
 }
 void setStageOther() {
-  program_stage = stage_t::STAGE_OTHER;
+  set_stage(stage_t::STAGE_OTHER);
 }
-
-int program_phase = 0;
-
-void setPhase(int phase) {
-  program_phase = phase;
+void incrementPhase() {
+  increment_phase();
 }
 
 } // namespace DrvAPI
+#endif // PANDO_RT_USE_BACKEND_DRVX

@@ -826,6 +826,12 @@ BaseComponent::performGlobalStatisticOutput()
     sim_->getStatisticsProcessingEngine()->performGlobalStatisticOutput(false);
 }
 
+void
+BaseComponent::performStatFileOutput(std::string str)
+{
+    sim_->getStatisticsProcessingEngine()->output_to_stat_file(str);
+}
+
 std::vector<Profile::ComponentProfileTool*>
 BaseComponent::getComponentProfileTools(const std::string& point)
 {
