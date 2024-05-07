@@ -187,7 +187,5 @@ if (BUILD_DOCS)
 endif ()
 
 # workflows
-option(BUILD_WORKFLOWS "Build Workflows" OFF)
-if (BUILD_WORKFLOWS)
+option(BUILD_WORKFLOWS "Build Workflows" ON)
 add_subdirectory(workflows)
-endif()

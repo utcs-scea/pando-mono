@@ -28,6 +28,9 @@ public:
   }
   WMDVertex(uint64_t id_, agile::TYPES type_) : id(id_), edges(0), type(type_) {}
   explicit WMDVertex(pando::Array<galois::StringView> tokens) {
+    PANDO_CHECK(this->tokens.initialize(tokens.size()));
+    for (uint64_t i = 0; i < tokens.size(); i++)
+      this->tokens[i] = galois::StringView(galois::StringView(tokens[i]).toArray());
     if (tokens[0] == galois::StringView("Person")) {
       type = agile::TYPES::PERSON;
     } else if (tokens[0] == galois::StringView("ForumEvent")) {
@@ -55,6 +58,7 @@ public:
   uint64_t id;
   uint64_t edges;
   agile::TYPES type;
+  pando::Array<galois::StringView> tokens;
 
   friend bool operator==(const WMDVertex& lhs, const WMDVertex& rhs) noexcept {
     return (lhs.id == rhs.id) && (lhs.edges == rhs.edges) && (lhs.type == rhs.type);
@@ -78,6 +82,9 @@ public:
           agile::TYPES dstType_)
       : src(src_), dst(dst_), type(type_), srcType(srcType_), dstType(dstType_) {}
   explicit WMDEdge(pando::Array<galois::StringView> tokens) {
+    PANDO_CHECK(this->tokens.initialize(tokens.size()));
+    for (uint64_t i = 0; i < tokens.size(); i++)
+      this->tokens[i] = galois::StringView(galois::StringView(tokens[i]).toArray());
     galois::StringView token0(tokens[0]);
     galois::StringView token1(tokens[1]);
     galois::StringView token2(tokens[2]);
@@ -161,6 +168,7 @@ public:
   agile::TYPES type;
   agile::TYPES srcType;
   agile::TYPES dstType;
+  pando::Array<galois::StringView> tokens;
 };
 
 static_assert(graph_checker<DistArrayCSR<WMDVertex, WMDEdge>>::value);
