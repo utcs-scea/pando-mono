@@ -12,7 +12,6 @@
 #include "pando-rt/memory/memory_guard.hpp"
 #include "pando-rt/pando-rt.hpp"
 #include "pando-wf2-galois/exact_pattern.h"
-#include "pando-wf2-galois/graph_ds.h"
 #include "pando-wf2-galois/import_wmd.hpp"
 
 std::string wmdFile() {
@@ -35,10 +34,13 @@ TEST(Init, CP) {
   EXPECT_EQ(place.core, (pando::CoreIndex{-1, -1}));
 }
 
-TEST(Graph, GRAPH_INIT) {
-  pando::GlobalPtr<wf2::exact::Graph> graph_ptr = wf::ImportWMDGraph(wmdFile());
-  wf2::exact::Graph graph = *graph_ptr;
-  EXPECT_EQ(graph.size(), 25);
+TEST(Graph, GRAPH_INIT_POL) {
+  auto place = pando::getCurrentPlace();
+  if (place.node.id == 0) {
+    pando::GlobalPtr<wf2::exact::Graph> graph_ptr = wf::ImportWMDGraph(wmdFile());
+    wf2::exact::Graph graph = *graph_ptr;
+    EXPECT_EQ(graph.size(), 25);
+  }
 }
 
 TEST(WF2_Exact, PURCHASE) {

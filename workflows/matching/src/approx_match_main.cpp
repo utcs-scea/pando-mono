@@ -20,6 +20,10 @@ void printUsageExit(char* argv0) {
 }
 
 int pandoMain(int argc, char** argv) {
+  if (pando::getCurrentPlace().node.id == 0) {
+    galois::HostLocalStorageHeap::HeapInit();
+    galois::PodLocalStorageHeap::HeapInit();
+  }
   uint64_t k = 1;
   const char* data_file = nullptr;
   const char* pattern_file = nullptr;

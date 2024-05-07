@@ -7,6 +7,10 @@
 #include "pando-wf2-galois/partial_pattern.h"
 
 int pandoMain(int argc, char** argv) {
+  if (pando::getCurrentPlace().node.id == 0) {
+    galois::HostLocalStorageHeap::HeapInit();
+    galois::PodLocalStorageHeap::HeapInit();
+  }
   if (argc != 2) {
     PANDO_ABORT("Graph name expected as an argument\n");
   }

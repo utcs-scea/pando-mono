@@ -106,6 +106,7 @@ public:
   }
   WMDVertex(uint64_t id_, agile::TYPES type_) : id(id_), edges(0), type(type_) {}
   explicit WMDVertex(pando::Array<galois::StringView>& tokens) {
+    std::cout << galois::StringView(tokens[0]).get() << "\n";
     if (tokens[0] == galois::StringView("Person")) {
       type = agile::TYPES::PERSON;
       v.person = PersonVertex(tokens);
@@ -122,7 +123,7 @@ public:
       type = agile::TYPES::TOPIC;
       v.topic = TopicVertex(tokens);
     } else {
-      PANDO_ABORT("INVALID VERTEX TYPE");
+      // PANDO_ABORT("INVALID VERTEX TYPE");
     }
     id = lift(tokens[static_cast<std::uint64_t>(type)], galois::StringView::getU64);
     edges = 0;
