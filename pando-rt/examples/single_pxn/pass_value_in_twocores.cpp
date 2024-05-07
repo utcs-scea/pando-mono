@@ -2,6 +2,8 @@
 /* Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. */
 
 #include <cstdio>
+#include <cinttypes>
+
 #include <pando-rt/pando-rt.hpp>
 
 /** @file pass_value_in_twocores.cpp
@@ -18,7 +20,7 @@ constexpr std::int64_t solution{5};
 void readValue(pando::GlobalPtr<std::int64_t> sharedValue) {
   if (*sharedValue == solution) {
     auto thisPlace = pando::getCurrentPlace();
-    std::printf("[node %i, pod x=%i,y=%i, core x=%i,y=%i] read value: %li\n", thisPlace.node.id,
+    std::printf("[node %" PRId64 ", pod x=%i,y=%i, core x=%i,y=%i] read value: %li\n", thisPlace.node.id,
                 thisPlace.pod.x, thisPlace.pod.y, thisPlace.core.x, thisPlace.core.y,
                 static_cast<std::int64_t>(*sharedValue));
   }
@@ -46,7 +48,7 @@ void incrementValue(pando::GlobalPtr<std::int64_t> sharedValue) {
 
 int pandoMain(int, char**) {
   const auto placeDims = pando::getPlaceDims();
-  std::printf("Configuration (nodes, pods, cores): (%i), (%i,%i), (%i,%i)\n", placeDims.node.id,
+  std::printf("Configuration (nodes, pods, cores): (%li), (%i,%i), (%i,%i)\n", placeDims.node.id,
               placeDims.pod.x, placeDims.pod.y, placeDims.core.x, placeDims.core.y);
 
   if (placeDims.core.x == 0 || placeDims.core.y == 0) {

@@ -58,7 +58,7 @@ inline MemoryType extractMemoryType(GlobalAddress addr) noexcept {
  */
 inline NodeIndex extractNodeIndex(GlobalAddress addr) noexcept {
 #if defined(PANDO_RT_USE_BACKEND_PREP)
-  return NodeIndex{std::int16_t(readBits(addr, addressMap.main.nodeIndex))};
+  return NodeIndex{std::int64_t(readBits(addr, addressMap.main.nodeIndex))};
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
   DrvAPI::DrvAPIVAddress vaddr = addr;
   return NodeIndex(vaddr.pxn());

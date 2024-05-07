@@ -2,6 +2,8 @@
 /* Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. */
 
 #include <cstdio>
+#include <cinttypes>
+
 #include <pando-rt/pando-rt.hpp>
 
 void greetings(int level) {
@@ -15,7 +17,7 @@ void greetings(int level) {
     PANDO_CHECK(pando::executeOn(otherPlace, &greetings, level + 1));
   }
 
-  std::printf("%s/%i: Hello from node %i, pod x=%i,y=%i, core x=%i,y=%i\n", __func__, level,
+  std::printf("%s/%i: Hello from node %" PRId64 ", pod x=%i,y=%i, core x=%i,y=%i\n", __func__, level,
               thisPlace.node.id, thisPlace.pod.x, thisPlace.pod.y, thisPlace.core.x,
               thisPlace.core.y);
 }
@@ -30,14 +32,14 @@ void nodeGreetings(int level) {
     PANDO_CHECK(
         pando::executeOn(pando::Place{rightNode, {}, pando::anyCore}, &nodeGreetings, level + 1));
   }
-  std::printf("%s/%i: Hello from node %i, pod x=%i,y=%i, core x=%i,y=%i\n", __func__, level,
+  std::printf("%s/%i: Hello from node %" PRId64 ", pod x=%i,y=%i, core x=%i,y=%i\n", __func__, level,
               thisPlace.node.id, thisPlace.pod.x, thisPlace.pod.y, thisPlace.core.x,
               thisPlace.core.y);
 }
 
 int pandoMain(int, char**) {
   const auto placeDims = pando::getPlaceDims();
-  std::printf("Configuration (nodes, pods, cores): (%i), (%i,%i), (%i,%i)\n", placeDims.node.id,
+  std::printf("Configuration (nodes, pods, cores): (%" PRId64 "), (%i,%i), (%i,%i)\n", placeDims.node.id,
               placeDims.pod.x, placeDims.pod.y, placeDims.core.x, placeDims.core.y);
 
   const auto thisPlace = pando::getCurrentPlace();

@@ -2,6 +2,8 @@
 /* Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. */
 
 #include <cstdio>
+#include <cinttypes>
+
 #include <pando-rt/pando-rt.hpp>
 
 // Prints information (macro to avoid extra stack)
@@ -9,7 +11,7 @@
   do {                                                                                             \
     const auto stackUsage = pando::getThreadStackSize() - pando::getThreadAvailableStack();        \
     std::printf(                                                                                   \
-        "%s: Node %i, pod x=%i,y=%i, core x=%i,y=%i, total stack(bytes): %lu, used stack(bytes): " \
+        "%s: Node %" PRId64 ", pod x=%i,y=%i, core x=%i,y=%i, total stack(bytes): %lu, used stack(bytes): " \
         "%lu, available stack(bytes): %lu\n",                                                      \
         (message), (place).node.id, (place).pod.x, (place).pod.y, (place).core.x, (place).core.y,  \
         pando::getThreadStackSize(), stackUsage, pando::getThreadAvailableStack());                \
@@ -48,7 +50,7 @@ int pandoMain(int, char**) {
   const auto& thisPlace = pando::getCurrentPlace();
   const auto& placeDims = pando::getPlaceDims();
   if (thisPlace.node == pando::NodeIndex(0)) {
-    std::printf("Configuration (nodes, pods, cores): (%i), (%i,%i), (%i,%i)\n", placeDims.node.id,
+    std::printf("Configuration (nodes, pods, cores): (%" PRId64 "), (%i,%i), (%i,%i)\n", placeDims.node.id,
                 placeDims.pod.x, placeDims.pod.y, placeDims.core.x, placeDims.core.y);
   }
 

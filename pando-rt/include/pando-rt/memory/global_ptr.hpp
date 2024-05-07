@@ -18,6 +18,8 @@
 #include "DrvAPIMemory.hpp"
 #endif // PANDO_RT_USE_BACKEND_DRVX
 
+extern std::array<std::int64_t, 66> counts;
+
 namespace pando {
 
 namespace detail {

@@ -169,7 +169,7 @@ void correctnessCheck(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>> output,
     for (std::int32_t c = 0; c < numCoresPerNode; ++c) {
       std::int16_t ownerPXN = (c % placeDims.node.id);
       if (localArray[c] != std::int64_t{ownerPXN * (placeDims.node.id - 1) + 1}) {
-        std::printf("%i %i %li\n", pando::getCurrentPlace().node.id, c, (int64_t)localArray[c]);
+        std::printf("%li %i %li\n", pando::getCurrentPlace().node.id, c, (int64_t)localArray[c]);
         check_correctness = false;
       }
     }
@@ -183,7 +183,7 @@ void correctnessCheck(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>> output,
 
 int pandoMain(int, char**) {
   const auto placeDims = pando::getPlaceDims();
-  std::printf("Configuration (nodes, pods, cores): (%i), (%i,%i), (%i,%i).\n", placeDims.node.id,
+  std::printf("Configuration (nodes, pods, cores): (%li), (%i,%i), (%i,%i).\n", placeDims.node.id,
               placeDims.pod.x, placeDims.pod.y, placeDims.core.x, placeDims.core.y);
 
   if (placeDims.core.x == 0 || placeDims.core.y == 0) {

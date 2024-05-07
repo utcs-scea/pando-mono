@@ -3,6 +3,9 @@
 
 #include "start.hpp"
 
+#include <sys/resource.h>
+#include <sys/time.h>
+#include <chrono>
 #include <random>
 #include <utility>
 
@@ -12,6 +15,7 @@
 #include "pando-rt/status.hpp"
 #include "pando-rt/stdlib.hpp"
 #include "pando-rt/pando-rt.hpp"
+#include "spdlog/spdlog.h"
 
 #ifdef PANDO_RT_USE_BACKEND_PREP
 #include "prep/cores.hpp"
@@ -22,6 +26,7 @@
 #endif
 
 constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 4096;
+std::array<std::int64_t,66> counts;
 
 enum SchedulerFailState{
   YIELD,
@@ -35,9 +40,19 @@ extern "C" int __start(int argc, char** argv) {
 
   pando::initialize();
 
+
+  struct rusage start, end;
+
   if (pando::isOnCP()) {
+    for(std::uint64_t i = 0; i < counts.size(); i++) {
+      counts[i] = 0;
+    }
+    auto rc = getrusage(RUSAGE_SELF, &start);
+    if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
     // invokes user's main function (pandoMain)
     result = pandoMain(argc, argv);
+    rc = getrusage(RUSAGE_SELF, &end);
+    if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
   } else {
     auto* queue = pando::Cores::getTaskQueue(thisPlace);
     auto coreActive = pando::Cores::getCoreActiveFlag();
@@ -113,7 +128,18 @@ extern "C" int __start(int argc, char** argv) {
     }
   }
 
-  pando::finalize();
+  if(pando::isOnCP()) {
+    SPDLOG_CRITICAL("Total time on node: {}, was {}ns",
+        thisPlace.node.id,
+        end.ru_utime.tv_sec * 1000000000 + end.ru_utime.tv_usec * 1000 -
+        (start.ru_utime.tv_sec * 1000000000 + start.ru_utime.tv_usec * 1000));
+  }
 
+  if(pando::isOnCP() || pando::getCurrentThread().id == 0) {
+    SPDLOG_CRITICAL("Pointer time on node: {}, core: {} was {}",
+        thisPlace.node.id,
+        thisPlace.core.x,
+        counts[pando::isOnCP() ? coreDims.x  + 1 : thisPlace.core.x]);
+  }
   return result;
 }

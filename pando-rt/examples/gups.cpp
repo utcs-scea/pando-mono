@@ -3,6 +3,8 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cinttypes>
+
 #include <pando-rt/pando-rt.hpp>
 
 /** @file gups.cpp
@@ -38,7 +40,7 @@ int pandoMain(int argc, char** argv) {
 
   const auto thisPlace = pando::getCurrentPlace();
   const auto placeDims = pando::getPlaceDims();
-  std::printf("Configuration (nodes, pods, cores): (%i), (%i,%i), (%i,%i)\n", placeDims.node.id,
+  std::printf("Configuration (nodes, pods, cores): (%" PRId64 "), (%i,%i), (%i,%i)\n", placeDims.node.id,
               placeDims.pod.x, placeDims.pod.y, placeDims.core.x, placeDims.core.y);
 
   const auto tableByteCount = tableSize * sizeof(std::int64_t);
