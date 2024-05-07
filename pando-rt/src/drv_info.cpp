@@ -3,22 +3,58 @@
 
 #ifdef PANDO_RT_USE_BACKEND_DRVX
 #include "pando-rt/drv_info.hpp"
+#include <pando-rt/pando-rt.hpp>
 
 namespace DrvAPI {
 void setStageInit() {
-  set_stage(stage_t::STAGE_INIT);
+  auto func = +[]() {
+    set_stage(stage_t::STAGE_INIT);
+  };
+  for (std::int16_t nodeId = 0; nodeId < pando::getPlaceDims().node.id; nodeId++) {
+    PANDO_CHECK(
+        pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
+                          func));
+  }
 }
 void setStageExecComp() {
-  set_stage(stage_t::STAGE_EXEC_COMP);
+  auto func = +[]() {
+    set_stage(stage_t::STAGE_EXEC_COMP);
+  };
+  for (std::int16_t nodeId = 0; nodeId < pando::getPlaceDims().node.id; nodeId++) {
+    PANDO_CHECK(
+        pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
+                          func));
+  }
 }
 void setStageExecComm() {
-  set_stage(stage_t::STAGE_EXEC_COMM);
+  auto func = +[]() {
+    set_stage(stage_t::STAGE_EXEC_COMM);
+  };
+  for (std::int16_t nodeId = 0; nodeId < pando::getPlaceDims().node.id; nodeId++) {
+    PANDO_CHECK(
+        pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
+                          func));
+  }
 }
 void setStageOther() {
-  set_stage(stage_t::STAGE_OTHER);
+  auto func = +[]() {
+    set_stage(stage_t::STAGE_OTHER);
+  };
+  for (std::int16_t nodeId = 0; nodeId < pando::getPlaceDims().node.id; nodeId++) {
+    PANDO_CHECK(
+        pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
+                          func));
+  }
 }
 void incrementPhase() {
-  increment_phase();
+  auto func = +[]() {
+    increment_phase();
+  };
+  for (std::int16_t nodeId = 0; nodeId < pando::getPlaceDims().node.id; nodeId++) {
+    PANDO_CHECK(
+        pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
+                          func));
+  }
 }
 
 } // namespace DrvAPI
