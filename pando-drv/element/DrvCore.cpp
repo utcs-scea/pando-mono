@@ -559,9 +559,13 @@ void DrvCore::handleThreadStateAfterYield(DrvThread *thread) {
   if (increment_phase_req) {
     output_->verbose(CALL_INFO, 1, DEBUG_CLK, "phase increment\n");
     phase_ = (phase_ + 1) % phase_max_;
-    if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP || stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
-      if (phase_ == 0) {
-        outputPhaseStatistics();
+
+    // only one command processor outputs phase statistic
+    if (pxn_ == 0 && pod_ == 0 && id_ == -1) {
+      if (stage_ == DrvAPI::stage_t::STAGE_EXEC_COMP || stage_ == DrvAPI::stage_t::STAGE_EXEC_COMM) {
+        if (phase_ == 0) {
+          outputPhaseStatistics();
+        }
       }
     }
 
