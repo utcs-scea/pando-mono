@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "export.h"
-#include <pando-lib-galois/utility/agile_schema.hpp>
+#include <pando-lib-galois/graphs/wmd_graph.hpp>
 #include <pando-lib-galois/utility/gptr_monad.hpp>
 #include <pando-lib-galois/utility/string_view.hpp>
 #include <pando-rt/containers/vector.hpp>
@@ -28,7 +28,7 @@ public:
     trans_date = 0;
   }
 
-  explicit PersonVertex(pando::Vector<galois::StringView>&) {}
+  explicit PersonVertex(pando::Array<galois::StringView>&) {}
 };
 
 class ForumEventVertex {
@@ -41,7 +41,7 @@ public:
     date = 0;
   }
 
-  explicit ForumEventVertex(pando::Vector<galois::StringView>& tokens) {
+  explicit ForumEventVertex(pando::Array<galois::StringView>& tokens) {
     forum = galois::StringView(tokens[3]).getU64();
     date = galois::StringView(tokens[7]).getUSDate();
   }
@@ -51,7 +51,7 @@ class ForumVertex {
 public:
   ForumVertex() {}
 
-  explicit ForumVertex(pando::Vector<galois::StringView>&) {}
+  explicit ForumVertex(pando::Array<galois::StringView>&) {}
 };
 
 class PublicationVertex {
@@ -62,7 +62,7 @@ public:
     date = 0;
   }
 
-  explicit PublicationVertex(pando::Vector<galois::StringView>& tokens) {
+  explicit PublicationVertex(pando::Array<galois::StringView>& tokens) {
     date = galois::StringView(tokens[7]).getUSDate();
   }
 };
@@ -77,7 +77,7 @@ public:
     lon = 0.0;
   }
 
-  explicit TopicVertex(pando::Vector<galois::StringView>& tokens) {
+  explicit TopicVertex(pando::Array<galois::StringView>& tokens) {
     lat = galois::StringView(tokens[8]).getDouble();
     lon = galois::StringView(tokens[9]).getDouble();
   }
@@ -105,7 +105,7 @@ public:
     type = agile::TYPES::NONE;
   }
   WMDVertex(uint64_t id_, agile::TYPES type_) : id(id_), edges(0), type(type_) {}
-  explicit WMDVertex(pando::Vector<galois::StringView>& tokens) {
+  explicit WMDVertex(pando::Array<galois::StringView>& tokens) {
     if (tokens[0] == galois::StringView("Person")) {
       type = agile::TYPES::PERSON;
       v.person = PersonVertex(tokens);
@@ -135,6 +135,8 @@ public:
   constexpr WMDVertex& operator=(const WMDVertex&) noexcept = default;
   constexpr WMDVertex& operator=(WMDVertex&&) noexcept = default;
 
+  explicit WMDVertex(galois::WMDVertex& galoisWMDVertex) : WMDVertex(galoisWMDVertex.tokens) {}
+
   uint64_t id;
   uint64_t edges;
   agile::TYPES type;
@@ -163,7 +165,7 @@ public:
     date = 0;
   }
 
-  explicit SaleEdge(pando::Vector<galois::StringView>& tokens) {
+  explicit SaleEdge(pando::Array<galois::StringView>& tokens) {
     seller = galois::StringView(tokens[1]).getU64();
     buyer = galois::StringView(tokens[2]).getU64();
     product = galois::StringView(tokens[6]).getU64();
@@ -181,7 +183,7 @@ public:
     item = 0;
   }
 
-  explicit AuthorEdge(pando::Vector<galois::StringView>& tokens) {
+  explicit AuthorEdge(pando::Array<galois::StringView>& tokens) {
     if (!galois::StringView(tokens[3]).empty()) {
       author = galois::StringView(tokens[1]).getU64();
       item = galois::StringView(tokens[3]).getU64();
@@ -205,7 +207,7 @@ public:
     forum_event = 0;
   }
 
-  explicit IncludesEdge(pando::Vector<galois::StringView>& tokens) {
+  explicit IncludesEdge(pando::Array<galois::StringView>& tokens) {
     forum = galois::StringView(tokens[3]).getU64();
     forum_event = galois::StringView(tokens[4]).getU64();
   }
@@ -221,7 +223,7 @@ public:
     topic = 0;
   }
 
-  explicit HasTopicEdge(pando::Vector<galois::StringView>& tokens) {
+  explicit HasTopicEdge(pando::Array<galois::StringView>& tokens) {
     if (!galois::StringView(tokens[3]).empty()) {
       item = galois::StringView(tokens[3]).getU64();
       topic = galois::StringView(tokens[6]).getU64();
@@ -245,7 +247,7 @@ public:
     organization = 0;
   }
 
-  explicit HasOrgEdge(pando::Vector<galois::StringView>& tokens) {
+  explicit HasOrgEdge(pando::Array<galois::StringView>& tokens) {
     publication = galois::StringView(tokens[5]).getU64();
     organization = galois::StringView(tokens[6]).getU64();
   }
@@ -275,7 +277,7 @@ public:
   WMDEdge(uint64_t src_, uint64_t dst_, agile::TYPES type_, agile::TYPES srcType_,
           agile::TYPES dstType_)
       : src(src_), dst(dst_), type(type_), srcType(srcType_), dstType(dstType_) {}
-  explicit WMDEdge(pando::Vector<galois::StringView>& tokens) {
+  explicit WMDEdge(pando::Array<galois::StringView>& tokens) {
     galois::StringView token0(tokens[0]);
     galois::StringView token1(tokens[1]);
     galois::StringView token2(tokens[2]);
@@ -284,62 +286,15 @@ public:
     galois::StringView token5(tokens[5]);
     galois::StringView token6(tokens[6]);
     if (tokens[0] == galois::StringView("Sale")) {
-      src = token1.getU64();
-      dst = token2.getU64();
-      type = agile::TYPES::SALE;
-      srcType = agile::TYPES::PERSON;
-      dstType = agile::TYPES::PERSON;
       e.sale = SaleEdge(tokens);
     } else if (tokens[0] == galois::StringView("Author")) {
-      src = token1.getU64();
-      type = agile::TYPES::AUTHOR;
-      srcType = agile::TYPES::PERSON;
-      if (!token3.empty()) {
-        dst = token3.getU64();
-        dstType = agile::TYPES::FORUM;
-      } else if (!token4.empty()) {
-        dst = token4.getU64();
-        dstType = agile::TYPES::FORUMEVENT;
-      } else if (!token5.empty()) {
-        dst = token5.getU64();
-        dstType = agile::TYPES::PUBLICATION;
-      }
       e.author = AuthorEdge(tokens);
     } else if (tokens[0] == galois::StringView("Includes")) {
-      src = token3.getU64();
-      dst = token4.getU64();
-      type = agile::TYPES::INCLUDES;
-      srcType = agile::TYPES::FORUM;
-      dstType = agile::TYPES::FORUMEVENT;
       e.includes = IncludesEdge(tokens);
     } else if (tokens[0] == galois::StringView("HasTopic")) {
-      dst = token6.getU64();
-      type = agile::TYPES::HASTOPIC;
-      dstType = agile::TYPES::TOPIC;
-      if (!token3.empty()) {
-        src = token3.getU64();
-        srcType = agile::TYPES::FORUM;
-      } else if (!token4.empty()) {
-        src = token4.getU64();
-        srcType = agile::TYPES::FORUMEVENT;
-      } else if (!token5.empty()) {
-        src = token5.getU64();
-        srcType = agile::TYPES::PUBLICATION;
-      }
       e.has_topic = HasTopicEdge(tokens);
     } else if (tokens[0] == galois::StringView("HasOrg")) {
-      src = token5.getU64();
-      dst = token6.getU64();
-      type = agile::TYPES::HASORG;
-      srcType = agile::TYPES::PUBLICATION;
-      dstType = agile::TYPES::TOPIC;
       e.has_org = HasOrgEdge(tokens);
-    } else {
-      src = token0.getU64();
-      dst = token1.getU64();
-      type = agile::TYPES::NONE;
-      srcType = agile::TYPES::NONE;
-      dstType = agile::TYPES::NONE;
     }
   }
 
@@ -355,6 +310,14 @@ public:
   constexpr WMDEdge(WMDEdge&&) noexcept = default;
   constexpr WMDEdge(const WMDEdge&) noexcept = default;
   ~WMDEdge() = default;
+
+  explicit WMDEdge(galois::WMDEdge galoisWMDEdge) : WMDEdge(galoisWMDEdge.tokens) {
+    this->src = galoisWMDEdge.src;
+    this->dst = galoisWMDEdge.dst;
+    this->srcType = galoisWMDEdge.srcType;
+    this->dstType = galoisWMDEdge.dstType;
+    this->type = galoisWMDEdge.type;
+  }
 
   constexpr WMDEdge& operator=(const WMDEdge&) noexcept = default;
   constexpr WMDEdge& operator=(WMDEdge&&) noexcept = default;

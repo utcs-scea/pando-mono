@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG == 0
 #define DBG_PRINT(x)
 #else
@@ -13,6 +13,7 @@
 
 #include "pando-wf2-galois/exact_pattern.h"
 #include <pando-lib-galois/containers/hashtable.hpp>
+#include <pando-lib-galois/import/ingest_wmd_csv.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
@@ -29,8 +30,7 @@ pando::GlobalPtr<WMDGraph> ImportWMDGraph(std::string& filename) {
   WMDGraph graph;
   pando::GlobalPtr<WMDGraph> graph_ptr = static_cast<decltype(graph_ptr)>(
       pando::getDefaultMainMemoryResource()->allocate(sizeof(WMDGraph)));
-  // bool isEdgeList = false;
-  // PANDO_CHECK(graph_ptr->initializeWMD(filename_arr, isEdgeList));
+  *graph_ptr = galois::initializeWMDDLCSR<wf2::exact::Vertex, wf2::exact::Edge>(filename_arr);
 
   return graph_ptr;
 }
@@ -190,6 +190,7 @@ void purchaseMatch(PurchaseState& state, Graph::VertexTopologyID lid) {
       Graph::VertexTopologyID dst = graph.getEdgeDst(eh);
       if (edge.type == agile::TYPES::PURCHASE && edge.e.sale.product == 271997) {
         latest_pc = std::max(latest_pc, edge.e.sale.date);
+        std::cout << "here\n";
       }
       if (edge.type == agile::TYPES::PURCHASE && edge.e.sale.product == 2869238) {
         latest_bb = std::max(latest_bb, edge.e.sale.date);
@@ -347,6 +348,7 @@ void forumFE2BMatch(ForumState& state, Graph::EdgeHandle eh) {
     if (williamsburg && explosion && bomb) {
       pando::GlobalRef<bool> two_b_ref = state.two_b[graph.getVertexIndex(lid)];
       two_b_ref = true;
+      DBG_PRINT("Subpattern: 2b");
     }
   }
 }

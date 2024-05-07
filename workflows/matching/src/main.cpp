@@ -6,9 +6,14 @@
 #include "pando-wf2-galois/import_wmd.hpp"
 
 int pandoMain(int argc, char** argv) {
+  if (pando::getCurrentPlace().node.id == 0) {
+    galois::HostLocalStorageHeap::HeapInit();
+    galois::PodLocalStorageHeap::HeapInit();
+  }
   if (argc != 2) {
     PANDO_ABORT("Graph name expected as an argument\n");
   }
+
   std::string filename(argv[1]);
 
   auto place = pando::getCurrentPlace();

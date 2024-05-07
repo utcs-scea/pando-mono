@@ -15,6 +15,7 @@
 #include "pando-rt/pando-rt.hpp"
 #include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/graphs/wmd_graph.hpp>
+#include <pando-lib-galois/import/ingest_wmd_csv.hpp>
 #include <pando-lib-galois/import/wmd_graph_importer.hpp>
 #include <pando-lib-galois/utility/agile_schema.hpp>
 
@@ -45,8 +46,7 @@ pando::GlobalPtr<WMDGraph> ImportWMDGraph(std::string filename) {
   WMDGraph graph;
   pando::GlobalPtr<WMDGraph> graph_ptr = static_cast<decltype(graph_ptr)>(
       pando::getDefaultMainMemoryResource()->allocate(sizeof(WMDGraph)));
-  // bool isEdgeList = false;
-  // PANDO_CHECK(graph_ptr->initializeWMD(filename_arr, isEdgeList));
+  *graph_ptr = galois::initializeWMDDLCSR<wf::WMDVertex, wf::WMDEdge>(filename_arr);
 
   return graph_ptr;
 }
