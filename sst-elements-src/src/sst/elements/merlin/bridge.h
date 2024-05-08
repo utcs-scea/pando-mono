@@ -226,6 +226,12 @@ private:
 
         nic.stat_recv = registerStatistic<uint64_t>("pkts_received_net" + std::to_string(id));
         nic.stat_send = registerStatistic<uint64_t>("pkts_sent_net" + std::to_string(id));
+
+        nic.stat_recv->setFlagResetCountOnOutput(true);
+        nic.stat_send->setFlagResetCountOnOutput(true);
+
+        nic.stat_recv->setFlagClearDataOnOutput(true);
+        nic.stat_send->setFlagClearDataOnOutput(true);
     }
 
     bool handleIncoming(int vn, uint8_t id)

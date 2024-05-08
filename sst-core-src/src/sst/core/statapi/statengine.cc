@@ -211,7 +211,7 @@ StatisticProcessingEngine::endOfSimulation()
     // will cause all of this code to be executed anyway
     // so really we are double dumping the end-of-time stats
 
-    output_to_stat_file("Simulation End");
+    output_to_stat_file("Dump,Last");
 
     // Output the Event based Statistics
     for ( StatisticBase* stat : m_EventStatisticArray ) {

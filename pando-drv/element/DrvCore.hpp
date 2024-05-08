@@ -562,7 +562,7 @@ public:
 
     void outputPhaseStatistics() {
         output_->verbose(CALL_INFO, 1, DEBUG_CLK, "writing phase statistics\n");
-        performStatFileOutput("Dump " + std::to_string(stat_dump_cnt_));
+        performStatFileOutput("Dump," + std::to_string(stat_dump_cnt_));
         stat_dump_cnt_++;
         performGlobalStatisticOutput();
     }

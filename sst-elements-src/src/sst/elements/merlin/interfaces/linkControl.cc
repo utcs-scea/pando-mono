@@ -149,6 +149,18 @@ LinkControl::LinkControl(ComponentId_t cid, Params &params, int vns) :
     output_port_stalls = registerStatistic<uint64_t>("output_port_stalls");
     idle_time = registerStatistic<uint64_t>("idle_time");
 
+    packet_latency->setFlagResetCountOnOutput(true);
+    send_bit_count->setFlagResetCountOnOutput(true);
+    recv_bit_count->setFlagResetCountOnOutput(true);
+    output_port_stalls->setFlagResetCountOnOutput(true);
+    idle_time->setFlagResetCountOnOutput(true);
+
+    packet_latency->setFlagClearDataOnOutput(true);
+    send_bit_count->setFlagClearDataOnOutput(true);
+    recv_bit_count->setFlagClearDataOnOutput(true);
+    output_port_stalls->setFlagClearDataOnOutput(true);
+    idle_time->setFlagClearDataOnOutput(true);
+
     last_time = 0;
     last_recv_time = 0;
 }

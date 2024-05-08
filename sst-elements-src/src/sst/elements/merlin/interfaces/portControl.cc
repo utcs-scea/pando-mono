@@ -412,6 +412,22 @@ PortControl::PortControl(ComponentId_t cid, Params& params,  Router* rif, int rt
     idle_time = registerStatistic<uint64_t>("idle_time", port_name);
     width_adj_count = registerStatistic<uint64_t>("width_adj_count", port_name);
 
+    send_bit_count->setFlagResetCountOnOutput(true);
+    recv_bit_count->setFlagResetCountOnOutput(true);
+    send_packet_count->setFlagResetCountOnOutput(true);
+    recv_packet_count->setFlagResetCountOnOutput(true);
+    output_port_stalls->setFlagResetCountOnOutput(true);
+    idle_time->setFlagResetCountOnOutput(true);
+    width_adj_count->setFlagResetCountOnOutput(true);
+
+    send_bit_count->setFlagClearDataOnOutput(true);
+    recv_bit_count->setFlagClearDataOnOutput(true);
+    send_packet_count->setFlagClearDataOnOutput(true);
+    recv_packet_count->setFlagClearDataOnOutput(true);
+    output_port_stalls->setFlagClearDataOnOutput(true);
+    idle_time->setFlagClearDataOnOutput(true);
+    width_adj_count->setFlagClearDataOnOutput(true);
+
 	// set the SAI metrics to 0
 	stalled = 0;
 	active = 0;

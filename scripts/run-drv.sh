@@ -90,7 +90,7 @@ ${DBG} sst -n ${HOST_THREADS} \
     --core-threads=${HARTS} \
     --drvx-stack-in-l1sp \
     --pxn-dram-size=${MAIN_MEMORY_SIZE} \
-    --all-stats \
+    --perf-stats \
     --stats-load-level=5 \
-    --stats-preallocated-phase=2 \
+    --stats-preallocated-phase=64 \
     ${PROG} $@
