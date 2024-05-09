@@ -75,9 +75,9 @@ public:
     SST_ELI_DOCUMENT_STATISTICS(
         { "packet_latency",     "Histogram of latencies for received packets", "latency", 1},
         { "send_bit_count",     "Count number of bits sent on link", "bits", 1},
+        { "recv_bit_count",     "Count number of bits received on link", "bits", 1},
         { "output_port_stalls", "Time output port is stalled (in units of core timebase)", "time in stalls", 1},
         { "idle_time",          "Number of (in unites of core timebas) that port was idle", "time spent idle", 1},
-        // { "recv_bit_count",     "Count number of bits received on the link", "bits", 1},
     )
 
     SST_ELI_DOCUMENT_PORTS(
@@ -208,9 +208,9 @@ private:
     // Statistics
     Statistic<uint64_t>* packet_latency;
     Statistic<uint64_t>* send_bit_count;
+    Statistic<uint64_t>* recv_bit_count;
     Statistic<uint64_t>* output_port_stalls;
     Statistic<uint64_t>* idle_time;
-    Statistic<uint64_t>* recv_bit_count;
 
     RtrInitEvent* checkInitProtocol(Event* ev, RtrInitEvent::Commands command, uint32_t line, const char* file, const char* func);
 

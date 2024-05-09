@@ -120,6 +120,12 @@ StatisticOutputJSON::endOfSimulation()
 }
 
 void
+StatisticOutputJSON::outputToStatFile(std::string str)
+{
+    fprintf(m_hFile, str.c_str(), "\n");
+}
+
+void
 StatisticOutputJSON::implStartOutputEntries(StatisticBase* statistic)
 {
     if ( m_currentComponentName != statistic->getCompName() ) {

@@ -73,7 +73,9 @@ public:
 
     SST_ELI_DOCUMENT_STATISTICS(
         { "send_bit_count",     "Count number of bits sent on link", "bits", 1},
+        { "recv_bit_count",     "Count number of bits received on link", "bits", 1},
         { "send_packet_count",  "Count number of packets sent on link", "packets", 1},
+        { "recv_packet_count",  "Count number of packets received on link", "packets", 1},
         { "output_port_stalls", "Time output port is stalled (in units of core timebase)", "time in stalls", 1},
         { "xbar_stalls",        "Count number of cycles the xbar is stalled", "cycles", 1},
         { "idle_time",          "Amount of time spent idle for a given port", "units of core timebase", 1},

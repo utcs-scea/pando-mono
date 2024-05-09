@@ -58,6 +58,9 @@ protected:
      */
     void endOfSimulation() override;
 
+    /** write to the output stat file */
+    void outputToStatFile(std::string str) override;
+
     /** Implementation function for the start of output.
      * This will be called by the Statistic Processing Engine to indicate that
      * a Statistic is about to send data to the Statistic Output for processing.

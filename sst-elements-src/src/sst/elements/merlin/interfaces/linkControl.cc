@@ -145,9 +145,21 @@ LinkControl::LinkControl(ComponentId_t cid, Params &params, int vns) :
     // Register statistics
     packet_latency = registerStatistic<uint64_t>("packet_latency");
     send_bit_count = registerStatistic<uint64_t>("send_bit_count");
+    recv_bit_count = registerStatistic<uint64_t>("recv_bit_count");
     output_port_stalls = registerStatistic<uint64_t>("output_port_stalls");
     idle_time = registerStatistic<uint64_t>("idle_time");
-    // recv_bit_count = registerStatistic<uint64_t>("recv_bit_count");
+
+    packet_latency->setFlagResetCountOnOutput(true);
+    send_bit_count->setFlagResetCountOnOutput(true);
+    recv_bit_count->setFlagResetCountOnOutput(true);
+    output_port_stalls->setFlagResetCountOnOutput(true);
+    idle_time->setFlagResetCountOnOutput(true);
+
+    packet_latency->setFlagClearDataOnOutput(true);
+    send_bit_count->setFlagClearDataOnOutput(true);
+    recv_bit_count->setFlagClearDataOnOutput(true);
+    output_port_stalls->setFlagClearDataOnOutput(true);
+    idle_time->setFlagClearDataOnOutput(true);
 
     last_time = 0;
     last_recv_time = 0;
@@ -616,7 +628,7 @@ void LinkControl::handle_input(Event* ev)
         }
 
         SimTime_t lat = getCurrentSimTimeNano() - event->getInjectionTime();
-        // recv_bit_count->addData(event->getSizeInBits());
+        recv_bit_count->addData(event->getSizeInBits());
         packet_latency->addData(lat);
         if ( receiveFunctor != nullptr ) {
             bool keep = (*receiveFunctor)(vn);

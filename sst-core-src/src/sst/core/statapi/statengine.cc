@@ -61,6 +61,14 @@ StatisticProcessingEngine::stat_outputs_simulation_end()
     }
 }
 
+void
+StatisticProcessingEngine::output_to_stat_file(std::string str)
+{
+    for ( auto& so : m_statOutputs ) {
+        so->outputToStatFile(str);
+    }
+}
+
 
 void
 StatisticProcessingEngine::setup(Simulation_impl* sim, ConfigGraph* graph)
@@ -202,6 +210,8 @@ StatisticProcessingEngine::endOfSimulation()
     // Looping all the statistic groups and outputting them
     // will cause all of this code to be executed anyway
     // so really we are double dumping the end-of-time stats
+
+    output_to_stat_file("Dump,Last");
 
     // Output the Event based Statistics
     for ( StatisticBase* stat : m_EventStatisticArray ) {

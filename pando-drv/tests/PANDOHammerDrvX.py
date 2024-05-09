@@ -24,6 +24,36 @@ MakePANDOHammer(MakeTile)
 
 if (arguments.core_stats):
     DrvXTile.enableAllCoreStats()
+if (arguments.all_stats):
+    sst.enableAllStatisticsForAllComponents()
+if (arguments.perf_stats):
+    sst.enableStatisticsForComponentType(
+        "Drv.DrvCore",
+        ["total_stall_cycles_when_ready",
+        "total_stall_cycles",
+        "total_busy_cycles",
+        "phase_comp_stall_cycles_when_ready",
+        "phase_comm_stall_cycles_when_ready",
+        "phase_stall_cycles",
+        "phase_busy_cycles"])
+    sst.enableStatisticsForComponentType(
+        "memHierarchy.MemNIC",
+        ["send_bit_count",
+        "recv_bit_count",
+        "output_port_stalls",
+        "idle_time"])
+    sst.enableStatisticsForComponentType(
+        "merlin.hr_router",
+        ["send_bit_count",
+        "recv_bit_count",
+        "output_port_stalls",
+        "idle_time"])
+    sst.enableStatisticsForComponentType(
+        "merlin.Bridge",
+        ["send_bit_count",
+        "recv_bit_count",
+        "output_port_stalls",
+        "idle_time"])
 
 sst.setStatisticLoadLevel(arguments.stats_load_level)
 sst.setStatisticOutput("sst.statOutputCSV", {"filepath" : "stats.csv", "separator" : ","})

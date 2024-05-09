@@ -107,6 +107,9 @@ protected:
      * Allows object to perform any shutdown required. */
     virtual void endOfSimulation() = 0;
 
+    /** write to the output stat file */
+    virtual void outputToStatFile(std::string str) = 0;
+
 private:
     // Start / Stop of register Fields
     virtual void registerStatistic(StatisticBase* stat) = 0;

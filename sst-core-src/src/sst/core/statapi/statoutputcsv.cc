@@ -173,6 +173,13 @@ StatisticOutputCSV::endOfSimulation()
 }
 
 void
+StatisticOutputCSV::outputToStatFile(std::string str)
+{
+    print("%s", str.c_str());
+    print("\n");
+}
+
+void
 StatisticOutputCSV::implStartOutputEntries(StatisticBase* statistic)
 {
     // Save the current Component and Statistic Names for when we stop output and send to file

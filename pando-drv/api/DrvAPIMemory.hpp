@@ -103,6 +103,18 @@ T atomic_cas(DrvAPIAddress address, T compare, T value)
 }
 
 /**
+ * @brief set the stage
+ *
+ */
+extern void set_stage(stage_t stage);
+
+/**
+ * @brief increment the phase
+ *
+ */
+extern void increment_phase();
+
+/**
  * @brief memory fence
  *
  */

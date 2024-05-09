@@ -11,6 +11,7 @@
 #include <memory>
 namespace DrvAPI
 {
+
 class DrvAPIThread
 {
 public:

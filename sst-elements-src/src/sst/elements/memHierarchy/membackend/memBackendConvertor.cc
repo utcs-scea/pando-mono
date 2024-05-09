@@ -72,6 +72,40 @@ MemBackendConvertor::MemBackendConvertor(ComponentId_t id, Params& params, MemBa
     stat_cyclesAttemptIssueButRejected = registerStatistic<uint64_t>( "cycles_attempted_issue_but_rejected" );
     stat_totalCycles = registerStatistic<uint64_t>( "total_cycles" );
 
+    stat_GetSReqReceived->setFlagResetCountOnOutput(true);
+    stat_GetSXReqReceived->setFlagResetCountOnOutput(true);
+    stat_GetXReqReceived->setFlagResetCountOnOutput(true);
+    stat_WriteReqReceived->setFlagResetCountOnOutput(true);
+    stat_PutMReqReceived->setFlagResetCountOnOutput(true);
+    stat_outstandingReqs->setFlagResetCountOnOutput(true);
+    stat_ReqSent->setFlagResetCountOnOutput(true);
+    stat_ACMReqSent->setFlagResetCountOnOutput(true);
+    stat_GetSLatency->setFlagResetCountOnOutput(true);
+    stat_GetSXLatency->setFlagResetCountOnOutput(true);
+    stat_GetXLatency->setFlagResetCountOnOutput(true);
+    stat_WriteLatency->setFlagResetCountOnOutput(true);
+    stat_PutMLatency->setFlagResetCountOnOutput(true);
+    stat_cyclesWithIssue->setFlagResetCountOnOutput(true);
+    stat_cyclesAttemptIssueButRejected->setFlagResetCountOnOutput(true);
+    stat_totalCycles->setFlagResetCountOnOutput(true);
+
+    stat_GetSReqReceived->setFlagClearDataOnOutput(true);
+    stat_GetSXReqReceived->setFlagClearDataOnOutput(true);
+    stat_GetXReqReceived->setFlagClearDataOnOutput(true);
+    stat_WriteReqReceived->setFlagClearDataOnOutput(true);
+    stat_PutMReqReceived->setFlagClearDataOnOutput(true);
+    stat_outstandingReqs->setFlagClearDataOnOutput(true);
+    stat_ReqSent->setFlagClearDataOnOutput(true);
+    stat_ACMReqSent->setFlagClearDataOnOutput(true);
+    stat_GetSLatency->setFlagClearDataOnOutput(true);
+    stat_GetSXLatency->setFlagClearDataOnOutput(true);
+    stat_GetXLatency->setFlagClearDataOnOutput(true);
+    stat_WriteLatency->setFlagClearDataOnOutput(true);
+    stat_PutMLatency->setFlagClearDataOnOutput(true);
+    stat_cyclesWithIssue->setFlagClearDataOnOutput(true);
+    stat_cyclesAttemptIssueButRejected->setFlagClearDataOnOutput(true);
+    stat_totalCycles->setFlagClearDataOnOutput(true);
+
     m_clockOn = true; /* Maybe parent should set this */
     // NOTE: m_secEnabled: 0 - security primitives disabled, 1 - security primitives enabled (needs m_aesEncryptOrDecrypt options to behave correctly)
     m_secEnabled = params.find<uint32_t>("aes_enable_security", 0);

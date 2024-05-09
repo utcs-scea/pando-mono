@@ -405,10 +405,28 @@ PortControl::PortControl(ComponentId_t cid, Params& params,  Router* rif, int rt
     port_name = port_name + std::to_string(port_number);
 
     send_bit_count = registerStatistic<uint64_t>("send_bit_count", port_name);
+    recv_bit_count = registerStatistic<uint64_t>("recv_bit_count", port_name);
     send_packet_count = registerStatistic<uint64_t>("send_packet_count", port_name);
+    recv_packet_count = registerStatistic<uint64_t>("recv_packet_count", port_name);
     output_port_stalls = registerStatistic<uint64_t>("output_port_stalls", port_name);
     idle_time = registerStatistic<uint64_t>("idle_time", port_name);
     width_adj_count = registerStatistic<uint64_t>("width_adj_count", port_name);
+
+    send_bit_count->setFlagResetCountOnOutput(true);
+    recv_bit_count->setFlagResetCountOnOutput(true);
+    send_packet_count->setFlagResetCountOnOutput(true);
+    recv_packet_count->setFlagResetCountOnOutput(true);
+    output_port_stalls->setFlagResetCountOnOutput(true);
+    idle_time->setFlagResetCountOnOutput(true);
+    width_adj_count->setFlagResetCountOnOutput(true);
+
+    send_bit_count->setFlagClearDataOnOutput(true);
+    recv_bit_count->setFlagClearDataOnOutput(true);
+    send_packet_count->setFlagClearDataOnOutput(true);
+    recv_packet_count->setFlagClearDataOnOutput(true);
+    output_port_stalls->setFlagClearDataOnOutput(true);
+    idle_time->setFlagClearDataOnOutput(true);
+    width_adj_count->setFlagClearDataOnOutput(true);
 
 	// set the SAI metrics to 0
 	stalled = 0;
@@ -975,6 +993,8 @@ PortControl::handle_input_n2r(Event* ev)
                           event->getTrustedSrc(),
                           event->getDest());
 	    }
+        recv_bit_count->addData(event->getSizeInBits());
+        recv_packet_count->addData(1);
 
 	    if ( parent->getRequestNotifyOnEvent() ) parent->notifyEvent();
 	}
@@ -1058,6 +1078,7 @@ PortControl::handle_input_r2r(Event* ev)
                           event->getSrc(),
                           event->getDest());
 	    }
+        recv_bit_count->addData(event->getEncapsulatedEvent()->getSizeInBits());
 
 	    if ( parent->getRequestNotifyOnEvent() ) parent->notifyEvent();
 	}

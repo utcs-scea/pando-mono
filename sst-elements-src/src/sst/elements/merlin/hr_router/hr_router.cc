@@ -305,6 +305,9 @@ hr_router::hr_router(ComponentId_t cid, Params& params) :
         std::string port_name("port");
         port_name = port_name + std::to_string(i);
         xbar_stalls[i] = registerStatistic<uint64_t>("xbar_stalls",port_name);
+
+        xbar_stalls[i]->setFlagResetCountOnOutput(true);
+        xbar_stalls[i]->setFlagClearDataOnOutput(true);
     }
 
     init_vcs();

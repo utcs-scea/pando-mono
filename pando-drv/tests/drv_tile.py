@@ -160,6 +160,7 @@ class DrvXTile(Tile):
             "id"  : self.id,
             "pod" : self.pod,
             "pxn" : self.pxn,
+            "phase_max" : arguments.stats_preallocated_phase,
             "stack_in_l1sp" : arguments.drvx_stack_in_l1sp,
         })
 

@@ -78,3 +78,19 @@ ${DBG} sst -n ${HOST_THREADS} \
     --drvx-stack-in-l1sp \
     --pxn-dram-size=${MAIN_MEMORY_SIZE} \
     ${PROG} $@
+
+<<comment
+${DBG} sst -n ${HOST_THREADS} \
+    --verbose \
+    "${LAUNCH_SCRIPT}" -- \
+    --with-command-processor="${PROG}" \
+    --num-pxn=${PROCS} \
+    --pod-cores=${CORES} \
+    --core-threads=${HARTS} \
+    --drvx-stack-in-l1sp \
+    --pxn-dram-size=${MAIN_MEMORY_SIZE} \
+    --perf-stats \
+    --stats-load-level=5 \
+    --stats-preallocated-phase=64 \
+    ${PROG} $@
+comment

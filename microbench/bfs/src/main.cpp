@@ -15,6 +15,7 @@
 #include <pando-lib-galois/graphs/mirror_dist_local_csr.hpp>
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
 #include <pando-rt/containers/vector.hpp>
+#include <pando-rt/drv_info.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
 #include <pando-rt/pando-rt.hpp>
@@ -35,6 +36,8 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   using VT = std::uint64_t;
   using ET = std::uint64_t;
   using Graph = galois::DistLocalCSR<VT, ET>;
+
+  PANDO_DRV_SET_STAGE_INIT();
 
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
@@ -83,6 +86,8 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   using VT = std::uint64_t;
   using ET = std::uint64_t;
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
+
+  PANDO_DRV_SET_STAGE_INIT();
 
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();

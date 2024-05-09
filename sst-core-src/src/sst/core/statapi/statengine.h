@@ -94,6 +94,10 @@ public:
      */
     static void stat_outputs_simulation_end();
 
+    /** Called to write to the stat file
+     */
+    static void output_to_stat_file(std::string str);
+
 private:
     friend class SST::Simulation_impl;
     friend int ::main(int argc, char** argv);

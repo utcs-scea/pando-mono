@@ -10,6 +10,14 @@
 #include <stdlib.h>
 namespace DrvAPI
 {
+
+enum stage_t {
+    STAGE_INIT,
+    STAGE_EXEC_COMP,
+    STAGE_EXEC_COMM,
+    STAGE_OTHER
+};
+
 /**
  * @brief The thread state
  *
@@ -55,6 +63,34 @@ public:
 private:
     bool can_resume_;
     int  count_;
+};
+
+/**
+ * @brief Set stage thread state
+ */
+class DrvAPISetStage : public DrvAPIThreadState
+{
+public:
+    DrvAPISetStage(stage_t stage) : can_resume_(false), stage_(stage) {}
+    bool canResume() const override { return can_resume_; }
+    void complete(){ can_resume_ = true; }
+    stage_t getStage() const { return stage_; }
+private:
+    bool can_resume_;
+    stage_t  stage_;
+};
+
+/**
+ * @brief Increment Phase thread state
+ */
+class DrvAPIIncrementPhase : public DrvAPIThreadState
+{
+public:
+    DrvAPIIncrementPhase() : can_resume_(false) {}
+    bool canResume() const override { return can_resume_; }
+    void complete(){ can_resume_ = true; }
+private:
+    int can_resume_;
 };
 
 /**
