@@ -69,7 +69,6 @@ shift $(expr $OPTIND - 1)
 PROG=$1
 shift
 
-<<comment
 ${DBG} sst -n ${HOST_THREADS} \
     "${LAUNCH_SCRIPT}" -- \
     --with-command-processor="${PROG}" \
@@ -79,8 +78,8 @@ ${DBG} sst -n ${HOST_THREADS} \
     --drvx-stack-in-l1sp \
     --pxn-dram-size=${MAIN_MEMORY_SIZE} \
     ${PROG} $@
-comment
 
+<<comment
 ${DBG} sst -n ${HOST_THREADS} \
     --verbose \
     "${LAUNCH_SCRIPT}" -- \
@@ -94,3 +93,4 @@ ${DBG} sst -n ${HOST_THREADS} \
     --stats-load-level=5 \
     --stats-preallocated-phase=64 \
     ${PROG} $@
+comment
