@@ -118,7 +118,6 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 
   const auto nodeIdx = extractNodeIndex(srcGlobalAddr);
   if (nodeIdx == Nodes::getCurrentNode()) {
-    auto start = std::chrono::high_resolution_clock::now();
     // yield to other hart and then issue the operation
     //hartYield();
 
@@ -126,12 +125,6 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
     // we read from shared memory
     std::memcpy(dstNativePtr, srcNativePtr, n);
 
-    auto thisPlace = pando::getCurrentPlace();
-    auto coreDims = pando::getCoreDims();
-    std::uint64_t idx = pando::isOnCP() ? coreDims.x + 1 : thisPlace.core.x;
-    auto stop = std::chrono::high_resolution_clock::now();
-    counts[idx] +=
-      std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
 
 #if PANDO_MEM_TRACE_OR_STAT
     // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
@@ -179,19 +172,12 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
 
   const auto nodeIdx = extractNodeIndex(dstGlobalAddr);
   if (nodeIdx == Nodes::getCurrentNode()) {
-    auto start = std::chrono::high_resolution_clock::now();
     // yield to other hart and then issue the operation
     //hartYield();
 
     void* dstNativePtr = Memory::getNativeAddress(dstGlobalAddr);
     std::memcpy(dstNativePtr, srcNativePtr, n);
     // we write to shared memory
-    auto thisPlace = pando::getCurrentPlace();
-    auto coreDims = pando::getCoreDims();
-    std::uint64_t idx = pando::isOnCP() ? coreDims.x + 1 : thisPlace.core.x;
-    auto stop = std::chrono::high_resolution_clock::now();
-    counts[idx] +=
-      std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
 
 #if PANDO_MEM_TRACE_OR_STAT
     // if the level of mem-tracing is ALL (2), log intra-pxn memory operations

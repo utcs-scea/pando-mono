@@ -3,6 +3,9 @@
 
 #ifndef PANDO_RT_SRC_INIT_HPP_
 #define PANDO_RT_SRC_INIT_HPP_
+#include <pando-rt/benchmark/counters.hpp>
+
+extern Record<std::int64_t> idleCount;
 
 namespace pando {
 

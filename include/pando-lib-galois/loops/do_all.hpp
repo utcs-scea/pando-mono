@@ -90,6 +90,17 @@ private:
     wgh.done();
   }
 
+  static pando::Place fixLocality(pando::Place targetPlace) {
+    if (pando::isOnCP()) {
+      targetPlace.pod = pando::anyPod;
+      targetPlace.core = pando::anyCore;
+    } else if (targetPlace.node == pando::getCurrentNode() && targetPlace.pod == pando::anyPod &&
+               targetPlace.core == pando::anyCore) {
+      targetPlace = pando::getCurrentPlace();
+    }
+    return targetPlace;
+  }
+
 public:
   /**
    * @brief This is the do_all loop from galois which takes a rang and lifts a function to it, and
@@ -119,9 +130,9 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityFunc(s, *curr).node, pando::anyPod, pando::anyCore};
-      err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
-                             wgh);
+      auto targetPlace = fixLocality(localityFunc(s, *curr));
+      err = pando::executeOn(targetPlace, &notifyFunc<F, State, typename R::iterator>, func, s,
+                             curr, wgh);
       if (err != pando::Status::Success) {
         for (std::uint64_t i = iter; i < size; i++) {
           wgh.done();
@@ -158,7 +169,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
+      auto nodePlace = fixLocality(localityOf(curr));
       err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
                              wgh);
       if (err != pando::Status::Success) {
@@ -197,7 +208,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
+      auto nodePlace = fixLocality(localityOf(curr));
       err = pando::executeOn(nodePlace, &notifyFunc<F, typename R::iterator>, func, curr, wgh);
       if (err != pando::Status::Success) {
         for (std::uint64_t i = iter; i < size; i++) {

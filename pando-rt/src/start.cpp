@@ -3,8 +3,6 @@
 
 #include "start.hpp"
 
-#include <sys/resource.h>
-#include <sys/time.h>
 #include <chrono>
 #include <random>
 #include <utility>
@@ -16,6 +14,7 @@
 #include "pando-rt/stdlib.hpp"
 #include "pando-rt/pando-rt.hpp"
 #include "spdlog/spdlog.h"
+#include <pando-rt/benchmark/counters.hpp>
 
 #ifdef PANDO_RT_USE_BACKEND_PREP
 #include "prep/cores.hpp"
@@ -25,8 +24,9 @@
 #include "drvx/drvx.hpp"
 #endif
 
-constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 4096;
-std::array<std::int64_t,66> counts;
+constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 32;
+
+Record<std::int64_t> idleCount = Record<std::int64_t>();
 
 enum SchedulerFailState{
   YIELD,
@@ -40,19 +40,12 @@ extern "C" int __start(int argc, char** argv) {
 
   pando::initialize();
 
+  HighResolutionCount idleTimer;
 
-  struct rusage start, end;
 
   if (pando::isOnCP()) {
-    for(std::uint64_t i = 0; i < counts.size(); i++) {
-      counts[i] = 0;
-    }
-    auto rc = getrusage(RUSAGE_SELF, &start);
-    if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
     // invokes user's main function (pandoMain)
     result = pandoMain(argc, argv);
-    rc = getrusage(RUSAGE_SELF, &end);
-    if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
   } else {
     auto* queue = pando::Cores::getTaskQueue(thisPlace);
     auto coreActive = pando::Cores::getCoreActiveFlag();
@@ -69,12 +62,16 @@ extern "C" int __start(int argc, char** argv) {
       SchedulerFailState failState = SchedulerFailState::YIELD;
 
       do {
+        idleTimer.start();
         task = queue->tryDequeue(ctok);
         if (!task.has_value()) {
           switch(failState) {
             case SchedulerFailState::YIELD:
+
 #ifdef PANDO_RT_USE_BACKEND_PREP
+              HighResolutionCount::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
               pando::hartYield();
+              idleTimer.start();
               //In Drvx hart yielding is a 1000 cycle wait which is too much
 #endif
               failState = SchedulerFailState::STEAL;
@@ -91,7 +88,12 @@ extern "C" int __start(int argc, char** argv) {
               break;
           }
         }
-        if(task.has_value()) { (*task)(); task = std::nullopt; }
+        if(task.has_value()) {
+          (*task)(); task = std::nullopt;
+        }
+        else {
+          HighResolutionCount::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
+        }
       } while (*coreActive == true);
     } else if (thisPlace.core.x == coreDims.x) {
       // scheduler
@@ -128,18 +130,5 @@ extern "C" int __start(int argc, char** argv) {
     }
   }
 
-  if(pando::isOnCP()) {
-    SPDLOG_CRITICAL("Total time on node: {}, was {}ns",
-        thisPlace.node.id,
-        end.ru_utime.tv_sec * 1000000000 + end.ru_utime.tv_usec * 1000 -
-        (start.ru_utime.tv_sec * 1000000000 + start.ru_utime.tv_usec * 1000));
-  }
-
-  if(pando::isOnCP() || pando::getCurrentThread().id == 0) {
-    SPDLOG_CRITICAL("Pointer time on node: {}, core: {} was {}",
-        thisPlace.node.id,
-        thisPlace.core.x,
-        counts[pando::isOnCP() ? coreDims.x  + 1 : thisPlace.core.x]);
-  }
   return result;
 }
