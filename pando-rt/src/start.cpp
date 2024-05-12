@@ -129,6 +129,7 @@ extern "C" int __start(int argc, char** argv) {
       } while (*coreActive == true);
     }
   }
-
+  
+  pando::finalize();
   return result;
 }
