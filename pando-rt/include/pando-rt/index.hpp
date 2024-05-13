@@ -17,11 +17,11 @@ namespace pando {
  * @ingroup ROOT
  */
 struct NodeIndex {
-  std::int16_t id{};
+  std::int64_t id{};
 
   constexpr NodeIndex() noexcept = default;
 
-  constexpr explicit NodeIndex(std::int16_t id) noexcept : id{id} {}
+  constexpr explicit NodeIndex(std::int64_t id) noexcept : id{id} {}
 };
 
 /**
