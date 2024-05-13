@@ -140,8 +140,8 @@ void handleValueAck(gex_Token_t, void*, size_t, gex_AM_Arg_t handlePtrHi, gex_AM
 // System wide GASNet client
 struct {
   std::string_view clientName = "pando-rt";
-  gex_Rank_t rank{GEX_RANK_INVALID};
-  gex_Rank_t size{GEX_RANK_INVALID};
+  std::int64_t rank{GEX_RANK_INVALID};
+  std::int64_t size{GEX_RANK_INVALID};
   gex_Client_t client{GEX_CLIENT_INVALID};
   gex_EP_t endpoint{GEX_EP_INVALID};
   gex_TM_t team{GEX_TM_INVALID};
@@ -593,11 +593,11 @@ void Nodes::exit(int errorCode) {
 }
 
 NodeIndex Nodes::getCurrentNode() noexcept {
-  return NodeIndex{std::int16_t(world.rank)};
+  return NodeIndex(world.rank);
 }
 
 NodeIndex Nodes::getNodeDims() noexcept {
-  return NodeIndex{std::int16_t(world.size)};
+  return NodeIndex(world.size);
 }
 
 Status Nodes::requestAcquire(NodeIndex nodeIdx, std::size_t requestSize, void** p,
