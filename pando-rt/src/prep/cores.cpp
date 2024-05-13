@@ -295,6 +295,28 @@ Status Cores::initialize(int (*entry)(int, char**), int argc, char* argv[]) {
     setenv("QTHREAD_NUM_SHEPHERDS", shepherdCount.c_str(), 0);
   }
 
+  {
+    std::string shepherdBinding = "";
+    std::vector<std::uint64_t> availableCores;
+
+    cpu_set_t mask;
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
+      PANDO_ABORT("FAILED TO GET SCHEDULER AFFINITY");
+    }
+
+    long nproc = sysconf(_SC_NPROCESSORS_ONLN);
+    for (long i = 0; i < nproc; i++) {
+      if(CPU_ISSET(i, &mask)) availableCores.push_back(i);
+    }
+
+    std::uint64_t coreNum = 0;
+    for(std::uint64_t i = 0; i < config.compute.coreCount + 1; i++) {
+      if(i != 0) shepherdBinding += ":";
+      shepherdBinding += fmt::format("{}", availableCores[coreNum % availableCores.size()]);
+    }
+    setenv("QT_CPUBIND", shepherdBinding.c_str(), 0);
+  }
+
   // initialize qthread library
   if (auto status = qthread_initialize(); status != 0) {
     SPDLOG_ERROR("Error initializing qthreads: {}", status);

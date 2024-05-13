@@ -12,6 +12,7 @@
 #include "pando-rt/status.hpp"
 #include "pando-rt/stdlib.hpp"
 #include "pando-rt/pando-rt.hpp"
+#include <pando-rt/benchmark/counters.hpp>
 
 #ifdef PANDO_RT_USE_BACKEND_PREP
 #include "prep/cores.hpp"
@@ -22,6 +23,9 @@
 #endif
 
 constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 4096;
+
+constexpr bool IDLE_TIMER_ENABLE = false;
+counter::Record<std::int64_t> idleCount = counter::Record<std::int64_t>();
 
 enum SchedulerFailState{
   YIELD,
@@ -34,6 +38,8 @@ extern "C" int __start(int argc, char** argv) {
   int result = 0;
 
   pando::initialize();
+
+  counter::HighResolutionCount<IDLE_TIMER_ENABLE> idleTimer;
 
   if (pando::isOnCP()) {
     // invokes user's main function (pandoMain)
@@ -54,16 +60,20 @@ extern "C" int __start(int argc, char** argv) {
       SchedulerFailState failState = SchedulerFailState::YIELD;
 
       do {
+        idleTimer.start();
         task = queue->tryDequeue(ctok);
         if (!task.has_value()) {
           switch(failState) {
             case SchedulerFailState::YIELD:
 #ifdef PANDO_RT_USE_BACKEND_PREP
+              counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
               pando::hartYield();
               //In Drvx hart yielding is a 1000 cycle wait which is too much
+              idleTimer.start();
 #endif
               failState = SchedulerFailState::STEAL;
               break;
+
             case SchedulerFailState::STEAL:
               for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
                 auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
@@ -77,6 +87,9 @@ extern "C" int __start(int argc, char** argv) {
           }
         }
         if(task.has_value()) { (*task)(); task = std::nullopt; }
+        else {
+          counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
+        }
       } while (*coreActive == true);
     } else if (thisPlace.core.x == coreDims.x) {
       // scheduler

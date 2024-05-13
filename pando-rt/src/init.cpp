@@ -4,11 +4,15 @@
 
 #include "init.hpp"
 
+#include <sys/resource.h>
+#include <sys/time.h>
+
 #include "memory_resources.hpp"
 #include "pando-rt/locality.hpp"
 #include "pando-rt/stdlib.hpp"
 #include "specific_storage.hpp"
 #include "start.hpp"
+#include <pando-rt/benchmark/counters.hpp>
 
 #if defined(PANDO_RT_USE_BACKEND_PREP)
 #include "prep/config.hpp"
@@ -153,6 +157,12 @@ const bool initLogger = [] {
 
 // PREP entry point
 int main(int argc, char* argv[]) {
+
+  struct rusage start, end;
+  int rc;
+  rc = getrusage(RUSAGE_SELF, &start);
+  if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
+
   // initialize machine state (e.g., number of harts/cores/PXNs and memory sizes etc)
   if (auto status = pando::powerOn(argc, argv); status != pando::Status::Success) {
     PANDO_ABORT("PREP initialization failed");
@@ -161,6 +171,23 @@ int main(int argc, char* argv[]) {
   int result = pando::result();
 
   pando::powerOff();
+
+  rc = getrusage(RUSAGE_SELF, &end);
+  if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
+  auto thisPlace = pando::getCurrentPlace();
+  SPDLOG_INFO("Total time on node: {}, was {}ns",
+      thisPlace.node.id,
+      end.ru_utime.tv_sec * 1000000000 + end.ru_utime.tv_usec * 1000 -
+      (start.ru_utime.tv_sec * 1000000000 + start.ru_utime.tv_usec * 1000) +
+      end.ru_stime.tv_sec * 1000000000 + end.ru_stime.tv_usec * 1000 -
+      (start.ru_stime.tv_sec * 1000000000 + start.ru_stime.tv_usec * 1000));
+  auto dims = pando::getPlaceDims();
+  for(std::uint64_t i = 0; i < std::uint64_t(dims.core.x + 2); i++) {
+    SPDLOG_INFO("Idle time on node: {}, core: {} was {}",
+        thisPlace.node.id,
+        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
+        idleCount.get(i));
+  }
 
   return result;
 }
