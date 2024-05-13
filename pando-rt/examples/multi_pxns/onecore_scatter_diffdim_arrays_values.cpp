@@ -90,7 +90,7 @@ void waitUntil(pando::GlobalPtr<bool> dones, std::int16_t numNodes) {
 
 int pandoMain(int, char**) {
   const auto placeDims = pando::getPlaceDims();
-  std::printf("Configuration (nodes, pods, cores): (%i), (%i,%i), (%i,%i).\n", placeDims.node.id,
+  std::printf("Configuration (nodes, pods, cores): (%li), (%i,%i), (%i,%i).\n", placeDims.node.id,
               placeDims.pod.x, placeDims.pod.y, placeDims.core.x, placeDims.core.y);
 
   if (placeDims.core.x == 0 || placeDims.core.y == 0) {
