@@ -44,8 +44,8 @@ TEST(DistArray, Initialize) {
   const std::uint64_t size = 10;
   pando::Vector<PlaceType> vec;
   EXPECT_EQ(vec.initialize(size), pando::Status::Success);
-  for (std::int16_t i = 0; i < static_cast<std::int16_t>(size); i++) {
-    std::int16_t nodeIdx = i % pando::getPlaceDims().node.id;
+  for (std::int64_t i = 0; i < static_cast<std::int64_t>(size); i++) {
+    std::int64_t nodeIdx = i % pando::getPlaceDims().node.id;
     vec[i] = PlaceType{pando::Place{pando::NodeIndex{nodeIdx}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main};
   }
@@ -56,7 +56,7 @@ TEST(DistArray, Initialize) {
   EXPECT_EQ(array.size(), size);
 
   for (std::uint64_t i = 0; i < size; i++) {
-    std::int16_t nodeIdx = i % pando::getPlaceDims().node.id;
+    std::int64_t nodeIdx = i % pando::getPlaceDims().node.id;
     EXPECT_EQ(pando::localityOf(&array[i]).node.id, nodeIdx);
     array[i] = i;
   }
@@ -74,16 +74,16 @@ TEST(DistArray, Swap) {
   const std::uint64_t size1 = 16;
   pando::Vector<PlaceType> vec0;
   EXPECT_EQ(vec0.initialize(size0), pando::Status::Success);
-  for (std::int16_t i = 0; i < static_cast<std::int16_t>(size0); i++) {
-    std::int16_t nodeIdx = i % pando::getPlaceDims().node.id;
+  for (std::int64_t i = 0; i < static_cast<std::int64_t>(size0); i++) {
+    std::int64_t nodeIdx = i % pando::getPlaceDims().node.id;
     vec0[i] = PlaceType{pando::Place{pando::NodeIndex{nodeIdx}, pando::anyPod, pando::anyCore},
                         pando::MemoryType::Main};
   }
 
   pando::Vector<PlaceType> vec1;
   EXPECT_EQ(vec1.initialize(size1), pando::Status::Success);
-  for (std::int16_t i = 0; i < static_cast<std::int16_t>(size1); i++) {
-    std::int16_t nodeIdx = i % pando::getPlaceDims().node.id;
+  for (std::int64_t i = 0; i < static_cast<std::int64_t>(size1); i++) {
+    std::int64_t nodeIdx = i % pando::getPlaceDims().node.id;
     vec1[i] = PlaceType{pando::Place{pando::NodeIndex{nodeIdx}, pando::anyPod, pando::anyCore},
                         pando::MemoryType::Main};
   }
@@ -126,7 +126,7 @@ TEST(DistArray, Iterator) {
 
   pando::Vector<PlaceType> vec;
   EXPECT_EQ(vec.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
-  for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+  for (std::int64_t i = 0; i < pando::getPlaceDims().node.id; i++) {
     vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main};
   }
@@ -158,7 +158,7 @@ TEST(DistArray, IteratorManual) {
 
   pando::Vector<PlaceType> vec;
   EXPECT_EQ(vec.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
-  for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+  for (std::int64_t i = 0; i < pando::getPlaceDims().node.id; i++) {
     vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main};
   }
@@ -190,7 +190,7 @@ TEST(DistArray, ReverseIterator) {
 
   pando::Vector<PlaceType> vec;
   EXPECT_EQ(vec.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
-  for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+  for (std::int64_t i = 0; i < pando::getPlaceDims().node.id; i++) {
     vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main};
   }
@@ -225,7 +225,7 @@ TEST(DistArray, IteratorExecuteOn) {
 
   pando::Vector<PlaceType> vec;
   EXPECT_EQ(vec.initialize(pando::getPlaceDims().node.id), pando::Status::Success);
-  for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+  for (std::int64_t i = 0; i < pando::getPlaceDims().node.id; i++) {
     vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main};
   }
@@ -258,8 +258,8 @@ TEST(DistArray, Sort) {
   const std::uint64_t size = 10;
   pando::Vector<PlaceType> vec;
   EXPECT_EQ(vec.initialize(size), pando::Status::Success);
-  for (std::int16_t i = 0; i < static_cast<std::int16_t>(size); i++) {
-    std::int16_t nodeIdx = i % pando::getPlaceDims().node.id;
+  for (std::int64_t i = 0; i < static_cast<std::int64_t>(size); i++) {
+    std::int64_t nodeIdx = i % pando::getPlaceDims().node.id;
     vec[i] = PlaceType{pando::Place{pando::NodeIndex{nodeIdx}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main};
   }
@@ -286,8 +286,8 @@ TEST(DistArray, SortPair) {
   const std::uint64_t size = 10;
   pando::Vector<PlaceType> vec;
   EXPECT_EQ(vec.initialize(size), pando::Status::Success);
-  for (std::int16_t i = 0; i < static_cast<std::int16_t>(size); i++) {
-    std::int16_t nodeIdx = i % pando::getPlaceDims().node.id;
+  for (std::int64_t i = 0; i < static_cast<std::int64_t>(size); i++) {
+    std::int64_t nodeIdx = i % pando::getPlaceDims().node.id;
     vec[i] = PlaceType{pando::Place{pando::NodeIndex{nodeIdx}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main};
   }

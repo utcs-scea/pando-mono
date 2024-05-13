@@ -26,7 +26,7 @@ void nodeGreetings(int level) {
 
   if (level < 2) {
     pando::NodeIndex rightNode{
-        static_cast<std::int16_t>((thisPlace.node.id + 1) % placeDims.node.id)};
+        static_cast<std::int64_t>((thisPlace.node.id + 1) % placeDims.node.id)};
     PANDO_CHECK(
         pando::executeOn(pando::Place{rightNode, {}, pando::anyCore}, &nodeGreetings, level + 1));
   }

@@ -10,7 +10,7 @@
 
 void check_dones_reset(pando::GlobalPtr<bool> dones) {
   auto num_hosts = pando::getPlaceDims().node.id;
-  for (int16_t i = 0; i < num_hosts; i++)
+  for (int64_t i = 0; i < num_hosts; i++)
     EXPECT_EQ(dones[i], false);
 }
 
@@ -442,8 +442,8 @@ void run_test_launch_edge_exchange(pando::Notification::HandleType hb_done) {
 }
 
 TEST(TriangleCount, SimpleRRLocalELs) {
-  int16_t num_hosts = pando::getPlaceDims().node.id;
-  int16_t required_num_hosts = 3;
+  int64_t num_hosts = pando::getPlaceDims().node.id;
+  int64_t required_num_hosts = 3;
   if (num_hosts == required_num_hosts) {
     pando::Notification necessary;
     PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
@@ -453,8 +453,8 @@ TEST(TriangleCount, SimpleRRLocalELs) {
 }
 
 TEST(TriangleCount, SimpleSortMetadata) {
-  int16_t num_hosts = pando::getPlaceDims().node.id;
-  int16_t required_num_hosts = 3;
+  int64_t num_hosts = pando::getPlaceDims().node.id;
+  int64_t required_num_hosts = 3;
   if (num_hosts == required_num_hosts) {
     pando::Notification necessary;
     PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
@@ -464,8 +464,8 @@ TEST(TriangleCount, SimpleSortMetadata) {
 }
 
 TEST(TriangleCount, SimpleDistributeVHosts) {
-  int16_t num_hosts = pando::getPlaceDims().node.id;
-  int16_t required_num_hosts = 3;
+  int64_t num_hosts = pando::getPlaceDims().node.id;
+  int64_t required_num_hosts = 3;
   if (num_hosts == required_num_hosts) {
     pando::Notification necessary;
     PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
@@ -475,8 +475,8 @@ TEST(TriangleCount, SimpleDistributeVHosts) {
 }
 
 TEST(TriangleCount, SimpleBuildEdges2Send) {
-  int16_t num_hosts = pando::getPlaceDims().node.id;
-  int16_t required_num_hosts = 3;
+  int64_t num_hosts = pando::getPlaceDims().node.id;
+  int64_t required_num_hosts = 3;
   if (num_hosts == required_num_hosts) {
     pando::Notification necessary;
     PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
@@ -486,8 +486,8 @@ TEST(TriangleCount, SimpleBuildEdges2Send) {
 }
 
 TEST(TriangleCount, SimpleEdgeExchange) {
-  int16_t num_hosts = pando::getPlaceDims().node.id;
-  int16_t required_num_hosts = 3;
+  int64_t num_hosts = pando::getPlaceDims().node.id;
+  int64_t required_num_hosts = 3;
   if (num_hosts == required_num_hosts) {
     pando::Notification necessary;
     PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},

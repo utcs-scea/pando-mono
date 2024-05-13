@@ -728,7 +728,7 @@ public:
     };
     uint64_t local_mirror_size = 0;
     for (std::uint64_t i = 0; i < numHosts; i++) {
-      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
+      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)},
                                         pando::anyPod, pando::anyCore};
       PANDO_CHECK(pando::executeOn(place, mirrorAttach, vertexData, mirrorList, i, wgh));
       local_mirror_size = lift(mirrorList[i], size);
@@ -774,7 +774,7 @@ public:
     };
 
     for (std::uint64_t i = 0; i < numHosts; i++) {
-      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
+      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)},
                                         pando::anyPod, pando::anyCore};
       PANDO_CHECK(
           pando::executeOn(place, generateMetadata, *this, this->dlcsr, mirrorList, i, wgh));
@@ -812,11 +812,11 @@ public:
 
     // initialize localMirrorToRemoteMasterOrderedTable
     PANDO_CHECK_RETURN(localMasterToRemoteMirrorTable.initialize());
-    for (std::int16_t i = 0; i < dims.node.id; i++) {
+    for (std::int64_t i = 0; i < dims.node.id; i++) {
       pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>>
           localMasterToRemoteMirrorMap = localMasterToRemoteMirrorTable[i];
       PANDO_CHECK_RETURN(fmap(localMasterToRemoteMirrorMap, initialize, dims.node.id));
-      for (std::int16_t i = 0; i < dims.node.id; i++) {
+      for (std::int64_t i = 0; i < dims.node.id; i++) {
         pando::GlobalRef<pando::Vector<MirrorToMasterMap>> mapVectorFromHost =
             fmap(localMasterToRemoteMirrorMap, operator[], i);
         PANDO_CHECK_RETURN(fmap(mapVectorFromHost, initialize, 0));
@@ -855,23 +855,23 @@ public:
 
   /** Testing Purpose **/
   pando::GlobalRef<pando::Array<MirrorToMasterMap>> getLocalMirrorToRemoteMasterOrderedMap(
-      int16_t hostId) {
+      int64_t hostId) {
     return localMirrorToRemoteMasterOrderedTable[hostId];
   }
   pando::GlobalRef<pando::Vector<pando::Vector<MirrorToMasterMap>>> getLocalMasterToRemoteMirrorMap(
       uint64_t hostId) {
     return localMasterToRemoteMirrorTable[hostId];
   }
-  pando::GlobalRef<pando::Array<bool>> getMasterBitSet(int16_t hostId) {
+  pando::GlobalRef<pando::Array<bool>> getMasterBitSet(int64_t hostId) {
     return masterBitSets[hostId];
   }
-  pando::GlobalRef<pando::Array<bool>> getMirrorBitSet(int16_t hostId) {
+  pando::GlobalRef<pando::Array<bool>> getMirrorBitSet(int64_t hostId) {
     return mirrorBitSets[hostId];
   }
-  pando::GlobalRef<LocalVertexRange> getMasterRange(int16_t hostId) {
+  pando::GlobalRef<LocalVertexRange> getMasterRange(int64_t hostId) {
     return masterRange[hostId];
   }
-  pando::GlobalRef<LocalVertexRange> getMirrorRange(int16_t hostId) {
+  pando::GlobalRef<LocalVertexRange> getMirrorRange(int64_t hostId) {
     return mirrorRange[hostId];
   }
 

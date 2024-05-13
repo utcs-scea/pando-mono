@@ -46,7 +46,7 @@ void CommandProcessor::barrier() {
       // last PXN to reach barrier; reset global barrier counter and signal to other PXNs that we
       // are done
       *toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)) = 0u;
-      for (std::int16_t i = 0; i < Drvx::getNodeDims().id; ++i) {
+      for (std::int64_t i = 0; i < Drvx::getNodeDims().id; ++i) {
         *toNativeDrvPointerOnDram(pxnBarrierDone, NodeIndex(i)) = 1;
       }
     } else {

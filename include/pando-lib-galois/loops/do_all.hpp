@@ -311,17 +311,17 @@ public:
     const auto end = range.end();
 
     for (auto curr = range.begin(); curr != end; curr++) {
-      int16_t assignedHost;
+      int64_t assignedHost;
       if (workPerHost > 0) {
-        assignedHost = (int16_t)(*curr / workPerHost);
+        assignedHost = (int64_t)(*curr / workPerHost);
       } else if (hosts % workItems == 0) {
         // Given that we have 8 pxns and we schedule 4 workItems, this will place the workers on the
         // even numbered pxns
-        assignedHost = (int16_t)(*curr * (hosts / workItems));
+        assignedHost = (int64_t)(*curr * (hosts / workItems));
       } else {
         // Given that workItems < hosts and workItems does not divide hosts, assign the work
         // sequentially
-        assignedHost = (int16_t)(*curr);
+        assignedHost = (int64_t)(*curr);
       }
       if (assignedHost >= pando::getPlaceDims().node.id) {
         assignedHost = pando::getPlaceDims().node.id - 1;

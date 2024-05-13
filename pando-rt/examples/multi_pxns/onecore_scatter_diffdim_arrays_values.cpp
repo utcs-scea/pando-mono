@@ -34,7 +34,7 @@ void scatterValues(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>> distHeteroAr
                    pando::GlobalPtr<std::uint64_t> distHeteroArraySize,
                    pando::GlobalPtr<bool> done) {
   const auto placeDims = pando::getPlaceDims();
-  std::int16_t thisNodeId = pando::getCurrentPlace().node.id;
+  std::int64_t thisNodeId = pando::getCurrentPlace().node.id;
   assert(thisNodeId == 0);
 
   pando::GlobalPtr<std::int64_t> localArray = distHeteroArray[thisNodeId];
@@ -45,7 +45,7 @@ void scatterValues(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>> distHeteroAr
   done[thisNodeId] = true;
 
   // Scatter values to remote PXNs.
-  for (std::int16_t ipxn = 0; ipxn < placeDims.node.id; ++ipxn) {
+  for (std::int64_t ipxn = 0; ipxn < placeDims.node.id; ++ipxn) {
     pando::Place destPlace{pando::NodeIndex{ipxn}, pando::anyPod, pando::anyCore};
     pando::GlobalPtr<std::int64_t> remoteArray = distHeteroArray[ipxn];
     PANDO_CHECK(pando::executeOn(destPlace, &setValue, remoteArray, solution,
@@ -61,7 +61,7 @@ void correctnessCheck(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>> output,
   const auto placeDims = pando::getPlaceDims();
   // Check correctness.
   bool check_correctness{true};
-  for (std::int16_t ipxn = 0; ipxn < placeDims.node.id; ++ipxn) {
+  for (std::int64_t ipxn = 0; ipxn < placeDims.node.id; ++ipxn) {
     pando::GlobalPtr<std::int64_t> localArray = output[ipxn];
     for (std::uint64_t i = 0; i < outputSizes[ipxn]; ++i) {
       if (localArray[i] != solution) {
@@ -79,8 +79,8 @@ void correctnessCheck(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>> output,
 /**
  * @brief Wait until invoked tasks complete.
  */
-void waitUntil(pando::GlobalPtr<bool> dones, std::int16_t numNodes) {
-  for (std::int16_t n = 0; n < numNodes; ++n) {
+void waitUntil(pando::GlobalPtr<bool> dones, std::int64_t numNodes) {
+  for (std::int64_t n = 0; n < numNodes; ++n) {
     pando::waitUntil([dones, n]() {
       return dones[n];
     });
@@ -106,7 +106,7 @@ int pandoMain(int, char**) {
   const auto thisPlace = pando::getCurrentPlace();
 
   if (thisPlace.node.id == 0) {
-    std::int16_t numPXNs = placeDims.node.id;
+    std::int64_t numPXNs = placeDims.node.id;
     auto mmResource = pando::getDefaultMainMemoryResource();
 
     // A global array that holds pointers to PXN-local array is
@@ -121,7 +121,7 @@ int pandoMain(int, char**) {
         static_cast<pando::GlobalPtr<bool>>(mmResource->allocate(sizeof(bool) * numPXNs));
     // Remote and local memory allocation.
     // Each PXN has different sized memory.
-    for (std::int16_t n = 0; n < placeDims.node.id; ++n) {
+    for (std::int64_t n = 0; n < placeDims.node.id; ++n) {
       const pando::Place otherPlace{pando::NodeIndex{n}, pando::anyPod, pando::anyCore};
       auto result =
           pando::allocateMemory<std::int64_t>(n + 10, otherPlace, pando::MemoryType::Main);
@@ -138,7 +138,7 @@ int pandoMain(int, char**) {
     correctnessCheck(distHeteroArray, distHeteroArraySize);
 
     // Deallocate arrays
-    for (std::int16_t n = 0; n < placeDims.node.id; ++n) {
+    for (std::int64_t n = 0; n < placeDims.node.id; ++n) {
       pando::GlobalPtr<std::int64_t> localArray = distHeteroArray[n];
       pando::deallocateMemory(localArray, sizeof(std::int64_t) * distHeteroArraySize[n]);
     }

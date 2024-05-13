@@ -78,7 +78,7 @@ ReturnType initializeELDACSR(pando::Array<char> filename, std::uint64_t numVerti
 
   PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread Start");
   for (std::uint64_t i = 0; i < numThreads; i++) {
-    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % hosts)},
+    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i % hosts)},
                                       pando::anyPod, pando::anyCore};
     PANDO_CHECK(pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, 1, numThreads,
                                  i, localReadEdges, perThreadRename, numVertices));
@@ -145,7 +145,7 @@ ReturnType initializeELDLCSR(pando::Array<char> filename, std::uint64_t numVerti
 
   PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread Start");
   for (std::uint64_t i = 0; i < numThreads; i++) {
-    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % hosts)},
+    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i % hosts)},
                                       pando::anyPod, pando::anyCore};
     PANDO_CHECK(pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, 1, numThreads,
                                  i, localReadEdges, perThreadRename, numVertices));

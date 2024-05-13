@@ -263,7 +263,7 @@ TEST(PerThreadVector, HostLocalStorageVectorAppend) {
   galois::HostLocalStorage<pando::Vector<std::uint64_t>> phv{};
   EXPECT_EQ(phv.initialize(), pando::Status::Success);
 
-  for (std::int16_t i = 0; i < static_cast<std::int16_t>(phv.getNumHosts()); i++) {
+  for (std::int64_t i = 0; i < static_cast<std::int64_t>(phv.getNumHosts()); i++) {
     auto place = pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore};
     auto ref = phv[i];
     EXPECT_EQ(fmap(ref, initialize, 0, place, pando::MemoryType::Main), pando::Status::Success);

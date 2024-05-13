@@ -80,7 +80,7 @@ TEST(HostCachedArray, Initialize) {
   EXPECT_EQ(array.size(), size * nodes);
 
   for (std::uint64_t i = 0; i < size * nodes; i++) {
-    std::int16_t nodeIdx = i / size;
+    std::int64_t nodeIdx = i / size;
     EXPECT_EQ(pando::localityOf(&array[i]).node.id, nodeIdx);
     array[i] = i;
   }

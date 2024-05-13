@@ -16,7 +16,7 @@ void setStageInit() {
     set_stage(stage_t::STAGE_INIT);
   };
   auto dims = pando::getPlaceDims();
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     for (std::int8_t pod_x = 0; pod_x < dims.pod.x; pod_x++) {
       for (std::int8_t pod_y = 0; pod_y < dims.pod.y; pod_y++) {
         for (std::int8_t core_x = 0; core_x < dims.core.x; core_x++) {
@@ -41,7 +41,7 @@ void setStageExecComp() {
     set_stage(stage_t::STAGE_EXEC_COMP);
   };
   auto dims = pando::getPlaceDims();
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     for (std::int8_t pod_x = 0; pod_x < dims.pod.x; pod_x++) {
       for (std::int8_t pod_y = 0; pod_y < dims.pod.y; pod_y++) {
         for (std::int8_t core_x = 0; core_x < dims.core.x; core_x++) {
@@ -66,7 +66,7 @@ void setStageExecComm() {
     set_stage(stage_t::STAGE_EXEC_COMM);
   };
   auto dims = pando::getPlaceDims();
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     for (std::int8_t pod_x = 0; pod_x < dims.pod.x; pod_x++) {
       for (std::int8_t pod_y = 0; pod_y < dims.pod.y; pod_y++) {
         for (std::int8_t core_x = 0; core_x < dims.core.x; core_x++) {
@@ -91,7 +91,7 @@ void setStageOther() {
     set_stage(stage_t::STAGE_OTHER);
   };
   auto dims = pando::getPlaceDims();
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     for (std::int8_t pod_x = 0; pod_x < dims.pod.x; pod_x++) {
       for (std::int8_t pod_y = 0; pod_y < dims.pod.y; pod_y++) {
         for (std::int8_t core_x = 0; core_x < dims.core.x; core_x++) {
@@ -116,7 +116,7 @@ void incrementPhase() {
     increment_phase();
   };
   auto dims = pando::getPlaceDims();
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     for (std::int8_t pod_x = 0; pod_x < dims.pod.x; pod_x++) {
       for (std::int8_t pod_y = 0; pod_y < dims.pod.y; pod_y++) {
         for (std::int8_t core_x = 0; core_x < dims.core.x; core_x++) {

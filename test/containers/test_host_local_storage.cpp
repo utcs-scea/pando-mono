@@ -30,7 +30,7 @@ TEST(HostLocalStorage, Init) {
   EXPECT_EQ(err, pando::Status::Success);
   for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
     auto place =
-        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
+        pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)}, pando::anyPod, pando::anyCore};
     err = pando::executeOn(place, f, ph, i, dones.getHandle(i));
     EXPECT_EQ(err, pando::Status::Success);
   }
@@ -49,7 +49,7 @@ TEST(HostLocalStorage, Init) {
   EXPECT_EQ(err, pando::Status::Success);
   for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
     auto place =
-        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
+        pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)}, pando::anyPod, pando::anyCore};
     err = pando::executeOn(place, f, ph, i, dones.getHandle(i));
     EXPECT_EQ(err, pando::Status::Success);
   }
@@ -89,7 +89,7 @@ TEST(HostLocalStorage, DoAll) {
   EXPECT_EQ(err, pando::Status::Success);
   for (std::uint64_t i = 0; i < ph.getNumHosts(); i++) {
     auto place =
-        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)}, pando::anyPod, pando::anyCore};
+        pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)}, pando::anyPod, pando::anyCore};
     err = pando::executeOn(place, f, ph, i, dones.getHandle(i));
     EXPECT_EQ(err, pando::Status::Success);
   }

@@ -107,11 +107,11 @@ public:
   }
 
   pando::GlobalPtr<T> get(std::uint64_t i) noexcept {
-    return m_items.getPointerAt(pando::NodeIndex(static_cast<std::int16_t>(i)));
+    return m_items.getPointerAt(pando::NodeIndex(static_cast<std::int64_t>(i)));
   }
 
   pando::GlobalPtr<const T> get(std::uint64_t i) const noexcept {
-    return m_items.getPointerAt(pando::NodeIndex(static_cast<std::int16_t>(i)));
+    return m_items.getPointerAt(pando::NodeIndex(static_cast<std::int64_t>(i)));
   }
 
   pando::GlobalRef<T> operator[](std::uint64_t i) noexcept {
@@ -184,16 +184,16 @@ public:
 template <typename T>
 class HostLocalStorageIt {
   HostLocalStorage<T> m_curr;
-  std::int16_t m_loc;
+  std::int64_t m_loc;
 
 public:
   using iterator_category = std::random_access_iterator_tag;
-  using difference_type = std::int16_t;
+  using difference_type = std::int64_t;
   using value_type = T;
   using pointer = pando::GlobalPtr<T>;
   using reference = pando::GlobalRef<T>;
 
-  HostLocalStorageIt(HostLocalStorage<T> curr, std::int16_t loc) : m_curr(curr), m_loc(loc) {}
+  HostLocalStorageIt(HostLocalStorage<T> curr, std::int64_t loc) : m_curr(curr), m_loc(loc) {}
 
   constexpr HostLocalStorageIt() noexcept = default;
   constexpr HostLocalStorageIt(HostLocalStorageIt&&) noexcept = default;

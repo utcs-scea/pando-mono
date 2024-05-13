@@ -91,7 +91,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
 
   PANDO_MEM_STAT_NEW_KERNEL("loadWMDFilePerThread Start");
   for (std::uint64_t i = 0; i < numThreads; i++) {
-    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % hosts)},
+    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i % hosts)},
                                       pando::anyPod, pando::anyCore};
     PANDO_CHECK(pando::executeOn(place, &galois::loadWMDFilePerThread, wgh, filename, 1, numThreads,
                                  i, localReadEdges, perThreadRename, localReadVertices, totVerts));

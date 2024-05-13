@@ -64,7 +64,7 @@ namespace galois {
                                       static_cast<std::uint64_t>(placeDims.core.y);
   const std::uint64_t threadsPerHost = threadsPerPod * static_cast<std::uint64_t>(placeDims.pod.x) *
                                        static_cast<std::uint64_t>(placeDims.pod.y);
-  const pando::NodeIndex node(static_cast<int16_t>(idx / threadsPerHost));
+  const pando::NodeIndex node(static_cast<int64_t>(idx / threadsPerHost));
   const std::uint64_t threadPerHostIdx = idx % threadsPerHost;
   const std::uint64_t podPerHostIdx = threadPerHostIdx / threadsPerPod;
   const pando::PodIndex pod(podPerHostIdx / placeDims.pod.y, podPerHostIdx % placeDims.pod.y);

@@ -92,14 +92,14 @@ TEST(GlobalBarrier, SingleWait) {
         array[pando::getCurrentPlace().node.id] = goodVal;
         gb.done();
       };
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(
         pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
                          func, gb, array, goodVal),
         pando::Status::Success);
   }
   EXPECT_EQ(gb.wait(), pando::Status::Success);
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(array[nodeId], goodVal);
   }
   gb.deinitialize();
@@ -124,7 +124,7 @@ TEST(GlobalBarrier, MultipleWait) {
     array[pando::getCurrentPlace().node.id] = goodVal;
     gb2.done();
   };
-  for (std::int16_t nodeId = 1; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 1; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(
         pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
                          func, gb1, gb2, array, goodVal),
@@ -132,7 +132,7 @@ TEST(GlobalBarrier, MultipleWait) {
   }
 
   EXPECT_EQ(array[0], goodVal);
-  for (std::int16_t nodeId = 1; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 1; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(array[nodeId], 0ul);
   }
 
@@ -140,7 +140,7 @@ TEST(GlobalBarrier, MultipleWait) {
   gb2.done();
   EXPECT_EQ(gb2.wait(), pando::Status::Success);
 
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(array[nodeId], goodVal);
   }
 
