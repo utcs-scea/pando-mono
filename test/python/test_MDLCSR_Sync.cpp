@@ -104,14 +104,14 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
       fmapVoid(mirrorBitSet, fill, true);
       barrier.done();
     };
-    for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
       PANDO_CHECK(
           pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
                            func, barrier, graph.getMirrorBitSets()));
     }
     PANDO_CHECK(barrier.wait());
 
-    for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
       pando::GlobalRef<Graph::LocalVertexRange> mirrorRange = graph.getMirrorRange(nodeId);
       for (Graph::VertexTopologyID mirrorTopologyID = *lift(mirrorRange, begin);
            mirrorTopologyID < *lift(mirrorRange, end); mirrorTopologyID++) {
@@ -122,7 +122,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
 
     graph.sync(TestFunc<Graph>);
 
-    for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
       pando::GlobalRef<pando::Array<bool>> mirrorBitSet = graph.getMirrorBitSet(nodeId);
       pando::GlobalRef<pando::Array<Graph::MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
           graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);

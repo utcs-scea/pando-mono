@@ -176,16 +176,16 @@ public:
 template <typename T>
 class HostIndexedMapIt {
   pando::GlobalPtr<T> m_curr;
-  std::int16_t m_loc;
+  std::int64_t m_loc;
 
 public:
   using iterator_category = std::random_access_iterator_tag;
-  using difference_type = std::int16_t;
+  using difference_type = std::int64_t;
   using value_type = T;
   using pointer = pando::GlobalPtr<T>;
   using reference = pando::GlobalRef<T>;
 
-  HostIndexedMapIt(pando::GlobalPtr<T> curr, std::int16_t loc) : m_curr(curr), m_loc(loc) {}
+  HostIndexedMapIt(pando::GlobalPtr<T> curr, std::int64_t loc) : m_curr(curr), m_loc(loc) {}
 
   constexpr HostIndexedMapIt() noexcept = default;
   constexpr HostIndexedMapIt(HostIndexedMapIt&&) noexcept = default;

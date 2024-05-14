@@ -102,7 +102,7 @@ public:
       pointer ptr = m_pos + 1;
       CSR csrCurr = getCachedCSR(arrayOfCSRs, currNode);
       if (csrCurr.vertexEdgeOffsets.end() - 1 > ptr ||
-          (int16_t)currNode == pando::getPlaceDims().node.id - 1) {
+          (int64_t)currNode == pando::getPlaceDims().node.id - 1) {
         m_pos = ptr;
       } else {
         csrCurr = getCachedCSR(arrayOfCSRs, currNode + 1);
@@ -582,7 +582,7 @@ public:
     };
 
     for (std::uint64_t i = 0; i < numHosts; i++) {
-      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
+      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)},
                                         pando::anyPod, pando::anyCore};
       PANDO_CHECK(
           pando::executeOn(place, createCSRFuncs, this->arrayOfCSRs, vertexData, numEdges, i, wgh));
@@ -631,7 +631,7 @@ public:
           wgh.done();
         };
     for (std::uint64_t i = 0; i < numHosts; i++) {
-      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
+      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)},
                                         pando::anyPod, pando::anyCore};
       PANDO_CHECK_RETURN(
           pando::executeOn(place, fillCSRFuncs, *this, vertexData, edgeData, edgeMap, i, wgh));
@@ -791,7 +791,7 @@ public:
     PANDO_CHECK(wg.initialize(numHosts));
     auto wgh = wg.getHandle();
     for (std::uint64_t i = 0; i < numHosts; i++) {
-      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i)},
+      pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)},
                                         pando::anyPod, pando::anyCore};
       PANDO_CHECK(pando::executeOn(place, createMirrors, partEdges, mirrorList, V2PM, i, wgh));
     }
@@ -901,11 +901,11 @@ public:
       uint64_t numLocalEdges = edgesEnd - edgesStart;
       PANDO_CHECK(currentCSR.initializeTopologyMemory(
           vertex, numLocalEdges,
-          pando::Place{pando::NodeIndex{(int16_t)host}, pando::anyPod, pando::anyCore},
+          pando::Place{pando::NodeIndex{(int64_t)host}, pando::anyPod, pando::anyCore},
           pando::MemoryType::Main));
       PANDO_CHECK(currentCSR.initializeDataMemory(
           vertex, numLocalEdges,
-          pando::Place{pando::NodeIndex{(int16_t)host}, pando::anyPod, pando::anyCore},
+          pando::Place{pando::NodeIndex{(int64_t)host}, pando::anyPod, pando::anyCore},
           pando::MemoryType::Main));
 
       uint64_t currLocalEdge = 0;
@@ -922,7 +922,7 @@ public:
       currentCSR.vertexEdgeOffsets[vertex] = Vertex{&currentCSR.edgeDestinations[currLocalEdge]};
 
       PANDO_CHECK(fmap(arrayOfCSRs[host], initialize,
-                       pando::Place{pando::NodeIndex{(int16_t)host}, pando::anyPod, pando::anyCore},
+                       pando::Place{pando::NodeIndex{(int64_t)host}, pando::anyPod, pando::anyCore},
                        pando::MemoryType::Main));
       fmap(arrayOfCSRs[host], operator[], host) = currentCSR;
       edgesStart = edgesEnd;
@@ -1087,7 +1087,7 @@ public:
 
       std::uint64_t hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
       for (std::uint64_t i = 0; i < numThreads; i++) {
-        pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % hosts)},
+        pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i % hosts)},
                                           pando::anyPod, pando::anyCore};
         PANDO_CHECK_RETURN(
             pando::executeOn(place, &galois::internal::loadVertexFilePerThread<VertexType>,
@@ -1101,7 +1101,7 @@ public:
 
       std::uint64_t hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
       for (std::uint64_t i = 0; i < numThreads; i++) {
-        pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % hosts)},
+        pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i % hosts)},
                                           pando::anyPod, pando::anyCore};
         PANDO_CHECK_RETURN(pando::executeOn(
             place, &galois::internal::loadEdgeFilePerThread<EdgeType>, dones.getHandle(i),

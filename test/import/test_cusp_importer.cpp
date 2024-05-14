@@ -300,7 +300,7 @@ TEST(InsertLocalEdgesPerThread, MultiBigInsertionTest) {
 }
 
 TEST(BuildEdgeCountToSend, SmallSequentialTest) {
-  uint16_t numHosts = pando::getPlaceDims().node.id;
+  uint64_t numHosts = pando::getPlaceDims().node.id;
   uint32_t numVirtualHosts = numHosts;
 
   galois::ThreadLocalVector<pando::Vector<galois::WMDEdge>> perThreadLocalEdges{};
@@ -686,7 +686,7 @@ TEST(loadGraphFilePerThread, loadGraph) {
 
   for (uint64_t i = 0; i < numThreads; i++) {
     pando::Place place =
-        pando::Place{pando::NodeIndex{static_cast<std::int16_t>(i % pando::getPlaceDims().node.id)},
+        pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i % pando::getPlaceDims().node.id)},
                      pando::anyPod, pando::anyCore};
     pando::Status err =
         pando::executeOn(place, &galois::loadWMDFilePerThread, wgh, filename, segmentsPerThread,
@@ -756,8 +756,8 @@ TEST(loadGraphFilePerThread, loadEdgeList) {
   EXPECT_EQ(pando::Status::Success, wg.initialize(numThreads));
   auto wgh = wg.getHandle();
   for (uint64_t i = 0; i < numThreads; i++) {
-    std::int16_t nodeId =
-        static_cast<std::int16_t>(i % static_cast<std::uint64_t>(pando::getPlaceDims().node.id));
+    std::int64_t nodeId =
+        static_cast<std::int64_t>(i % static_cast<std::uint64_t>(pando::getPlaceDims().node.id));
     pando::Place place = pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore};
     pando::Status err =
         pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, segmentsPerThread,

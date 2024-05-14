@@ -87,7 +87,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
 
     auto dims = pando::getPlaceDims();
 
-    for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+    for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
       pando::GlobalRef<pando::Array<Graph::MirrorToMasterMap>> localMirrorToRemoteMasterOrderedMap =
           graph.getLocalMirrorToRemoteMasterOrderedMap(nodeId);
       for (std::uint64_t i = 0ul; i < lift(localMirrorToRemoteMasterOrderedMap, size); i++) {
@@ -104,7 +104,7 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
 
       pando::GlobalRef<pando::Vector<pando::Vector<Graph::MirrorToMasterMap>>>
           localMasterToRemoteMirrorMap = graph.getLocalMasterToRemoteMirrorMap(nodeId);
-      for (std::int16_t fromId = 0; fromId < dims.node.id; fromId++) {
+      for (std::int64_t fromId = 0; fromId < dims.node.id; fromId++) {
         pando::GlobalRef<pando::Vector<Graph::MirrorToMasterMap>> mapVectorFromHost =
             fmap(localMasterToRemoteMirrorMap, operator[], fromId);
         for (std::uint64_t i = 0ul; i < lift(mapVectorFromHost, size); i++) {

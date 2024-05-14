@@ -304,7 +304,7 @@ public:
 
     // TODO(AdityaAtulTewari) Make this properly parallel.
     // Initialize the per host vectors
-    for (std::int16_t i = 0; i < static_cast<std::int16_t>(lift(flat, getNumHosts)); i++) {
+    for (std::int64_t i = 0; i < static_cast<std::int64_t>(lift(flat, getNumHosts)); i++) {
       auto place = pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore};
       auto ref = fmap(flat, operator[], i);
       std::uint64_t start =
@@ -342,7 +342,7 @@ public:
 
     // TODO(AdityaAtulTewari) Make this properly parallel.
     // Initialize the per host vectors
-    for (std::int16_t i = 0; i < static_cast<std::int16_t>(flat.getNumHosts()); i++) {
+    for (std::int64_t i = 0; i < static_cast<std::int64_t>(flat.getNumHosts()); i++) {
       auto ref = flat[i];
       std::uint64_t start =
           (i == 0) ? 0 : m_indices[static_cast<std::uint64_t>(i) * cores * threads - 1];

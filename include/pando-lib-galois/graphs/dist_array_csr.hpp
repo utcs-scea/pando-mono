@@ -169,7 +169,7 @@ public:
     err = vec.initialize(pando::getPlaceDims().node.id);
     PANDO_CHECK_RETURN(err);
 
-    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+    for (std::int64_t i = 0; i < pando::getPlaceDims().node.id; i++) {
       vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                          pando::MemoryType::Main};
     }
@@ -464,7 +464,7 @@ public:
     err = vec.initialize(pando::getPlaceDims().node.id);
     PANDO_CHECK_RETURN(err);
 
-    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+    for (std::int64_t i = 0; i < pando::getPlaceDims().node.id; i++) {
       vec[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                          pando::MemoryType::Main};
     }

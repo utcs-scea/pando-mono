@@ -48,7 +48,7 @@ int pandoMain(int argc, char** argv) {
     tablePtr =
         static_cast<pando::GlobalPtr<std::int64_t>>(memoryResource->allocate(tableByteCount));
 
-    for (std::int16_t nodeId = 0; nodeId < placeDims.node.id; ++nodeId) {
+    for (std::int64_t nodeId = 0; nodeId < placeDims.node.id; ++nodeId) {
       for (std::int8_t podX = 0; podX < placeDims.pod.x; ++podX) {
         for (std::int8_t podY = 0; podY < placeDims.pod.y; ++podY) {
           for (std::int8_t coreX = 0; coreX < placeDims.core.x; ++coreX) {

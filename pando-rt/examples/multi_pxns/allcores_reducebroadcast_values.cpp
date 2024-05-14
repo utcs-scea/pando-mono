@@ -49,7 +49,7 @@ void setValue(pando::GlobalPtr<std::int64_t> localArray, std::int64_t value, std
 void initializeLocalArray(pando::GlobalPtr<std::int64_t> localArray, std::int64_t value,
                           std::int32_t numCoresPerNode, pando::GlobalPtr<bool> done,
                           [[maybe_unused]] pando::GlobalPtr<bool> coresDone) {
-  std::int16_t thisNodeId = pando::getCurrentPlace().node.id;
+  std::int64_t thisNodeId = pando::getCurrentPlace().node.id;
   // Parallelize local array initialization
   for (std::int32_t c = 0; c < numCoresPerNode; ++c) {
     coresDone[c] = false;
@@ -69,11 +69,11 @@ void initializeValues(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>>& distArra
                       std::int32_t numCoresPerNode, pando::GlobalPtr<bool> done,
                       pando::GlobalPtr<pando::GlobalPtr<bool>>& distCoreDones) {
   const auto placeDims = pando::getPlaceDims();
-  std::int16_t thisNodeId = pando::getCurrentPlace().node.id;
+  std::int64_t thisNodeId = pando::getCurrentPlace().node.id;
   assert(thisNodeId == 0);
 
   // Each PXN initializes its local array by `initialValue`.
-  for (std::int16_t ipxn = 0; ipxn < placeDims.node.id; ++ipxn) {
+  for (std::int64_t ipxn = 0; ipxn < placeDims.node.id; ++ipxn) {
     pando::GlobalPtr<std::int64_t> localArray = distArray[ipxn];
     pando::GlobalPtr<bool> localCoreDone = distCoreDones[ipxn];
     if (ipxn == thisNodeId) {
@@ -103,7 +103,7 @@ void reduceOwnValuesParallel(pando::GlobalPtr<std::int64_t> srcArray,
                              pando::GlobalPtr<std::int64_t> ownArray, std::int32_t numCoresPerNode,
                              pando::GlobalPtr<bool> dones, pando::GlobalPtr<bool> coresDone) {
   const auto placeDims = pando::getPlaceDims();
-  std::int16_t thisNodeId = pando::getCurrentPlace().node.id;
+  std::int64_t thisNodeId = pando::getCurrentPlace().node.id;
   for (std::int32_t i = 0; i < numCoresPerNode; ++i) {
     coresDone[i] = false;
     if (i % placeDims.node.id == thisNodeId) {
@@ -129,9 +129,9 @@ void reduceValues(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>>& distArray,
   const auto placeDims = pando::getPlaceDims();
   // Iterate a pair of PXNs, and pass all the remote arrays to each
   // PXN. Then, each PXN performs sum-reduction to its local array.
-  for (std::int16_t spxn = 0; spxn < placeDims.node.id; ++spxn) {
+  for (std::int64_t spxn = 0; spxn < placeDims.node.id; ++spxn) {
     pando::GlobalPtr<std::int64_t> srcArray = distArray[spxn];
-    for (std::int16_t dpxn = 0; dpxn < placeDims.node.id; ++dpxn) {
+    for (std::int64_t dpxn = 0; dpxn < placeDims.node.id; ++dpxn) {
       if (spxn == dpxn) {
         boolDones[spxn] = true;
         continue;
@@ -161,7 +161,7 @@ void broadcastOwnValues(pando::GlobalPtr<std::int64_t> srcArray,
                         pando::GlobalPtr<std::int64_t> ownArray, std::int32_t numCoresPerNode,
                         pando::GlobalPtr<bool> dones, pando::GlobalPtr<bool> coresDone) {
   const auto placeDims = pando::getPlaceDims();
-  std::int16_t thisNodeId = pando::getCurrentPlace().node.id;
+  std::int64_t thisNodeId = pando::getCurrentPlace().node.id;
   for (std::int32_t i = 0; i < numCoresPerNode; ++i) {
     if (i % placeDims.node.id == thisNodeId) {
       // Copying a value wrapped by `GlobalPtr` requires casting,
@@ -188,9 +188,9 @@ void broadcastValues(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>>& distArray
   const auto placeDims = pando::getPlaceDims();
   // Iterate a pair of PXNs, and pass all the remote arrays to each
   // PXN. Then, each PXN broadcasts its owning elements to other PXNs.
-  for (std::int16_t spxn = 0; spxn < placeDims.node.id; ++spxn) {
+  for (std::int64_t spxn = 0; spxn < placeDims.node.id; ++spxn) {
     pando::GlobalPtr<std::int64_t> srcArray = distArray[spxn];
-    for (std::int16_t dpxn = 0; dpxn < placeDims.node.id; ++dpxn) {
+    for (std::int64_t dpxn = 0; dpxn < placeDims.node.id; ++dpxn) {
       if (spxn == dpxn) {
         boolDones[spxn] = true;
         continue;
@@ -215,10 +215,10 @@ void correctnessCheck(pando::GlobalPtr<pando::GlobalPtr<std::int64_t>> output,
   const auto placeDims = pando::getPlaceDims();
   // Check correctness.
   bool check_correctness{true};
-  for (std::int16_t ipxn = 0; ipxn < placeDims.node.id; ++ipxn) {
+  for (std::int64_t ipxn = 0; ipxn < placeDims.node.id; ++ipxn) {
     pando::GlobalPtr<std::int64_t> localArray = output[ipxn];
     for (std::int32_t c = 0; c < numCoresPerNode; ++c) {
-      std::int16_t ownerPXN = (c % placeDims.node.id);
+      std::int64_t ownerPXN = (c % placeDims.node.id);
       if (localArray[c] != std::int64_t{ownerPXN * (placeDims.node.id - 1) + 1}) {
         check_correctness = false;
       }
@@ -249,7 +249,7 @@ int pandoMain(int, char**) {
   const auto thisPlace = pando::getCurrentPlace();
 
   if (thisPlace.node.id == 0) {
-    std::int16_t numPXNs = placeDims.node.id;
+    std::int64_t numPXNs = placeDims.node.id;
     std::int8_t numPodsPerPXNs = placeDims.pod.x * placeDims.pod.y;
     std::int32_t numCoresPerNode = placeDims.core.x * placeDims.core.y * numPodsPerPXNs;
     auto mmResource = pando::getDefaultMainMemoryResource();
@@ -267,7 +267,7 @@ int pandoMain(int, char**) {
             mmResource->allocate(sizeof(bool) * numPXNs));
     // Remote and local distributed array memory allocation
     // Remote and local distributed core done checking array memory allocation
-    for (std::int16_t n = 0; n < numPXNs; ++n) {
+    for (std::int64_t n = 0; n < numPXNs; ++n) {
       const pando::Place otherPlace{pando::NodeIndex{n}, pando::anyPod, pando::anyCore};
 
       {
@@ -299,7 +299,7 @@ int pandoMain(int, char**) {
     correctnessCheck(distArray, numCoresPerNode);
 
     // Deallocate arrays
-    for (std::int16_t n = 0; n < placeDims.node.id; ++n) {
+    for (std::int64_t n = 0; n < placeDims.node.id; ++n) {
       pando::GlobalPtr<std::int64_t> localArray = distArray[n];
       pando::deallocateMemory(localArray, sizeof(std::int64_t) * numCoresPerNode);
       pando::GlobalPtr<bool> localCoreDone = distCoreDones[n];

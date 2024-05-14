@@ -10,11 +10,11 @@
 galois::DistArray<uint64_t> getDistributedWorkArray(uint64_t workItemsPerHost) {
   galois::DistArray<uint64_t> work{};
 
-  int16_t pxns = pando::getPlaceDims().node.id;
+  int64_t pxns = pando::getPlaceDims().node.id;
   pando::Vector<galois::PlaceType> vec;
   EXPECT_EQ(vec.initialize(pxns), pando::Status::Success);
 
-  for (std::int16_t i = 0; i < pxns; i++) {
+  for (std::int64_t i = 0; i < pxns; i++) {
     vec[i] = galois::PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                                pando::MemoryType::Main};
   }

@@ -117,7 +117,7 @@ TEST(doALL, CustomLocality) {
       },
       +[](bool extraState, uint64_t elt) {
         if (extraState) {
-          return pando::Place{pando::NodeIndex{(int16_t)(elt % pando::getPlaceDims().node.id)},
+          return pando::Place{pando::NodeIndex{(int64_t)(elt % pando::getPlaceDims().node.id)},
                               pando::anyPod, pando::anyCore};
         } else {
           return pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore};

@@ -90,14 +90,14 @@ TEST(WaitGroup, RemoteUsage) {
     ptr[pando::getCurrentPlace().node.id] = goodVal;
     wg.done();
   };
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(
         pando::executeOn(pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore},
                          func, wg.getHandle(), ptr, goodVal),
         pando::Status::Success);
   }
   EXPECT_EQ(wg.wait(), pando::Status::Success);
-  for (std::int16_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
+  for (std::int64_t nodeId = 0; nodeId < dims.node.id; nodeId++) {
     EXPECT_EQ(*ptr, goodVal);
   }
   wg.deinitialize();

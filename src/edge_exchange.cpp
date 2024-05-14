@@ -100,7 +100,7 @@ void read_reduce_local_edge_lists(pando::GlobalPtr<bool> dones,
   auto num_hosts = pando::getPlaceDims().node.id;
 
   // Reads each hosts' data into local Edge List. Collects Metadata. Assigns each edge to VHOST
-  for (int16_t i = 0; i < num_hosts; i++) {
+  for (int64_t i = 0; i < num_hosts; i++) {
     auto vhost_index = i * num_vhosts_per_host;
     PANDO_CHECK(executeOn(pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                           &getVHostData, &dones[i], &global_vhostMetadataPerHost[vhost_index],
@@ -109,7 +109,7 @@ void read_reduce_local_edge_lists(pando::GlobalPtr<bool> dones,
   }
 
   // REDUCE Metadata:
-  for (int16_t i = 0; i < num_hosts; i++) {
+  for (int64_t i = 0; i < num_hosts; i++) {
     pando::waitUntil([dones, i]() {
       return dones[i];
     });
@@ -120,7 +120,7 @@ void read_reduce_local_edge_lists(pando::GlobalPtr<bool> dones,
   }
 
   // RESET dones:
-  for (int16_t i = 0; i < num_hosts; i++)
+  for (int64_t i = 0; i < num_hosts; i++)
     dones[i] = false;
 }
 
@@ -171,18 +171,18 @@ void launch_assign_vhosts_to_host(pando::GlobalPtr<bool> dones,
   auto num_hosts = pando::getPlaceDims().node.id;
 
   // LAUNCH KERNEL: Build mapping
-  for (int16_t i = 0; i < num_hosts; i++) {
+  for (int64_t i = 0; i < num_hosts; i++) {
     PANDO_CHECK(executeOn(pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                           &assign_vhosts_to_host, &dones[i], vhosts_per_host, sorted_indices_ptr));
   }
-  for (int16_t i = 0; i < num_hosts; i++) {
+  for (int64_t i = 0; i < num_hosts; i++) {
     pando::waitUntil([dones, i]() {
       return dones[i];
     });
   }
 
   // Reset dones
-  for (int16_t i = 0; i < num_hosts; i++)
+  for (int64_t i = 0; i < num_hosts; i++)
     dones[i] = false;
 }
 
@@ -224,18 +224,18 @@ void launch_build_edges_to_send(
   auto num_hosts = pando::getPlaceDims().node.id;
 
   // LAUNCH KERNEL:: build_edges_to_send
-  for (int16_t i = 0; i < num_hosts; i++) {
+  for (int64_t i = 0; i < num_hosts; i++) {
     PANDO_CHECK(executeOn(pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                           &build_edges_to_send, &dones[i], edges_to_send, vhosts_per_host,
                           global_vhostEdgesPerHost, num_vhosts_per_host));
   }
-  for (int16_t i = 0; i < num_hosts; i++)
+  for (int64_t i = 0; i < num_hosts; i++)
     pando::waitUntil([dones, i]() {
       return dones[i];
     });
 
   // Reset dones
-  for (int16_t i = 0; i < num_hosts; i++)
+  for (int64_t i = 0; i < num_hosts; i++)
     dones[i] = false;
 }
 
@@ -267,16 +267,16 @@ void launch_edge_exchange(
   auto num_hosts = pando::getPlaceDims().node.id;
 
   // LAUNCH KERNEL:: edgeExchange
-  for (int16_t i = 0; i < num_hosts; i++) {
+  for (int64_t i = 0; i < num_hosts; i++) {
     PANDO_CHECK(executeOn(pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                           &edge_exchange, &dones[i], final_edgelist_per_host, edges_to_send));
   }
-  for (int16_t i = 0; i < num_hosts; i++)
+  for (int64_t i = 0; i < num_hosts; i++)
     pando::waitUntil([dones, i]() {
       return dones[i];
     });
 
   // Reset dones
-  for (int16_t i = 0; i < num_hosts; i++)
+  for (int64_t i = 0; i < num_hosts; i++)
     dones[i] = false;
 }

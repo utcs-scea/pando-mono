@@ -153,7 +153,7 @@ public:
     pando::Status err = hostsPlaces.initialize(pando::getPlaceDims().node.id);
     PANDO_CHECK_RETURN(err);
 
-    for (std::int16_t i = 0; i < pando::getPlaceDims().node.id; i++) {
+    for (std::int64_t i = 0; i < pando::getPlaceDims().node.id; i++) {
       hostsPlaces[i] = PlaceType{pando::Place{pando::NodeIndex{i}, pando::anyPod, pando::anyCore},
                                  pando::MemoryType::Main};
     }
@@ -321,7 +321,7 @@ public:
    * @brief A beginning local iterator for a specified node `n` that
    * points to the first local item of this distributed array.
    */
-  pando::GlobalPtr<T> localBegin(std::int16_t n) noexcept {
+  pando::GlobalPtr<T> localBegin(std::int64_t n) noexcept {
     pando::Array<T> arr = m_data[n];
     return pando::GlobalPtr<T>(arr.begin());
   }
@@ -330,7 +330,7 @@ public:
    * @brief A ending local iterator for a specified node `n` that
    * points to (the last local item of this distributed array + 1).
    */
-  pando::GlobalPtr<T> localEnd(std::int16_t n) noexcept {
+  pando::GlobalPtr<T> localEnd(std::int64_t n) noexcept {
     pando::Array<T> arr = m_data[n];
     return pando::GlobalPtr<T>(arr.end());
   }
