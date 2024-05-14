@@ -167,6 +167,7 @@ int main(int argc, char* argv[]) {
   if (auto status = pando::powerOn(argc, argv); status != pando::Status::Success) {
     PANDO_ABORT("PREP initialization failed");
   }
+  auto dims = pando::getPlaceDims();
 
   int result = pando::result();
 
@@ -181,7 +182,6 @@ int main(int argc, char* argv[]) {
       (start.ru_utime.tv_sec * 1000000000 + start.ru_utime.tv_usec * 1000) +
       end.ru_stime.tv_sec * 1000000000 + end.ru_stime.tv_usec * 1000 -
       (start.ru_stime.tv_sec * 1000000000 + start.ru_stime.tv_usec * 1000));
-  auto dims = pando::getPlaceDims();
   for(std::uint64_t i = 0; i < std::uint64_t(dims.core.x + 2); i++) {
     SPDLOG_INFO("Idle time on node: {}, core: {} was {}",
         thisPlace.node.id,
@@ -212,8 +212,31 @@ extern "C" __attribute__((visibility("default"))) int __drv_api_main(int argc, c
   // DrvX assumes the first two args to be full paths to the application.so -- one for the CP to
   // load and the other for the PH cores to load. So, we adjust for the extra argument before
   // invoking start.
+  struct rusage start, end;
+  int rc;
+  rc = getrusage(RUSAGE_SELF, &start);
+  if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
   const auto drvLibArgCount = 1;
-  return __start(argc - drvLibArgCount, argv + drvLibArgCount);
+  const auto ret =  __start(argc - drvLibArgCount, argv + drvLibArgCount);
+
+  rc = getrusage(RUSAGE_SELF, &end);
+  if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
+  auto thisPlace = pando::getCurrentPlace();
+  auto dims = pando::getPlaceDims();
+  SPDLOG_INFO("Total time on node: {}, was {}ns",
+      thisPlace.node.id,
+      end.ru_utime.tv_sec * 1000000000 + end.ru_utime.tv_usec * 1000 -
+      (start.ru_utime.tv_sec * 1000000000 + start.ru_utime.tv_usec * 1000) +
+      end.ru_stime.tv_sec * 1000000000 + end.ru_stime.tv_usec * 1000 -
+      (start.ru_stime.tv_sec * 1000000000 + start.ru_stime.tv_usec * 1000));
+  for(std::uint64_t i = 0; i < std::uint64_t(dims.core.x + 2); i++) {
+    SPDLOG_INFO("Idle time on node: {}, core: {} was {}",
+        thisPlace.node.id,
+        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
+        idleCount.get(i));
+  }
+
+  return ret;
 }
 
 #endif // PANDO_RT_USE_BACKEND_PREP
