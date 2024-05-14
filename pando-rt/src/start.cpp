@@ -24,7 +24,7 @@
 
 constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 4096;
 
-constexpr bool IDLE_TIMER_ENABLE = true;
+constexpr bool IDLE_TIMER_ENABLE = false;
 counter::Record<std::int64_t> idleCount = counter::Record<std::int64_t>();
 
 enum SchedulerFailState{
