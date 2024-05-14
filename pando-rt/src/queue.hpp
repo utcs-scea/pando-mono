@@ -11,6 +11,7 @@
 
 #include "pando-rt/status.hpp"
 #include "concurrentqueue.hpp"
+#include "spdlog/spdlog.h"
 
 namespace pando {
 
@@ -23,7 +24,7 @@ namespace pando {
  *
  * @ingroup PREP
  */
-template <typename T>
+template <typename T, bool Logging = false>
 class Queue {
   moodycamel::ConcurrentQueue<T> m_queue;
 
@@ -44,6 +45,8 @@ public:
    * @brief Enqueues @p t.
    */
   [[nodiscard]] Status enqueue(const T& t) noexcept {
+    if constexpr(Logging)
+      SPDLOG_INFO("Added to queue {}", (void*)this);
     m_queue.enqueue(t);
     return Status::Success;
   }
@@ -52,6 +55,8 @@ public:
    * @brief Enqueues @p t.
    */
   [[nodiscard]] Status enqueue(ProducerToken & ptok, const T& t) noexcept {
+    if constexpr(Logging)
+      SPDLOG_INFO("Added to queue {}", (void*)this);
     m_queue.enqueue(ptok);
     return Status::Success;
   }
@@ -60,6 +65,8 @@ public:
    * @copydoc enqueue(const T& t) noexcept
    */
   [[nodiscard]] Status enqueue(T&& t) noexcept {
+    if constexpr(Logging)
+      SPDLOG_INFO("Added to queue {}", (void*)this);
     m_queue.enqueue(std::forward<T>(t));
     return Status::Success;
   }
@@ -68,6 +75,8 @@ public:
    * @copydoc enqueue(const T& t) noexcept
    */
   [[nodiscard]] Status enqueue(ProducerToken & ptok, T&& t) noexcept {
+    if constexpr(Logging)
+      SPDLOG_INFO("Added to queue {}", (void*)this);
     m_queue.enqueue(ptok, std::forward<T>(t));
     return Status::Success;
   }
@@ -82,6 +91,8 @@ public:
       return std::nullopt;
     }
     std::optional<T> o = std::move(potential);
+    if constexpr(Logging)
+      SPDLOG_INFO("Removed from queue {}", (void*)this);
     return o;
   }
 
@@ -95,6 +106,8 @@ public:
       return std::nullopt;
     }
     std::optional<T> o = std::move(potential);
+    if constexpr(Logging)
+      SPDLOG_INFO("Removed from queue {}", (void*)this);
     return o;
   }
 
@@ -127,7 +140,7 @@ public:
   }
 };
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
-template <typename T>
+template <typename T, bool Logging = false>
 class Queue {
   std::deque<T> m_queue;
   mutable std::mutex m_mutex;
@@ -150,6 +163,8 @@ public:
    */
   [[nodiscard]] Status enqueue(const T& t) noexcept {
     std::lock_guard lock{m_mutex};
+    if constexpr(Logging)
+      SPDLOG_INFO("Added to queue {}", (void*)this);
     m_queue.push_back(t);
     return Status::Success;
   }
@@ -159,6 +174,8 @@ public:
    */
   [[nodiscard]] Status enqueue(ProducerToken &, const T& t) noexcept {
     std::lock_guard lock{m_mutex};
+    if constexpr(Logging)
+      SPDLOG_INFO("Added to queue {}", (void*)this);
     m_queue.push_back(t);
     return Status::Success;
   }
@@ -168,6 +185,8 @@ public:
    */
   [[nodiscard]] Status enqueue(T&& t) noexcept {
     std::lock_guard lock{m_mutex};
+    if constexpr(Logging)
+      SPDLOG_INFO("Added to queue {}", (void*)this);
     m_queue.push_back(std::move(t));
     return Status::Success;
   }
@@ -177,6 +196,8 @@ public:
    */
   [[nodiscard]] Status enqueue(ProducerToken &, T&& t) noexcept {
     std::lock_guard lock{m_mutex};
+    if constexpr(Logging)
+      SPDLOG_INFO("Added to queue {}", (void*)this);
     m_queue.push_back(std::move(t));
     return Status::Success;
   }
@@ -191,6 +212,8 @@ public:
     }
     std::optional<T> o = std::move(m_queue.front());
     m_queue.pop_front();
+    if constexpr(Logging)
+      SPDLOG_INFO("Removed from queue {}", (void*)this);
     return o;
   }
 
@@ -204,6 +227,8 @@ public:
     }
     std::optional<T> o = std::move(m_queue.front());
     m_queue.pop_front();
+    if constexpr(Logging)
+      SPDLOG_INFO("Removed from queue {}", (void*)this);
     return o;
   }
 

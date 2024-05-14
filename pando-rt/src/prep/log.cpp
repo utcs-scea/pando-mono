@@ -46,7 +46,7 @@ public:
     // formatter that adds node index
     auto formatter = std::make_unique<spdlog::pattern_formatter>();
     formatter->add_flag<NodeFormatterFlag>('*').set_pattern(
-        "[%Y-%m-%d %H:%M:%S.%e] [%n:%*] [%^%l%$] [%s:%#] %v");
+        "[%Y-%m-%d %H:%M:%S.%f] [%n:%*] [%^%l%$] [%s:%#] %v");
     // replace default logger
     auto logger = spdlog::stdout_color_mt(loggerName);
     logger->set_formatter(std::move(formatter));
