@@ -65,12 +65,12 @@ make pre-commit
 ### Further tooling
 
 For tooling used by `pando-rt` see their
-[docs](https://github.com/AMDResearch/pando-rt/blob/main/docs/developer.md).
+[docs](https://github.com/utcs-scea/pando-mono/blob/main/pando-rt/docs/developer.md).
 This includes `clang-format` and `cpplint`.
 
 ### [PANDO Runtime System](https://amdresearch.github.io/pando-rt)
 
-Please see [pando-rt's README](https://github.com/AMDResearch/pando-rt/blob/main/README.md).
+Please see [pando-rt's README](https://github.com/utcs-scea/pando-mono/blob/main/pando-rt/README.md).
 
 ## Scripts
 
