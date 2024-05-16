@@ -211,14 +211,33 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
 
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 
-  using ChunkType = std::uint32_t;
   using BlockType = std::uint64_t;
+  const auto blockSize = sizeof(BlockType);
+  const auto numBlocks = n / blockSize;
+  const auto remainderBytes = n % blockSize;
+
+  auto blockSrc = static_cast<const BlockType*>(srcNativePtr);
+  auto blockDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr);
+  for (std::size_t i = 0; i < numBlocks; i++) {
+    auto blockData = *(blockSrc + i);
+    const auto offset = i * blockSize;
+    DrvAPI::write<BlockType>(blockDst + offset, blockData);
+  }
+
+  const auto bytesWritten = numBlocks * blockSize;
+  auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
+  auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
+  for (std::size_t i = 0; i < remainderBytes; i++) {
+    auto byteData = *(byteSrc + i);
+    DrvAPI::write<std::byte>(byteDst + i, byteData);
+  }
+/*
+  using ChunkType = std::uint64_t;
+  using BlockType = std::uint16_t;
   const auto chunkSize = sizeof(ChunkType);
   const auto blockSize = sizeof(BlockType);
-  //const auto numChunks = n / chunkSize;
-  const auto numChunks = 0;
-  //const auto remainderBlocks = n % chunkSize;
-  const auto remainderBlocks = n;
+  const auto numChunks = n / chunkSize;
+  const auto remainderBlocks = n % chunkSize;
   const auto numBlocks = remainderBlocks / blockSize;
   const auto remainderBytes = remainderBlocks % blockSize;
 
@@ -252,7 +271,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
       DrvAPI::write<std::byte>(byteDst + i, byteData);
     }
   }
-
+*/
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
