@@ -46,7 +46,7 @@ public:
    */
   [[nodiscard]] Status enqueue(const T& t) noexcept {
     if constexpr(Logging)
-      SPDLOG_INFO("Added to queue {}", (void*)this);
+      SPDLOG_WARN("Added to {}", (void*)this);
     m_queue.enqueue(t);
     return Status::Success;
   }
@@ -56,7 +56,7 @@ public:
    */
   [[nodiscard]] Status enqueue(ProducerToken & ptok, const T& t) noexcept {
     if constexpr(Logging)
-      SPDLOG_INFO("Added to queue {}", (void*)this);
+      SPDLOG_WARN("Added to {}", (void*)this);
     m_queue.enqueue(ptok);
     return Status::Success;
   }
@@ -66,7 +66,7 @@ public:
    */
   [[nodiscard]] Status enqueue(T&& t) noexcept {
     if constexpr(Logging)
-      SPDLOG_INFO("Added to queue {}", (void*)this);
+      SPDLOG_WARN("Added to {}", (void*)this);
     m_queue.enqueue(std::forward<T>(t));
     return Status::Success;
   }
@@ -76,7 +76,7 @@ public:
    */
   [[nodiscard]] Status enqueue(ProducerToken & ptok, T&& t) noexcept {
     if constexpr(Logging)
-      SPDLOG_INFO("Added to queue {}", (void*)this);
+      SPDLOG_WARN("Added to {}", (void*)this);
     m_queue.enqueue(ptok, std::forward<T>(t));
     return Status::Success;
   }
@@ -92,7 +92,7 @@ public:
     }
     std::optional<T> o = std::move(potential);
     if constexpr(Logging)
-      SPDLOG_INFO("Removed from queue {}", (void*)this);
+      SPDLOG_WARN("Removed from {}", (void*)this);
     return o;
   }
 
@@ -107,7 +107,7 @@ public:
     }
     std::optional<T> o = std::move(potential);
     if constexpr(Logging)
-      SPDLOG_INFO("Removed from queue {}", (void*)this);
+      SPDLOG_WARN("Removed from {}", (void*)this);
     return o;
   }
 
@@ -139,6 +139,7 @@ public:
     return moodycamel::ConsumerToken(m_queue);
   }
 };
+
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 template <typename T, bool Logging = false>
 class Queue {
@@ -164,7 +165,7 @@ public:
   [[nodiscard]] Status enqueue(const T& t) noexcept {
     std::lock_guard lock{m_mutex};
     if constexpr(Logging)
-      SPDLOG_INFO("Added to queue {}", (void*)this);
+      SPDLOG_WARN("Added to {}", (void*)this);
     m_queue.push_back(t);
     return Status::Success;
   }
@@ -175,7 +176,7 @@ public:
   [[nodiscard]] Status enqueue(ProducerToken &, const T& t) noexcept {
     std::lock_guard lock{m_mutex};
     if constexpr(Logging)
-      SPDLOG_INFO("Added to queue {}", (void*)this);
+      SPDLOG_WARN("Added to {}", (void*)this);
     m_queue.push_back(t);
     return Status::Success;
   }
@@ -186,7 +187,7 @@ public:
   [[nodiscard]] Status enqueue(T&& t) noexcept {
     std::lock_guard lock{m_mutex};
     if constexpr(Logging)
-      SPDLOG_INFO("Added to queue {}", (void*)this);
+      SPDLOG_WARN("Added to {}", (void*)this);
     m_queue.push_back(std::move(t));
     return Status::Success;
   }
@@ -197,7 +198,7 @@ public:
   [[nodiscard]] Status enqueue(ProducerToken &, T&& t) noexcept {
     std::lock_guard lock{m_mutex};
     if constexpr(Logging)
-      SPDLOG_INFO("Added to queue {}", (void*)this);
+      SPDLOG_WARN("Added to {}", (void*)this);
     m_queue.push_back(std::move(t));
     return Status::Success;
   }
@@ -213,7 +214,7 @@ public:
     std::optional<T> o = std::move(m_queue.front());
     m_queue.pop_front();
     if constexpr(Logging)
-      SPDLOG_INFO("Removed from queue {}", (void*)this);
+      SPDLOG_WARN("Removed from {}", (void*)this);
     return o;
   }
 
@@ -228,7 +229,7 @@ public:
     std::optional<T> o = std::move(m_queue.front());
     m_queue.pop_front();
     if constexpr(Logging)
-      SPDLOG_INFO("Removed from queue {}", (void*)this);
+      SPDLOG_WARN("Removed from {}", (void*)this);
     return o;
   }
 
