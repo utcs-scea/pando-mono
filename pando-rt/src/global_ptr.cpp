@@ -74,6 +74,7 @@ GlobalAddress createGlobalAddress(void* nativePtr) noexcept {
   if (extractMemoryType(addr) != MemoryType::L1SP) {
     PANDO_ABORT("GlobalPtr to native conversion possible only for L1SP in DrvX");
   }
+  //std::cout << "Created address = 0x" << std::hex << addr << std::endl; 
   return addr;
 
 #endif // PANDO_RT_USE_BACKEND_PREP
@@ -171,6 +172,10 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
+struct Data64Bytes {
+  std::uint64_t data[8];
+};
+
 void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr) {
 #if defined(PANDO_RT_USE_BACKEND_PREP)
 
@@ -206,25 +211,46 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
 
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 
+  using ChunkType = std::uint32_t;
   using BlockType = std::uint64_t;
+  const auto chunkSize = sizeof(ChunkType);
   const auto blockSize = sizeof(BlockType);
-  const auto numBlocks = n / blockSize;
-  const auto remainderBytes = n % blockSize;
+  //const auto numChunks = n / chunkSize;
+  const auto numChunks = 0;
+  //const auto remainderBlocks = n % chunkSize;
+  const auto remainderBlocks = n;
+  const auto numBlocks = remainderBlocks / blockSize;
+  const auto remainderBytes = remainderBlocks % blockSize;
 
-  auto blockSrc = static_cast<const BlockType*>(srcNativePtr);
-  auto blockDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr);
-  for (std::size_t i = 0; i < numBlocks; i++) {
-    auto blockData = *(blockSrc + i);
-    const auto offset = i * blockSize;
-    DrvAPI::write<BlockType>(blockDst + offset, blockData);
+  if (numChunks > 0) {
+    auto chunkSrc = static_cast<const ChunkType*>(srcNativePtr);
+    auto chunkDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr);
+    for (std::size_t i = 0; i < numChunks; i++) {
+      auto chunkData = *(chunkSrc + i);
+      const auto offset = i * chunkSize;
+      DrvAPI::write<ChunkType>(chunkDst + offset, chunkData);
+    }
   }
 
-  const auto bytesWritten = numBlocks * blockSize;
-  auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
-  auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
-  for (std::size_t i = 0; i < remainderBytes; i++) {
-    auto byteData = *(byteSrc + i);
-    DrvAPI::write<std::byte>(byteDst + i, byteData);
+  const auto blocksWritten = numChunks * chunkSize;
+  if (numBlocks > 0) {
+    auto blockSrc = static_cast<const BlockType*>(srcNativePtr) + blocksWritten;
+    auto blockDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + blocksWritten;
+    for (std::size_t i = 0; i < numBlocks; i++) {
+      auto blockData = *(blockSrc + i);
+      const auto offset = i * blockSize;
+      DrvAPI::write<BlockType>(blockDst + offset, blockData);
+    }
+  }
+
+  const auto bytesWritten = blocksWritten + numBlocks * blockSize;
+  if (remainderBytes > 0) {
+    auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
+    auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
+    for (std::size_t i = 0; i < remainderBytes; i++) {
+      auto byteData = *(byteSrc + i);
+      DrvAPI::write<std::byte>(byteDst + i, byteData);
+    }
   }
 
 #endif // PANDO_RT_USE_BACKEND_PREP

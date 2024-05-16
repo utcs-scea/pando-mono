@@ -623,7 +623,7 @@ bool DrvCore::clockTick(SST::Cycle_t cycle) {
   }
   updateTagCycles(1);
   bool unregister = shouldUnregisterClock();
-  unregister = false;
+  //unregister = false;
   core_on_ = (!unregister);
   if (unregister) {
     output_->verbose(CALL_INFO, 2, DEBUG_CLK, "unregistering clock\n");
