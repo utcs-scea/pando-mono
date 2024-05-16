@@ -90,6 +90,13 @@ private:
     wgh.done();
   }
 
+  static pando::Place scheduler(pando::Place preferredLocality) noexcept {
+    if (preferredLocality.node == pando::getCurrentNode()) {
+      return pando::getCurrentPlace();
+    }
+    return pando::Place(preferredLocality.node, pando::anyPod, pando::anyCore);
+  }
+
 public:
   /**
    * @brief This is the do_all loop from galois which takes a rang and lifts a function to it, and
@@ -119,7 +126,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityFunc(s, *curr).node, pando::anyPod, pando::anyCore};
+      auto nodePlace = scheduler(localityFunc(s, *curr));
       err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
                              wgh);
       if (err != pando::Status::Success) {
@@ -158,7 +165,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
+      auto nodePlace = scheduler(localityOf(curr));
       err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
                              wgh);
       if (err != pando::Status::Success) {
@@ -197,7 +204,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
+      auto nodePlace = scheduler(localityOf(curr));
       err = pando::executeOn(nodePlace, &notifyFunc<F, typename R::iterator>, func, curr, wgh);
       if (err != pando::Status::Success) {
         for (std::uint64_t i = iter; i < size; i++) {
