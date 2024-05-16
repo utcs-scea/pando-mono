@@ -6,11 +6,18 @@
 
 #include <pando-rt/export.h>
 
+#include <cassert>
+#include <random>
+
 #include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
+#include <pando-rt/benchmark/counters.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
+
+extern counter::Record<std::minstd_rand> perCoreRNG;
+extern counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
 
 namespace galois {
 
@@ -91,10 +98,14 @@ private:
   }
 
   static pando::Place scheduler(pando::Place preferredLocality) noexcept {
+    /*
     if (preferredLocality.node == pando::getCurrentNode()) {
       return pando::getCurrentPlace();
     }
-    return pando::Place(preferredLocality.node, pando::anyPod, pando::anyCore);
+    */
+    auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
+    assert(coreIdx < pando::getCoreDims().x);
+    return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
   }
 
 public:

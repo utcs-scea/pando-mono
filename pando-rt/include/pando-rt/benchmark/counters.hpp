@@ -53,6 +53,19 @@ namespace counter {
     T& get(std::uint64_t i) {
       return counts[i];
     }
+
+    T& get(bool isOnCP,
+        decltype(pando::getCurrentPlace().core.x) corex,
+        decltype(pando::getCurrentPlace().core.x) coreDims) {
+      std::uint64_t idx = isOnCP ? coreDims + 1 : corex;
+      return counts[idx];
+    }
+
+    T& getLocal() {
+      auto thisCore = pando::getCurrentCore();
+      auto coreDims = pando::getCoreDims();
+      return get(pando::isOnCP(), thisCore.x, coreDims.x);
+    }
   };
 
   template<bool enabled>

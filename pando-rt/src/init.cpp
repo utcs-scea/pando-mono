@@ -4,6 +4,7 @@
 
 #include "init.hpp"
 
+#include <random>
 #include <sys/resource.h>
 #include <sys/time.h>
 
@@ -31,6 +32,9 @@
 #include "drvx/log.hpp"
 #endif // PANDO_RT_USE_BACKEND_PREP
 
+counter::Record<std::minstd_rand> perCoreRNG;
+counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
+
 namespace pando {
 
 void initialize() {
@@ -43,6 +47,15 @@ void initialize() {
     // wait for all nodes to reach this point before invoking pandoMain to wait qthreads
     // initialization
     // this is called from the CP so no yield is necessary
+
+    auto coreDims = pando::getCoreDims();
+    for(std::int8_t i = 0; i < coreDims.x; i++) {
+      perCoreRNG.get(false, i, coreDims.x) = std::minstd_rand(i);
+      perCoreDist.get(false, i, coreDims.x) = std::uniform_int_distribution<std::int8_t> (0, coreDims.x - 1);
+    }
+    perCoreRNG.get(true, 0, coreDims.x) = std::minstd_rand(-1);
+    perCoreDist.get(true, 0, coreDims.x) = std::uniform_int_distribution<std::int8_t>(0, coreDims.x - 1);
+
     Nodes::barrier();
   }
 
