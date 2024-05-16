@@ -4,6 +4,7 @@
 
 set(EXAMPLE_SOURCES
   benchmark_pointer
+  benchmark_GlobalRef
 )
 
 function(add_example EXAMPLES)
