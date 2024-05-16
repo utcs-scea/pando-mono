@@ -276,7 +276,7 @@ ComputeNode node;
 
 bool Cores::CoreActiveFlag::operator*() const noexcept {
   auto& hartContext = *static_cast<HartContext*>(internalData);
-  hartYield(hartContext);
+  //hartYield(hartContext);
   return hartContext.core->isActive();
 }
 
