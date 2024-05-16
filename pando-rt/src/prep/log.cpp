@@ -57,6 +57,8 @@ public:
     const std::string_view logLevel(logLevelVar);
     if (logLevel == "info"sv) {
       spdlog::set_level(spdlog::level::info);
+    } else if (logLevel == "trace"sv) {
+      spdlog::set_level(spdlog::level::trace);
     } else if (logLevel == "warning"sv) {
       spdlog::set_level(spdlog::level::warn);
     } else if (logLevel == "error"sv) {

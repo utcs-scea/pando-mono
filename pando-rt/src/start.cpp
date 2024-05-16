@@ -47,7 +47,7 @@ extern "C" int __start(int argc, char** argv) {
   } else {
     auto* queue = pando::Cores::getTaskQueue(thisPlace);
     if(pando::getCurrentThread().id == 0){
-      SPDLOG_INFO("Node: {}, core: {}, queue {}", thisPlace.node.id, thisPlace.core.x, (void*)queue);
+      SPDLOG_WARN("Node: {}, core: {}, queue {}", thisPlace.node.id, thisPlace.core.x, (void*)queue);
     }
 
     auto coreActive = pando::Cores::getCoreActiveFlag();
