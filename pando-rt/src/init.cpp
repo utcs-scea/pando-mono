@@ -187,7 +187,12 @@ int main(int argc, char* argv[]) {
         thisPlace.node.id,
         std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
         idleCount.get(i));
+    SPDLOG_WARN("Pointer time on node: {}, core: {} was {}",
+        thisPlace.node.id,
+        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
+        pointerCount.get(i));
   }
+
 
   return result;
 }

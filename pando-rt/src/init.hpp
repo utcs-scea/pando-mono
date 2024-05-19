@@ -6,6 +6,7 @@
 #include <pando-rt/benchmark/counters.hpp>
 
 extern counter::Record<std::int64_t> idleCount;
+extern counter::Record<std::int64_t> pointerCount;
 
 namespace pando {
 
