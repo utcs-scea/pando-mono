@@ -81,7 +81,7 @@ extern "C" int __start(int argc, char** argv) {
             case SchedulerFailState::STEAL:
               for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
                 auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
-                if(otherQueue == queue) {continue;}
+                if(!otherQueue || otherQueue == queue) {continue;}
                 if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
                   task = otherQueue->tryDequeue();
                 }

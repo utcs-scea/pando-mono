@@ -85,6 +85,7 @@ bool Cores::CoreActiveFlag::operator*() const noexcept {
 }
 
 Cores::TaskQueue* Cores::getTaskQueue(Place place) noexcept {
+  if(*toNativeDrvPtr(coreState, place) != +CoreState::Ready) return nullptr;
   return *toNativeDrvPtr(coreQueue, place);
 }
 
