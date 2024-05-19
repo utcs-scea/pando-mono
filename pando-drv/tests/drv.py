@@ -300,6 +300,8 @@ class CommandProcessor(object):
         self.core_nic.addParams({
             "group" : 0,
             "network_bw" : "1024GB/s",
+            "network_input_buffer_size" : "1MB",
+            "network_output_buffer_size" : "1MB",
             "destinations" : "0,1,2",
             "verbose_level" : arguments.verbose_memory,
         })
