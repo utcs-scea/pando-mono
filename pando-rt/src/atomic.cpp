@@ -240,7 +240,7 @@ void atomicStoreImpl(GlobalPtr<T> ptr, const T value, [[maybe_unused]] std::memo
     // local store
 
     // yield to other hart and do atomic store
-    hartYield();
+    //hartYield();
     auto dstNativePtr = static_cast<T*>(Memory::getNativeAddress(ptr.address));
     __atomic_store_n(dstNativePtr, value, stdToGccMemOrder(order));
 
@@ -377,7 +377,7 @@ T atomicCompareExchangeImpl(GlobalPtr<T> ptr, T expected, const T desired) {
     // local compare-exchange
 
     // yield to other hart and do compare-exchange
-    hartYield();
+    //hartYield();
     auto nativePtr = static_cast<T*>(Memory::getNativeAddress(ptr.address));
     __atomic_compare_exchange_n(nativePtr, &expected, desired, weak, __ATOMIC_SEQ_CST,
                                 __ATOMIC_SEQ_CST);
@@ -445,7 +445,7 @@ void atomicIncrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
     // local increment
 
     // yield to other hart and do atomic increment
-    hartYield();
+    //hartYield();
     auto nativePtr = static_cast<T*>(Memory::getNativeAddress(ptr.address));
     __atomic_fetch_add(nativePtr, value, stdToGccMemOrder(order));
 
@@ -502,7 +502,7 @@ void atomicDecrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
     // local increment
 
     // yield to other hart and do atomic decrement
-    hartYield();
+    //hartYield();
     auto nativePtr = static_cast<T*>(Memory::getNativeAddress(ptr.address));
     __atomic_fetch_sub(nativePtr, value, stdToGccMemOrder(order));
 
@@ -559,7 +559,7 @@ T atomicFetchAddImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
     // local increment
 
     // yield to other hart and do atomic fetch-add
-    hartYield();
+    //hartYield();
     auto nativePtr = static_cast<T*>(Memory::getNativeAddress(ptr.address));
     auto result = __atomic_fetch_add(nativePtr, value, stdToGccMemOrder(order));
 
@@ -619,7 +619,7 @@ T atomicFetchSubImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
     // local increment
 
     // yield to other hart and do atomic fetch-sub
-    hartYield();
+    //hartYield();
     auto nativePtr = static_cast<T*>(Memory::getNativeAddress(ptr.address));
     auto result = __atomic_fetch_sub(nativePtr, value, stdToGccMemOrder(order));
 
@@ -675,7 +675,7 @@ void atomicThreadFence([[maybe_unused]] std::memory_order order) {
 #ifdef PANDO_RT_USE_BACKEND_PREP
 
   // yield to other hart and issue fence
-  hartYield();
+  //hartYield();
   std::atomic_thread_fence(order);
 
 #else
