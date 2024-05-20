@@ -11,6 +11,7 @@
 #include "pando-rt/locality.hpp"
 #include "pando-rt/memory/address_translation.hpp"
 #include "pando-rt/stdlib.hpp"
+#include "pando-rt/benchmark/counters.hpp"
 
 #if defined(PANDO_RT_USE_BACKEND_PREP)
 #include "prep/cores.hpp"
@@ -25,6 +26,9 @@
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 #include "drvx/drvx.hpp"
 #endif // PANDO_RT_USE_BACKEND_PREP
+
+constexpr bool POINTER_TIMER_ENABLE = false;
+counter::Record<std::int64_t> pointerCount = counter::Record<std::int64_t>();
 
 namespace pando {
 
@@ -116,6 +120,8 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 
   const auto nodeIdx = extractNodeIndex(srcGlobalAddr);
   if (nodeIdx == Nodes::getCurrentNode()) {
+    counter::HighResolutionCount<POINTER_TIMER_ENABLE> pointerTimer;
+    pointerTimer.start();
     // yield to other hart and then issue the operation
     //hartYield();
 
@@ -127,6 +133,7 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
     // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
     MemTraceLogger::log("LOAD", nodeIdx, nodeIdx, n, dstNativePtr, srcGlobalAddr);
 #endif
+    counter::recordHighResolutionEvent(pointerCount, pointerTimer);
   } else {
     // remote load; send remote load request and wait for it to finish
     Nodes::LoadHandle handle(dstNativePtr);
@@ -169,6 +176,8 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
 
   const auto nodeIdx = extractNodeIndex(dstGlobalAddr);
   if (nodeIdx == Nodes::getCurrentNode()) {
+    counter::HighResolutionCount<POINTER_TIMER_ENABLE> pointerTimer;
+    pointerTimer.start();
     // yield to other hart and then issue the operation
     //hartYield();
 
@@ -180,6 +189,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
     // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
     MemTraceLogger::log("STORE", nodeIdx, nodeIdx, n, dstNativePtr, dstGlobalAddr);
 #endif
+    counter::recordHighResolutionEvent(pointerCount, pointerTimer);
   } else {
     // remote store; send remote store request and wait for it to finish
     Nodes::AckHandle handle;
