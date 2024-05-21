@@ -486,7 +486,6 @@ void atomicIncrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
 
 #else
 
-  std::cout << "atomic_add address: 0x" << std::hex << ptr.address << ", increment " << value << std::endl;
   DrvAPI::atomic_add(ptr.address, value);
 
 #endif
@@ -544,7 +543,6 @@ void atomicDecrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
 
 #else
 
-  std::cout << "atomic_add address: 0x" << std::hex << ptr.address << ", decrement " << value << std::endl;
   DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
 
 #endif
@@ -605,7 +603,6 @@ T atomicFetchAddImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
 
 #else
 
-  std::cout << "atomic_add address: 0x" << std::hex << ptr.address << ", increment " << value << std::endl;
   return DrvAPI::atomic_add(ptr.address, value);
 
 #endif
@@ -667,7 +664,6 @@ T atomicFetchSubImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
 
 #else
 
-  std::cout << "atomic_add address: 0x" << std::hex << ptr.address << ", decrement " << value << std::endl;
   return DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
 
 #endif
