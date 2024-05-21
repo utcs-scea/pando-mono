@@ -28,26 +28,6 @@ T read(DrvAPIAddress address)
 }
 
 /**
- * @brief read from a memory address
- *
- */
-template <typename T>
-T readPando(DrvAPIAddress address)
-{
-    void* nativePtr{nullptr};
-    std::size_t size = 0;
-    DrvAPIAddressToNative(address, &nativePtr, &size);
-    DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemReadConcrete<T>>(address));
-    DrvAPIThread::current()->yield();
-    auto read_req = std::dynamic_pointer_cast<DrvAPIMemRead>(DrvAPIThread::current()->getState());
-    if (read_req) {
-        read_req->getResult(nativePtr);
-    }
-    auto result = static_cast<T*>(nativePtr);
-    return *result;
-}
-
-/**
  * @brief write to a memory address
  *
  */

@@ -65,22 +65,6 @@ void load(GlobalAddress globalAddr, void* nativePtr) {
 }
 
 /**
- * @brief Performs a load from a pointer in the global address space to space in the native address
- *        space.
- *
- * @param[in]  globalAddr global address to read from
- * @param[out] nativePtr  native pointer to write to
- *
- * @ingroup DRVX
- */
-template <typename T>
-void loadPando(GlobalAddress globalAddr, void* nativePtr) {
-  T* destPtr = static_cast<T*>(nativePtr);
-  *destPtr = DrvAPI::readPando<T>(globalAddr);
-  //*destPtr = DrvAPI::read<T>(globalAddr);
-}
-
-/**
  * @brief Performs a store from a pointer to the native address space to space in the global address
  *        space.
  *
@@ -259,10 +243,6 @@ struct GlobalPtr {
 
   constexpr auto operator*() const noexcept {
     return GlobalRef<T>{*this};
-  }
-
-  GlobalPtr<GlobalPtr<T>> operator&() const noexcept { // NOLINT - needed to get a global pointer
-    return GlobalPtr<GlobalPtr<T>>(this);
   }
 
   T* operator->() const noexcept {
@@ -780,13 +760,7 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::load(m_globalPtr.address, sizeof(ObjectT), nativePtr);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
-    if constexpr (std::is_scalar_v<ObjectT>) {
-      detail::load<ObjectT>(m_globalPtr.address, nativePtr);
-    } else {
-      //detail::load(m_globalPtr.address, sizeof(ObjectT), nativePtr);
-      //detail::loadPando<ObjectT>(m_globalPtr.address, nativePtr);
-      detail::load<ObjectT>(m_globalPtr.address, nativePtr);
-    }
+    detail::load<ObjectT>(m_globalPtr.address, nativePtr);
 #endif
     if constexpr (std::is_trivially_destructible_v<ObjectT>) {
       // skip intermediate copy if the destructor does not do much
@@ -829,12 +803,7 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::store(m_globalPtr.address, sizeof(T), std::addressof(value));
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
-    if constexpr (std::is_scalar_v<T>) {
-      detail::store<T>(m_globalPtr.address, std::addressof(value));
-    } else {
-      //detail::store(m_globalPtr.address, sizeof(T), std::addressof(value));
-      detail::store<T>(m_globalPtr.address, std::addressof(value));
-    }
+    detail::store<T>(m_globalPtr.address, std::addressof(value));
 #endif
     return *this;
   }
@@ -847,12 +816,7 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::store(m_globalPtr.address, sizeof(T), std::addressof(tmp));
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
-    if constexpr (std::is_scalar_v<T>) {
-      detail::store<T>(m_globalPtr.address, std::addressof(tmp));
-    } else {
-      //detail::store(m_globalPtr.address, sizeof(T), std::addressof(tmp));
-      detail::store<T>(m_globalPtr.address, std::addressof(tmp));
-    }
+    detail::store<T>(m_globalPtr.address, std::addressof(tmp));
 #endif
     return *this;
   }
