@@ -10,6 +10,7 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <typeinfo>
 
 #include "address_translation.hpp"
 #include "export.h"
@@ -76,6 +77,7 @@ template <typename T>
 void loadPando(GlobalAddress globalAddr, void* nativePtr) {
   T* destPtr = static_cast<T*>(nativePtr);
   *destPtr = DrvAPI::readPando<T>(globalAddr);
+  //*destPtr = DrvAPI::read<T>(globalAddr);
 }
 
 /**
@@ -782,7 +784,8 @@ public:
       detail::load<ObjectT>(m_globalPtr.address, nativePtr);
     } else {
       //detail::load(m_globalPtr.address, sizeof(ObjectT), nativePtr);
-      detail::loadPando<ObjectT>(m_globalPtr.address, nativePtr);
+      //detail::loadPando<ObjectT>(m_globalPtr.address, nativePtr);
+      detail::load<ObjectT>(m_globalPtr.address, nativePtr);
     }
 #endif
     if constexpr (std::is_trivially_destructible_v<ObjectT>) {
@@ -829,8 +832,8 @@ public:
     if constexpr (std::is_scalar_v<T>) {
       detail::store<T>(m_globalPtr.address, std::addressof(value));
     } else {
-      detail::store(m_globalPtr.address, sizeof(T), std::addressof(value));
-      //detail::store<T>(m_globalPtr.address, std::addressof(value));
+      //detail::store(m_globalPtr.address, sizeof(T), std::addressof(value));
+      detail::store<T>(m_globalPtr.address, std::addressof(value));
     }
 #endif
     return *this;
@@ -847,8 +850,8 @@ public:
     if constexpr (std::is_scalar_v<T>) {
       detail::store<T>(m_globalPtr.address, std::addressof(tmp));
     } else {
-      detail::store(m_globalPtr.address, sizeof(T), std::addressof(tmp));
-      //detail::store<T>(m_globalPtr.address, std::addressof(tmp));
+      //detail::store(m_globalPtr.address, sizeof(T), std::addressof(tmp));
+      detail::store<T>(m_globalPtr.address, std::addressof(tmp));
     }
 #endif
     return *this;
@@ -915,7 +918,7 @@ public:
     return x op static_cast<U>(y);                   \
   }                                                  \
   template <typename T, typename U>                  \
-  auto operator op(GlobalRef<T> x, U& y) {     \
+  auto operator op(GlobalRef<T> x, U& y) {           \
     return static_cast<T>(x) op y;                   \
   }                                                  \
 

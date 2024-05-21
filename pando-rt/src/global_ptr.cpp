@@ -74,7 +74,7 @@ GlobalAddress createGlobalAddress(void* nativePtr) noexcept {
   if (extractMemoryType(addr) != MemoryType::L1SP) {
     PANDO_ABORT("GlobalPtr to native conversion possible only for L1SP in DrvX");
   }
-  //std::cout << "Created address = 0x" << std::hex << addr << std::endl; 
+
   return addr;
 
 #endif // PANDO_RT_USE_BACKEND_PREP
