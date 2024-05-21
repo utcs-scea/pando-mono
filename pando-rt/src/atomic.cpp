@@ -361,7 +361,13 @@ bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, GlobalPtr<T> expected, GlobalPt
   const auto expectedValue = *expected;
   const auto desiredValue = *desired;
   const auto foundValue = DrvAPI::atomic_cas<T>(ptr.address, expectedValue, desiredValue);
-  return foundValue == expectedValue;
+  if (foundValue == expectedValue) {
+    return true;
+  }
+  else {
+    *expected = foundValue;
+    return false;
+  }
 
 #endif
 }
@@ -415,7 +421,11 @@ T atomicCompareExchangeImpl(GlobalPtr<T> ptr, T expected, const T desired) {
 
 #else
 
-  return DrvAPI::atomic_cas<T>(ptr.address, expected, desired);
+  const auto foundValue = DrvAPI::atomic_cas<T>(ptr.address, expected, desired);
+  if (foundValue != expected) {
+    expected = foundValue;
+  }
+  return foundValue;
 
 #endif
 }
@@ -476,6 +486,7 @@ void atomicIncrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
 
 #else
 
+  std::cout << "atomic_add address: 0x" << std::hex << ptr.address << ", increment " << value << std::endl;
   DrvAPI::atomic_add(ptr.address, value);
 
 #endif
@@ -533,6 +544,7 @@ void atomicDecrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
 
 #else
 
+  std::cout << "atomic_add address: 0x" << std::hex << ptr.address << ", decrement " << value << std::endl;
   DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
 
 #endif
@@ -593,6 +605,7 @@ T atomicFetchAddImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
 
 #else
 
+  std::cout << "atomic_add address: 0x" << std::hex << ptr.address << ", increment " << value << std::endl;
   return DrvAPI::atomic_add(ptr.address, value);
 
 #endif
@@ -654,6 +667,7 @@ T atomicFetchSubImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
 
 #else
 
+  std::cout << "atomic_add address: 0x" << std::hex << ptr.address << ", decrement " << value << std::endl;
   return DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
 
 #endif
