@@ -130,7 +130,7 @@ public:
   }
 
   constexpr std::uint64_t size() const noexcept {
-    return m_size;
+    return *((std::uint64_t*)((char*)this + offsetof(Array<T>, m_size)));
   }
 
   /**
@@ -254,7 +254,7 @@ public:
   }
 
   constexpr std::uint64_t size() const noexcept {
-    return m_size;
+    return *((std::uint64_t*)((char*)this + offsetof(Array<T>, m_size)));
   }
 
   constexpr pando::GlobalPtr<T> get(std::uint64_t pos) noexcept {
