@@ -93,7 +93,7 @@ public:
     constexpr auto failure = std::memory_order_relaxed;
     auto expected = static_cast<LockState>(State::IsUnlocked);
     auto desired = static_cast<LockState>(State::IsLocked);
-    return pando::atomicCompareExchangeBool(m_state, expected, desired, success, failure);
+    return pando::atomicCompareExchange(m_state, expected, desired, success, failure);
   }
   /**
    * @brief Release the lock.

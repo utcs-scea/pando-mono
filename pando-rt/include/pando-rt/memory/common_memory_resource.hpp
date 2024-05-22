@@ -57,7 +57,7 @@ public:
   static bool tryLock(GlobalPtr<MutexValueType> mutexStatePtr) {
     const auto desired = +MutexState::isLocked;
     const auto expected = +MutexState::isUnlocked;
-    return atomicCompareExchangeBool(mutexStatePtr, expected, desired);
+    return atomicCompareExchange(mutexStatePtr, expected, desired);
   }
 
   /**

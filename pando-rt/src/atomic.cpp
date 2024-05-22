@@ -193,7 +193,7 @@ INSTANTIATE_ATOMIC_STORE(std::uint64_t)
 #undef INSTANTIATE_ATOMIC_STORE
 
 template <typename T>
-bool atomicCompareExchangeBoolImpl(GlobalPtr<T> ptr, T& expected, const T desired,
+bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, T& expected, const T desired,
                                    [[maybe_unused]] std::memory_order success,
                                    [[maybe_unused]] std::memory_order failure) {
 #ifdef PANDO_RT_USE_BACKEND_PREP
@@ -262,99 +262,18 @@ bool atomicCompareExchangeBoolImpl(GlobalPtr<T> ptr, T& expected, const T desire
 }
 
 template <typename T>
-bool atomicCompareExchangeBoolImpl(GlobalPtr<T> ptr, T& expected, const T desired) {
-  return atomicCompareExchangeBoolImpl<T>(ptr, expected, desired, std::memory_order_seq_cst,
+bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, T& expected, const T desired) {
+  return atomicCompareExchangeImpl<T>(ptr, expected, desired, std::memory_order_seq_cst,
                                           std::memory_order_seq_cst);
 }
 
-template <typename T>
-T atomicCompareExchangeValueImpl(GlobalPtr<T> ptr, T& expected, const T desired,
-                                 [[maybe_unused]] std::memory_order success,
-                                 [[maybe_unused]] std::memory_order failure) {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-
-  const auto nodeIdx = extractNodeIndex(ptr.address);
-  if (nodeIdx == Nodes::getCurrentNode()) {
-    // local compare-exchange
-
-    constexpr bool weak = false;
-
-    // yield to other hart and do compare-exchange
-    //hartYield();
-    auto nativePtr = static_cast<T*>(Memory::getNativeAddress(ptr.address));
-    __atomic_compare_exchange_n(nativePtr, &expected, desired, weak,
-                                stdToGccMemOrder(success), stdToGccMemOrder(failure));
-
-#if PANDO_MEM_TRACE_OR_STAT
-    // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
-    MemTraceLogger::log("ATOMIC_COMPARE_EXCHANGE", nodeIdx, nodeIdx, sizeof(T), nativePtr,
-                        ptr.address);
-#endif
-
-    return expected;
-  } else {
-    // remote compare-exchange
-
-    // 1. fence to guarantee ordering at the caller; check only for success, as it should be
-    // stronger that failure
-    preAtomicOpFence(success);
-
-    // 2. relaxed atomic compare-exchange
-    Nodes::ValueHandle<T> handle;
-    if (auto status =
-            Nodes::atomicCompareExchange<T>(nodeIdx, ptr.address, expected, desired, handle);
-        status != Status::Success) {
-      SPDLOG_ERROR("Remote operation error: {}", status);
-      PANDO_ABORT("Remote operation error");
-    }
-    hartYieldUntil([&handle] {
-      return handle.ready();
-    });
-
-    // 3. fence upon success / failure
-    if (handle.value() == expected) {
-      // success
-      postAtomicOpFence(success);
-      return handle.value();
-    } else {
-      // failure
-      postAtomicOpFence(failure);
-      expected = handle.value();
-      return handle.value();
-    }
-  }
-
-#else
-
-  const auto foundValue = DrvAPI::atomic_cas<T>(ptr.address, expected, desired);
-  if (foundValue != expected) {
-    expected = foundValue;
-  }
-  return foundValue;
-
-#endif
-}
-
-template <typename T>
-T atomicCompareExchangeValueImpl(GlobalPtr<T> ptr, T& expected, const T desired) {
-  return atomicCompareExchangeValueImpl<T>(ptr, expected, desired, std::memory_order_seq_cst,
-                                           std::memory_order_seq_cst);
-}
-
 #define INSTANTIATE_ATOMIC_COMPARE_EXCHANGE(T)                                                    \
-  bool atomicCompareExchangeBool(GlobalPtr<T> ptr, T& expected, const T desired,                  \
+  bool atomicCompareExchange(GlobalPtr<T> ptr, T& expected, const T desired,                  \
                                  std::memory_order success, std::memory_order failure) {          \
-    return atomicCompareExchangeBoolImpl(ptr, expected, desired, success, failure);               \
+    return atomicCompareExchangeImpl(ptr, expected, desired, success, failure);               \
   }                                                                                               \
-  bool atomicCompareExchangeBool(GlobalPtr<T> ptr, T& expected, const T desired) {                \
-    return atomicCompareExchangeBoolImpl(ptr, expected, desired);                                 \
-  }                                                                                               \
-  T atomicCompareExchangeValue(GlobalPtr<T> ptr, T expected, T desired,                           \
-                               std::memory_order success, std::memory_order failure) {            \
-    return atomicCompareExchangeValueImpl(ptr, expected, desired, success, failure);              \
-  }                                                                                               \
-  T atomicCompareExchangeValue(GlobalPtr<T> ptr, T expected, T desired) {                         \
-    return atomicCompareExchangeValueImpl(ptr, expected, desired);                                \
+  bool atomicCompareExchange(GlobalPtr<T> ptr, T& expected, const T desired) {                \
+    return atomicCompareExchangeImpl(ptr, expected, desired);                                 \
   }
 
 INSTANTIATE_ATOMIC_COMPARE_EXCHANGE(std::int32_t)

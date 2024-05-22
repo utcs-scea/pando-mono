@@ -92,25 +92,25 @@ PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::uint64_t> ptr, std::uint64_t val
  *
  * @ingroup ROOT
  */
-PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::int32_t> ptr,
-                                               std::int32_t& expected,
-                                               const std::int32_t desired,
-                                               std::memory_order success, std::memory_order failure);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
-PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::uint32_t> ptr,
-                                               std::uint32_t& expected,
-                                               const std::uint32_t desired,
-                                               std::memory_order success, std::memory_order failure);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
-PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::int64_t> ptr,
-                                               std::int64_t& expected,
-                                               const std::int64_t desired,
-                                               std::memory_order success, std::memory_order failure);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
-PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::uint64_t> ptr,
-                                               std::uint64_t& expected,
-                                               const std::uint64_t desired,
-                                               std::memory_order success, std::memory_order failure);
+PANDO_RT_EXPORT bool atomicCompareExchange(GlobalPtr<std::int32_t> ptr,
+                                           std::int32_t& expected,
+                                           const std::int32_t desired,
+                                           std::memory_order success, std::memory_order failure);
+/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
+PANDO_RT_EXPORT bool atomicCompareExchange(GlobalPtr<std::uint32_t> ptr,
+                                           std::uint32_t& expected,
+                                           const std::uint32_t desired,
+                                           std::memory_order success, std::memory_order failure);
+/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
+PANDO_RT_EXPORT bool atomicCompareExchange(GlobalPtr<std::int64_t> ptr,
+                                           std::int64_t& expected,
+                                           const std::int64_t desired,
+                                           std::memory_order success, std::memory_order failure);
+/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
+PANDO_RT_EXPORT bool atomicCompareExchange(GlobalPtr<std::uint64_t> ptr,
+                                           std::uint64_t& expected,
+                                           const std::uint64_t desired,
+                                           std::memory_order success, std::memory_order failure);
 
 /**
  * @brief Atomically compare the object pointed to by a pointer with an expected value then set the
@@ -127,116 +127,21 @@ PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::uint64_t> ptr,
  *
  * @ingroup ROOT
  */
-PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::int32_t> ptr,
-                                               std::int32_t& expected,
-                                               const std::int32_t desired);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
-PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::uint32_t> ptr,
-                                               std::uint32_t& expected,
-                                               const std::uint32_t desired);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
-PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::int64_t> ptr,
-                                               std::int64_t& expected,
-                                               const std::int64_t desired);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
-PANDO_RT_EXPORT bool atomicCompareExchangeBool(GlobalPtr<std::uint64_t> ptr,
-                                               std::uint64_t& expected,
-                                               const std::uint64_t desired);
-
-/**
- * @brief Atomically compare the object pointed to by a pointer with an expected value then set the
- *        object pointed to by the pointer to the desired value if the comparison succeeded.
- *
- * @param[in] ptr      pointer to the object to modify
- * @param[in] expected the expected value stored in @p ptr
- * @param[in] desired  the value to store in @p ptr
- * @param[in] success  memory order to use when storing @p desired in @p ptr succeed
- * @param[in] failure  memory order to use when the operation fails. @p failure cannot be
- *                     `std::memory_order_release` or `std::memory_order_acq_rel` and it
- *                     cannot be stronger than @p success
- *
- * @return old value of @p ptr
- *
- * @ingroup ROOT
- */
-PANDO_RT_EXPORT std::int32_t atomicCompareExchangeValue(GlobalPtr<std::int32_t> ptr,
-                                                        std::int32_t& expected,
-                                                        const std::int32_t desired,
-                                                        std::memory_order success, std::memory_order failure);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
-PANDO_RT_EXPORT std::uint32_t atomicCompareExchangeValue(GlobalPtr<std::uint32_t> ptr,
-                                                         std::uint32_t& expected,
-                                                         const std::uint32_t desired,
-                                                         std::memory_order success, std::memory_order failure);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
-PANDO_RT_EXPORT std::int64_t atomicCompareExchangeValue(GlobalPtr<std::int64_t> ptr,
-                                                        std::int64_t& expected,
-                                                        const std::int64_t desired,
-                                                        std::memory_order success, std::memory_order failure);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t,std::memory_order,std::memory_order)
-PANDO_RT_EXPORT std::uint64_t atomicCompareExchangeValue(GlobalPtr<std::uint64_t> ptr,
-                                                         std::uint64_t& expected,
-                                                         const std::uint64_t desired,
-                                                         std::memory_order success, std::memory_order failure);
-
-/**
- * @brief Atomically compare the object pointed to by a pointer with an expected value then set the
- *        object pointed to by the pointer to the desired value if the comparison succeeded.
- *
- * @param[in] ptr      pointer to the object to modify
- * @param[in] expected the expected value stored in @p ptr
- * @param[in] desired  the value to store in @p ptr
- * 
- * @note On either success or failure, the atomic operations are performed with
- *       @c std::memory_order_seq_cst memory order.
- *
- * @return old value of @p ptr
- *
- * @ingroup ROOT
- */
-PANDO_RT_EXPORT std::int32_t atomicCompareExchangeValue(GlobalPtr<std::int32_t> ptr,
-                                                        std::int32_t& expected,
-                                                        const std::int32_t desired);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
-PANDO_RT_EXPORT std::uint32_t atomicCompareExchangeValue(GlobalPtr<std::uint32_t> ptr,
-                                                         std::uint32_t& expected,
-                                                         const std::uint32_t desired);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
-PANDO_RT_EXPORT std::int64_t atomicCompareExchangeValue(GlobalPtr<std::int64_t> ptr,
-                                                        std::int64_t& expected,
-                                                        const std::int64_t desired);
-/// @copydoc atomicCompareExchangeBool(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
-PANDO_RT_EXPORT std::uint64_t atomicCompareExchangeValue(GlobalPtr<std::uint64_t> ptr,
-                                                         std::uint64_t& expected,
-                                                         const std::uint64_t desired);
-
-
-/**
- * @brief Atomically compare the object pointed to by a pointer with an expected value then set the
- *        object pointed to by the pointer to the desired value if the comparison succeeded.
- *
- * @note On either success or failure, the atomic operations are performed with
- *       @c std::memory_order_seq_cst memory order.
- *
- * @param[in] ptr      pointer to the object to modify
- * @param[in] expected expected value stored in @p ptr
- * @param[in] desired  value to store in @p ptr
- *
- * @return old value of @p ptr
- *
- * @ingroup ROOT
- */
-PANDO_RT_EXPORT std::int32_t atomicCompareExchange(GlobalPtr<std::int32_t> ptr,
-                                                   std::int32_t expected, std::int32_t desired);
-/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t,std::int32_t)
-PANDO_RT_EXPORT std::uint32_t atomicCompareExchange(GlobalPtr<std::uint32_t> ptr,
-                                                    std::uint32_t expected, std::uint32_t desired);
-/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t,std::int32_t)
-PANDO_RT_EXPORT std::int64_t atomicCompareExchange(GlobalPtr<std::int64_t> ptr,
-                                                   std::int64_t expected, std::int64_t desired);
-/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t,std::int32_t)
-PANDO_RT_EXPORT std::uint64_t atomicCompareExchange(GlobalPtr<std::uint64_t> ptr,
-                                                    std::uint64_t expected, std::uint64_t desired);
+PANDO_RT_EXPORT bool atomicCompareExchange(GlobalPtr<std::int32_t> ptr,
+                                           std::int32_t& expected,
+                                           const std::int32_t desired);
+/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
+PANDO_RT_EXPORT bool atomicCompareExchange(GlobalPtr<std::uint32_t> ptr,
+                                           std::uint32_t& expected,
+                                           const std::uint32_t desired);
+/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
+PANDO_RT_EXPORT bool atomicCompareExchange(GlobalPtr<std::int64_t> ptr,
+                                           std::int64_t& expected,
+                                           const std::int64_t desired);
+/// @copydoc atomicCompareExchange(GlobalPtr<std::int32_t>,std::int32_t&,const std::int32_t)
+PANDO_RT_EXPORT bool atomicCompareExchange(GlobalPtr<std::uint64_t> ptr,
+                                           std::uint64_t& expected,
+                                           const std::uint64_t desired);
 
 /**
  * @brief Atomically adds @p value to the value pointed to by @p ptr.

@@ -70,7 +70,7 @@ TYPED_TEST(AtomicsTest, ValueBasedStore) {
   EXPECT_EQ(*this->ptr, gold);
 }
 
-TYPED_TEST(AtomicsTest, ValueBasedCompareExchange) {
+TYPED_TEST(AtomicsTest, ValueBasedCompareExchange1) {
   using ValueType = typename TestFixture::ValueType;
   ValueType expected{32};
   ValueType oldValue{expected};
@@ -78,7 +78,20 @@ TYPED_TEST(AtomicsTest, ValueBasedCompareExchange) {
   *this->ptr = expected;
   const auto successOrder = std::memory_order_relaxed;
   const auto failureOrder = std::memory_order_relaxed;
-  const bool success = pando::atomicCompareExchangeBool(this->ptr, expected, desired, successOrder, failureOrder);
+  const bool success = pando::atomicCompareExchange(this->ptr, expected, desired, successOrder, failureOrder);
+
+  EXPECT_TRUE(success);
+  EXPECT_EQ(expected, oldValue);
+  EXPECT_EQ(*this->ptr, desired);
+}
+
+TYPED_TEST(AtomicsTest, ValueBasedCompareExchange2) {
+  using ValueType = typename TestFixture::ValueType;
+  ValueType expected{32};
+  ValueType oldValue{expected};
+  ValueType desired{64};
+  *this->ptr = expected;
+  const bool success = pando::atomicCompareExchange(this->ptr, expected, desired);
 
   EXPECT_TRUE(success);
   EXPECT_EQ(expected, oldValue);
