@@ -169,6 +169,47 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
     *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
   }
 
+// Adding an extra layer for message payload granularity
+// Currently does not work for types more than 64 bits
+// Kept for future usage
+/*
+  using ChunkType = std::uint64_t;
+  using BlockType = std::uint16_t;
+  const auto chunkSize = sizeof(ChunkType);
+  const auto blockSize = sizeof(BlockType);
+  const auto numChunks = n / chunkSize;
+  const auto remainderBlocks = n % chunkSize;
+  const auto numBlocks = remainderBlocks / blockSize;
+  const auto remainderBytes = remainderBlocks % blockSize;
+
+  if (numChunks > 0) {
+    auto chunkDst = static_cast<ChunkType*>(dstNativePtr);
+    auto chunkSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr);
+    for (std::size_t i = 0; i < numChunks; i++) {
+      const auto offset = i * chunkSize;
+      *(chunkDst + i) = DrvAPI::read<ChunkType>(chunkSrc + offset);
+    }
+  }
+
+  const auto blocksRead = numChunks * chunkSize;
+  if (numBlocks > 0) {
+    auto blockDst = static_cast<BlockType*>(dstNativePtr) + blocksRead;
+    auto blockSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr) + blocksRead;
+    for (std::size_t i = 0; i < numBlocks; i++) {
+      const auto offset = i * blockSize;
+      *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + offset);
+    }
+  }
+
+  const auto bytesRead = blocksRead + numBlocks * blockSize;
+  if (remainderBytes > 0) {
+    auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
+    auto byteSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr) + bytesRead;
+    for (std::size_t i = 0; i < remainderBytes; i++) {
+      *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
+    }
+  }
+*/
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
@@ -231,6 +272,10 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
     auto byteData = *(byteSrc + i);
     DrvAPI::write<std::byte>(byteDst + i, byteData);
   }
+
+// Adding an extra layer for message payload granularity
+// Currently does not work for types more than 64 bits
+// Kept for future usage
 /*
   using ChunkType = std::uint64_t;
   using BlockType = std::uint16_t;

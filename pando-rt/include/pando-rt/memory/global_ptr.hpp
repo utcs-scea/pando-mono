@@ -10,7 +10,6 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
-#include <typeinfo>
 
 #include "address_translation.hpp"
 #include "export.h"
