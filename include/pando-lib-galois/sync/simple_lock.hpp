@@ -93,17 +93,14 @@ public:
     constexpr auto failure = std::memory_order_relaxed;
     auto expected = static_cast<LockState>(State::IsUnlocked);
     auto desired = static_cast<LockState>(State::IsLocked);
-    return pando::atomicCompareExchange(m_state, pando::GlobalPtr<LockState>(&expected),
-                                        pando::GlobalPtr<const LockState>(&desired), success,
-                                        failure);
+    return pando::atomicCompareExchange(m_state, expected, desired, success, failure);
   }
   /**
    * @brief Release the lock.
    */
   void unlock() {
     auto desiredValue = static_cast<LockState>(State::IsUnlocked);
-    pando::atomicStore(m_state, pando::GlobalPtr<const LockState>(&desiredValue),
-                       std::memory_order_release);
+    pando::atomicStore(m_state, desiredValue, std::memory_order_release);
   }
 };
 } // namespace galois

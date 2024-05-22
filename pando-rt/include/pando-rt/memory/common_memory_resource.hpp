@@ -55,10 +55,9 @@ public:
    * @return @c true if successfully locked the resource and @c false otherwise.
    */
   static bool tryLock(GlobalPtr<MutexValueType> mutexStatePtr) {
-    const auto desired = +MutexState::isLocked;
-    const auto expected = +MutexState::isUnlocked;
-    auto foundValue = atomicCompareExchange(mutexStatePtr, expected, desired);
-    return (foundValue == expected);
+    auto expected = +MutexState::isUnlocked;
+    auto desired = +MutexState::isLocked;
+    return atomicCompareExchange(mutexStatePtr, expected, desired);
   }
 
   /**
