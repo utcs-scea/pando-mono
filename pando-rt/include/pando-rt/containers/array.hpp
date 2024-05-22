@@ -140,8 +140,7 @@ public:
   }
 
   constexpr std::uint64_t size() const noexcept {
-    
-    return *((std::uint64_t*)((char*)this + offsetof(Array<T>, m_size)));
+    return *reinterpret_cast<const std::uint64_t*>(reinterpret_cast<const char*>(this) + offsetof(Array<T>, m_size));
   }
 
   /**
