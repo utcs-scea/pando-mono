@@ -42,8 +42,8 @@ def MakePANDOHammer(make_tile):
             "xbar_bw" : "256GB/s",
             "link_bw" : "256GB/s",
             "flit_size" : "8B",
-            "input_buf_size" : "1KB",
-            "output_buf_size" : "1KB",
+            "input_buf_size" : arguments.network_onchip_buffer_size,
+            "output_buf_size" : arguments.network_onchip_buffer_size,
             'input_latency' : router_latency('chiprtr'),
             'output_latency' : router_latency('chiprtr'),
         })
@@ -73,6 +73,8 @@ def MakePANDOHammer(make_tile):
                     "debug" : 1,
                     "debug_level" : 10,
                     "network_bw" : "256GB/s",
+                    "network_input_buffer_size" : arguments.network_onchip_buffer_size,
+                    "network_output_buffer_size" : arguments.network_onchip_buffer_size,
                 })
                 tile_bridge_link = sst.Link("tile_bridge_link_%d_pod%d_pxn%d" % (i, pod, pxn))
                 tile_bridge_link.connect(
@@ -94,6 +96,8 @@ def MakePANDOHammer(make_tile):
                     "debug" : 1,
                     "debug_level" : 10,
                     "network_bw" : "256GB/s",
+                    "network_input_buffer_size" : arguments.network_onchip_buffer_size,
+                    "network_output_buffer_size" : arguments.network_onchip_buffer_size,
                 })
                 l2_bank_bridge_link = sst.Link("l2bank_bridge_link_%d_pod%d_pxn%d" % (i, pod, pxn))
                 l2_bank_bridge_link.connect(
@@ -115,6 +119,8 @@ def MakePANDOHammer(make_tile):
                 "debug" : 1,
                 "debug_level" : 10,
                 "network_bw" : "256GB/s",
+                "network_input_buffer_size" : arguments.network_onchip_buffer_size,
+                "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             })
             mainmem_bank_bridge_link = sst.Link("mainmem_bank_bridge_link_%d_pxn%d" % (i, pxn))
             mainmem_bank_bridge_link.connect(
@@ -148,8 +154,8 @@ def MakePANDOHammer(make_tile):
             "xbar_bw" : "256GB/s",
             "link_bw" : "256GB/s",
             "flit_size" : "8B",
-            "input_buf_size" : "16MB",
-            "output_buf_size" : "16MB",
+            "input_buf_size" : arguments.network_offchip_buffer_size,
+            "output_buf_size" : arguments.network_offchip_buffer_size,
             "input_latency" : router_latency('offchiprtr'),
             "output_latency" : router_latency('offchiprtr'),
         })
@@ -164,6 +170,8 @@ def MakePANDOHammer(make_tile):
                 "debug" : 1,
                 "debug_level" : 10,
                 "network_bw" : "256GB/s",
+                "network_input_buffer_size" : arguments.network_offchip_buffer_size,
+                "network_output_buffer_size" : arguments.network_offchip_buffer_size,
             })
             onchiprtr_bridge_link = sst.Link("onchiprtr_bridge_link_pxn_%d" % pxn)
             onchiprtr_bridge_link.connect(

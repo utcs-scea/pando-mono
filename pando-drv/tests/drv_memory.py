@@ -46,6 +46,8 @@ class SharedMemoryBank(object):
         self.nic.addParams({
             "group" : 2,
             "network_bw" : "256GB/s",
+            "network_input_buffer_size" : arguments.network_onchip_buffer_size,
+            "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             "verbose_level": arguments.verbose_memory,
         })
 
@@ -60,8 +62,8 @@ class SharedMemoryBank(object):
             "xbar_bw" : "1024GB/s",
             "link_bw" : "1024GB/s",
             "flit_size" : "8B",
-            "input_buf_size" : "1KB",
-            "output_buf_size" : "1KB",
+            "input_buf_size" : arguments.network_onchip_buffer_size,
+            "output_buf_size" : arguments.network_onchip_buffer_size,
             'input_latency' : router_latency('mem_rtr'),
             'output_latency' : router_latency('mem_rtr'),
             "debug" : 1,

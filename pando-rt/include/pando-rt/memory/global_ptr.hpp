@@ -244,10 +244,6 @@ struct GlobalPtr {
     return GlobalRef<T>{*this};
   }
 
-  GlobalPtr<GlobalPtr<T>> operator&() const noexcept { // NOLINT - needed to get a global pointer
-    return GlobalPtr<GlobalPtr<T>>(this);
-  }
-
   T* operator->() const noexcept {
     return detail::asNativePtr(*this);
   }
@@ -763,11 +759,15 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::load(m_globalPtr.address, sizeof(ObjectT), nativePtr);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
+#if defined(PANDO_RT_USE_DMA)
+    detail::load<ObjectT>(m_globalPtr.address, nativePtr);
+#else
     if constexpr (std::is_scalar_v<ObjectT>) {
       detail::load<ObjectT>(m_globalPtr.address, nativePtr);
     } else {
       detail::load(m_globalPtr.address, sizeof(ObjectT), nativePtr);
     }
+#endif
 #endif
     if constexpr (std::is_trivially_destructible_v<ObjectT>) {
       // skip intermediate copy if the destructor does not do much
@@ -810,11 +810,15 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::store(m_globalPtr.address, sizeof(T), std::addressof(value));
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
+#if defined(PANDO_RT_USE_DMA)
+    detail::store<T>(m_globalPtr.address, std::addressof(value));
+#else
     if constexpr (std::is_scalar_v<T>) {
       detail::store<T>(m_globalPtr.address, std::addressof(value));
     } else {
       detail::store(m_globalPtr.address, sizeof(T), std::addressof(value));
     }
+#endif
 #endif
     return *this;
   }
@@ -827,11 +831,15 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::store(m_globalPtr.address, sizeof(T), std::addressof(tmp));
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
+#if defined(PANDO_RT_USE_DMA)
+    detail::store<T>(m_globalPtr.address, std::addressof(tmp));
+#else
     if constexpr (std::is_scalar_v<T>) {
       detail::store<T>(m_globalPtr.address, std::addressof(tmp));
     } else {
       detail::store(m_globalPtr.address, sizeof(T), std::addressof(tmp));
     }
+#endif
 #endif
     return *this;
   }
@@ -897,7 +905,7 @@ public:
     return x op static_cast<U>(y);                   \
   }                                                  \
   template <typename T, typename U>                  \
-  auto operator op(GlobalRef<T> x, U& y) {     \
+  auto operator op(GlobalRef<T> x, U& y) {           \
     return static_cast<T>(x) op y;                   \
   }                                                  \
 
