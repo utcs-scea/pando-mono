@@ -11,6 +11,7 @@
 
 #include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
+#include <pando-lib-galois/utility/locality.hpp>
 #include <pando-rt/benchmark/counters.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
@@ -40,6 +41,42 @@ static inline uint64_t getTotalThreads() {
   uint64_t threads = pando::getThreadDims().id;
   uint64_t hosts = pando::getPlaceDims().node.id;
   return hosts * cores * threads;
+}
+
+enum SchedulerPolicy {
+  RANDOM,
+  STRIPE,
+};
+
+template <enum SchedulerPolicy>
+struct LoopLocalSchedulerStruct {};
+
+template <>
+struct LoopLocalSchedulerStruct<SchedulerPolicy::STRIPE> {
+  std::uint64_t lastThreadIdx;
+};
+
+template <SchedulerPolicy Policy>
+pando::Place schedulerImpl(pando::Place preferredLocality,
+                           [[maybe_unused]] LoopLocalSchedulerStruct<Policy>& loopLocal) noexcept {
+  if constexpr (Policy == RANDOM) {
+    auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
+    assert(coreIdx < pando::getCoreDims().x);
+    return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
+  } else if constexpr (Policy == STRIPE) {
+    auto threadIdx = ++loopLocal.lastThreadIdx;
+    threadIdx %= getNumThreads();
+    return std::get<0>(getPlaceFromThreadIdx(threadIdx));
+  } else {
+    PANDO_ABORT("SCHEDULER POLICY NOT IMPLEMENTED");
+  }
+}
+
+constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = SchedulerPolicy::RANDOM;
+
+inline pando::Place scheduler(pando::Place preferredLocality,
+                              LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY>& loopLocal) {
+  return schedulerImpl<CURRENT_SCHEDULER_POLICY>(preferredLocality, loopLocal);
 }
 
 class DoAll {
@@ -97,42 +134,6 @@ private:
     wgh.done();
   }
 
-  enum SchedulerPolicy {
-    RANDOM,
-    STRIPE,
-  }
-
-  template <enum SchedulerPolicy>
-  struct LoopLocalSchedulerStruct {
-  }
-
-  template <enum STRIPE>
-  struct LoopLocalSchedulerStruct {
-    std::uint64_t lastThreadIdx;
-  }
-
-  template <enum Policy>
-  static pando::Place schedulerImpl(pando::Place preferredLocality,
-                                    [[maybe_unused]] LoopLocalSchedulerStruct& loopLocal) noexcept {
-    if constexpr (Policy == RANDOM) {
-      auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
-      assert(coreIdx < pando::getCoreDims().x);
-      return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
-    } else if constexpr (Policy == STRIPE) {
-      auto threadIdx = ++loopLocal.lastThreadIdx;
-      threadIdx %= pando::getNumThreads();
-      return std::get<0>(getPlaceFromThreadIdx(threadIdx));
-    } else {
-      PANDO_ABORT("SCHEDULER POLICY NOT IMPLEMENTED");
-    }
-  }
-
-  constexpr enum CURRENT_SCHEDULER_POLICY = SchedulerPolicy::RANDOM;
-
-  static pando::Place scheduler(pando::Place preferredLocality) {
-    return schedulerImpl<CURRENT_SCHEDULER_POLICY>(preferredLocality);
-  }
-
 public:
   /**
    * @brief This is the do_all loop from galois which takes a rang and lifts a function to it, and
@@ -152,7 +153,7 @@ public:
   template <typename State, typename R, typename F, typename L>
   static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func,
                              const L& localityFunc) {
-    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal;
+    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
@@ -192,7 +193,7 @@ public:
    */
   template <typename State, typename R, typename F>
   static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func) {
-    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal;
+    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
@@ -232,7 +233,7 @@ public:
    */
   template <typename R, typename F>
   static pando::Status doAll(WaitGroup::HandleType wgh, R& range, const F& func) {
-    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal;
+    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
