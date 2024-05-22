@@ -283,8 +283,9 @@ private:
    * @brief Initializes the control bits of the slabs.
    */
   void initializeControlSlabs() {
-    if (atomicCompareExchange(m_initializationState, +InitializationState::Uninitialized,
-                              +InitializationState::InProgress)) {
+    auto expected = +InitializationState::Uninitialized;
+    auto desired = +InitializationState::InProgress;
+    if (atomicCompareExchange(m_initializationState, expected, desired)) {
       std::uint64_t headerBytes = m_numBitmapSlabs * slabSize;
       std::uint64_t headerBitmaps = headerBytes / sizeof(BitmapType);
 
