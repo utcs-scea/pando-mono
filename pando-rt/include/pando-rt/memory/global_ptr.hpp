@@ -759,7 +759,15 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::load(m_globalPtr.address, sizeof(ObjectT), nativePtr);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
+#if defined(PANDO_RT_USE_DMA)
     detail::load<ObjectT>(m_globalPtr.address, nativePtr);
+#else
+    if constexpr (std::is_scalar_v<ObjectT>) {
+      detail::load<ObjectT>(m_globalPtr.address, nativePtr);
+    } else {
+      detail::load(m_globalPtr.address, sizeof(ObjectT), nativePtr);
+    }
+#endif
 #endif
     if constexpr (std::is_trivially_destructible_v<ObjectT>) {
       // skip intermediate copy if the destructor does not do much
@@ -802,7 +810,15 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::store(m_globalPtr.address, sizeof(T), std::addressof(value));
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
+#if defined(PANDO_RT_USE_DMA)
     detail::store<T>(m_globalPtr.address, std::addressof(value));
+#else
+    if constexpr (std::is_scalar_v<T>) {
+      detail::store<T>(m_globalPtr.address, std::addressof(value));
+    } else {
+      detail::store(m_globalPtr.address, sizeof(T), std::addressof(value));
+    }
+#endif
 #endif
     return *this;
   }
@@ -815,7 +831,15 @@ public:
 #if defined(PANDO_RT_USE_BACKEND_PREP)
     detail::store(m_globalPtr.address, sizeof(T), std::addressof(tmp));
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
+#if defined(PANDO_RT_USE_DMA)
     detail::store<T>(m_globalPtr.address, std::addressof(tmp));
+#else
+    if constexpr (std::is_scalar_v<T>) {
+      detail::store<T>(m_globalPtr.address, std::addressof(tmp));
+    } else {
+      detail::store(m_globalPtr.address, sizeof(T), std::addressof(tmp));
+    }
+#endif
 #endif
     return *this;
   }
