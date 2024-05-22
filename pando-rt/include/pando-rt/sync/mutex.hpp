@@ -72,8 +72,8 @@ public:
     constexpr auto failure = std::memory_order_relaxed;
     auto expected = static_cast<MutexState>(State::IsUnlocked);
     auto desired = static_cast<MutexState>(State::IsLocked);
-    return atomicCompareExchange(GlobalPtr<MutexState>(&m_state), GlobalPtr<MutexState>(&expected),
-                                 GlobalPtr<const MutexState>(&desired), success, failure);
+    return atomicCompareExchangeBool(GlobalPtr<MutexState>(&m_state), expected,
+                                     desired, success, failure);
   }
   /**
    * @brief Unlock the mutex.

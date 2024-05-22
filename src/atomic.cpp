@@ -60,7 +60,7 @@ double pando::atomicFetchAdd(pando::GlobalPtr<double> ptr, double value, std::me
     original = *ptr;
     convertDoubleToU64(original, expected);
     convertDoubleToU64(original + value, desired);
-  } while (pando::atomicCompareExchange(u64_ptr, expected, desired) != expected);
+  } while (!pando::atomicCompareExchangeBool(u64_ptr, expected, desired));
   return original;
 }
 
@@ -78,7 +78,7 @@ double pando::atomicFetchSub(pando::GlobalPtr<double> ptr, double value, std::me
     original = *ptr;
     convertDoubleToU64(original, expected);
     convertDoubleToU64(original - value, desired);
-  } while (pando::atomicCompareExchange(u64_ptr, expected, desired) != expected);
+  } while (!pando::atomicCompareExchangeBool(u64_ptr, expected, desired));
   return original;
 }
 
@@ -121,7 +121,7 @@ float pando::atomicFetchAdd(pando::GlobalPtr<float> ptr, float value, std::memor
     original = *ptr;
     convertFloatToI32(original, expected);
     convertFloatToI32(original + value, desired);
-  } while (pando::atomicCompareExchange(i32_ptr, expected, desired) != expected);
+  } while (!pando::atomicCompareExchangeBool(i32_ptr, expected, desired));
   return original;
 }
 
@@ -139,6 +139,6 @@ float pando::atomicFetchSub(pando::GlobalPtr<float> ptr, float value, std::memor
     original = *ptr;
     convertFloatToI32(original, expected);
     convertFloatToI32(original - value, desired);
-  } while (pando::atomicCompareExchange(i32_ptr, expected, desired) != expected);
+  } while (!pando::atomicCompareExchangeBool(i32_ptr, expected, desired));
   return original;
 }

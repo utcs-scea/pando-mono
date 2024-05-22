@@ -70,40 +70,18 @@ TYPED_TEST(AtomicsTest, ValueBasedStore) {
   EXPECT_EQ(*this->ptr, gold);
 }
 
-TYPED_TEST(AtomicsTest, PointerBasedCompareExchange) {
-  using ValueType = typename TestFixture::ValueType;
-  using GlobalPtrType = pando::GlobalPtr<ValueType>;
-  using GlobalPtrConstType = pando::GlobalPtr<const ValueType>;
-
-  auto test = [](GlobalPtrType ptr) {
-    ValueType expected{32};
-    ValueType oldValue{expected};
-    ValueType desired{64};
-    *ptr = expected;
-    const auto successOrder = std::memory_order_relaxed;
-    const auto failureOrder = std::memory_order_relaxed;
-    const bool success = pando::atomicCompareExchange(
-        ptr, GlobalPtrType(&expected), GlobalPtrConstType(&desired), successOrder, failureOrder);
-
-    EXPECT_TRUE(success);
-    EXPECT_EQ(expected, oldValue);
-    EXPECT_EQ(*ptr, desired);
-  };
-
-  const auto thisPlace = pando::getCurrentPlace();
-  const auto place = pando::Place{thisPlace.node, pando::anyPod, pando::anyCore};
-  const auto result = pando::executeOnWait(place, +test, this->ptr);
-  EXPECT_TRUE(result.hasValue());
-}
-
 TYPED_TEST(AtomicsTest, ValueBasedCompareExchange) {
   using ValueType = typename TestFixture::ValueType;
   ValueType expected{32};
+  ValueType oldValue{expected};
   ValueType desired{64};
   *this->ptr = expected;
-  const auto found = pando::atomicCompareExchange(this->ptr, expected, desired);
+  const auto successOrder = std::memory_order_relaxed;
+  const auto failureOrder = std::memory_order_relaxed;
+  const bool success = pando::atomicCompareExchangeBool(this->ptr, expected, desired, successOrder, failureOrder);
 
-  EXPECT_EQ(found, expected);
+  EXPECT_TRUE(success);
+  EXPECT_EQ(expected, oldValue);
   EXPECT_EQ(*this->ptr, desired);
 }
 
