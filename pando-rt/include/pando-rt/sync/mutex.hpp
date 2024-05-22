@@ -22,7 +22,7 @@ class Mutex {
    */
   void initialize() {
     auto desiredValue = static_cast<MutexState>(State::IsUnlocked);
-    atomicStore(GlobalPtr<MutexState>(&m_state), GlobalPtr<const MutexState>(&desiredValue),
+    atomicStore(GlobalPtr<MutexState>(&m_state), desiredValue,
                 std::memory_order_release);
   }
 
@@ -72,15 +72,14 @@ public:
     constexpr auto failure = std::memory_order_relaxed;
     auto expected = static_cast<MutexState>(State::IsUnlocked);
     auto desired = static_cast<MutexState>(State::IsLocked);
-    return atomicCompareExchange(GlobalPtr<MutexState>(&m_state), GlobalPtr<MutexState>(&expected),
-                                 GlobalPtr<const MutexState>(&desired), success, failure);
+    return atomicCompareExchange(GlobalPtr<MutexState>(&m_state), expected, desired, success, failure);
   }
   /**
    * @brief Unlock the mutex.
    */
   void unlock() {
     auto desiredValue = static_cast<MutexState>(State::IsUnlocked);
-    atomicStore(GlobalPtr<MutexState>(&m_state), GlobalPtr<const MutexState>(&desiredValue),
+    atomicStore(GlobalPtr<MutexState>(&m_state), desiredValue,
                 std::memory_order_release);
   }
 };

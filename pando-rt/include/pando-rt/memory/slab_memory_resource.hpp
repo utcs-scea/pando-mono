@@ -155,9 +155,7 @@ public:
         auto mask = BitmapType{1} << emptySlot;
         auto desired = (expected | mask);
         // Attempt swapping the `expected` value with the desired value
-        auto currentValue = atomicCompareExchange(bitmap, expected, desired);
-        success = (currentValue == expected);
-        expected = currentValue;
+        success = atomicCompareExchange(bitmap, expected, desired);
         if (success) {
           // Compute the slab offset computation (after the header)
           auto slabOffset = (emptySlot + i * slabsPerBitmap) * slabSize;
@@ -197,9 +195,7 @@ public:
       // Unset the bit and attempt swapping the expected bitmap with the desired one where the bit
       // managing the slab is unset.
       auto desired = (expected & mask);
-      auto currentValue = atomicCompareExchange(bitmap, expected, desired);
-      success = (currentValue == expected);
-      expected = currentValue;
+      success = atomicCompareExchange(bitmap, expected, desired);
     }
   }
 
@@ -287,9 +283,9 @@ private:
    * @brief Initializes the control bits of the slabs.
    */
   void initializeControlSlabs() {
-    if (atomicCompareExchange(m_initializationState, +InitializationState::Uninitialized,
-                              +InitializationState::InProgress) ==
-        +InitializationState::Uninitialized) {
+    auto expected = +InitializationState::Uninitialized;
+    auto desired = +InitializationState::InProgress;
+    if (atomicCompareExchange(m_initializationState, expected, desired)) {
       std::uint64_t headerBytes = m_numBitmapSlabs * slabSize;
       std::uint64_t headerBitmaps = headerBytes / sizeof(BitmapType);
 
