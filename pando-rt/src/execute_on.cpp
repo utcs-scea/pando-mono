@@ -44,7 +44,7 @@ Status detail::executeOn(Place place, Task task) {
 
   auto* queue = Cores::getTaskQueue(place);
   const auto result = queue->enqueue(std::move(task));
-  hartYield();
+  //hartYield();
   return result;
 
 #else
