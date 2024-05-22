@@ -13,42 +13,7 @@
 namespace pando {
 
 /**
- * @brief Atomically load an object pointed to by a pointer using a specified memory order.
- *
- * @note This operation may result in a remote store for @p value.
- *
- * @param[in]  ptr   pointer to the object to read from
- * @param[out] value pointer to space to write the value to
- * @param[in]  order memory order to use
- *
- * @ingroup ROOT
- */
-PANDO_RT_EXPORT void atomicLoad(GlobalPtr<const std::int8_t> ptr, GlobalPtr<std::int8_t> value,
-                                std::memory_order order);
-/// @copydoc atomicLoad(GlobalPtr<const std::int8_t>,GlobalPtr<std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicLoad(GlobalPtr<const std::uint8_t> ptr, GlobalPtr<std::uint8_t> value,
-                                std::memory_order order);
-/// @copydoc atomicLoad(GlobalPtr<const std::int8_t>,GlobalPtr<std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicLoad(GlobalPtr<const std::int16_t> ptr, GlobalPtr<std::int16_t> value,
-                                std::memory_order order);
-/// @copydoc atomicLoad(GlobalPtr<const std::int8_t>,GlobalPtr<std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicLoad(GlobalPtr<const std::uint16_t> ptr, GlobalPtr<std::uint16_t> value,
-                                std::memory_order order);
-/// @copydoc atomicLoad(GlobalPtr<const std::int8_t>,GlobalPtr<std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicLoad(GlobalPtr<const std::int32_t> ptr, GlobalPtr<std::int32_t> value,
-                                std::memory_order order);
-/// @copydoc atomicLoad(GlobalPtr<const std::int8_t>,GlobalPtr<std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicLoad(GlobalPtr<const std::uint32_t> ptr, GlobalPtr<std::uint32_t> value,
-                                std::memory_order order);
-/// @copydoc atomicLoad(GlobalPtr<const std::int8_t>,GlobalPtr<std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicLoad(GlobalPtr<const std::int64_t> ptr, GlobalPtr<std::int64_t> value,
-                                std::memory_order order);
-/// @copydoc atomicLoad(GlobalPtr<const std::int8_t>,GlobalPtr<std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicLoad(GlobalPtr<const std::uint64_t> ptr, GlobalPtr<std::uint64_t> value,
-                                std::memory_order order);
-
-/**
- * @brief Atomically load a value from an object pointed to by a pointer using a specified memory
+ * @brief Atomically load a value from a pointer using a specified memory
  *        order.
  *
  * @param[in] ptr   pointer to the object to read from
@@ -78,42 +43,7 @@ PANDO_RT_EXPORT std::uint64_t atomicLoad(GlobalPtr<const std::uint64_t> ptr,
                                          std::memory_order order);
 
 /**
- * @brief Atomically store an object pointed to by a pointer using a specified memory order.
- *
- * @note This operation may result in a remote load for @p value.
- *
- * @param[out] ptr   pointer to the object to modify
- * @param[in]  value pointer to the object to read from
- * @param[in]  order memory order to use
- *
- * @ingroup ROOT
- */
-PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::int8_t> ptr, GlobalPtr<const std::int8_t> value,
-                                 std::memory_order order);
-/// @copydoc atomicStore(GlobalPtr<std::int8_t>,GlobalPtr<const std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::uint8_t> ptr, GlobalPtr<const std::uint8_t> value,
-                                 std::memory_order order);
-/// @copydoc atomicStore(GlobalPtr<std::int8_t>,GlobalPtr<const std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::int16_t> ptr, GlobalPtr<const std::int16_t> value,
-                                 std::memory_order order);
-/// @copydoc atomicStore(GlobalPtr<std::int8_t>,GlobalPtr<const std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::uint16_t> ptr, GlobalPtr<const std::uint16_t> value,
-                                 std::memory_order order);
-/// @copydoc atomicStore(GlobalPtr<std::int8_t>,GlobalPtr<const std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::int32_t> ptr, GlobalPtr<const std::int32_t> value,
-                                 std::memory_order order);
-/// @copydoc atomicStore(GlobalPtr<std::int8_t>,GlobalPtr<const std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::uint32_t> ptr, GlobalPtr<const std::uint32_t> value,
-                                 std::memory_order order);
-/// @copydoc atomicStore(GlobalPtr<std::int8_t>,GlobalPtr<const std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::int64_t> ptr, GlobalPtr<const std::int64_t> value,
-                                 std::memory_order order);
-/// @copydoc atomicStore(GlobalPtr<std::int8_t>,GlobalPtr<const std::int8_t>,std::memory_order)
-PANDO_RT_EXPORT void atomicStore(GlobalPtr<std::uint64_t> ptr, GlobalPtr<const std::uint64_t> value,
-                                 std::memory_order order);
-
-/**
- * @brief Atomically store a value to an object pointed to by a pointer using a specified memory
+ * @brief Atomically store a value to a pointer using a specified memory
  *        order.
  *
  * @param[out] ptr   pointer to the object to modify

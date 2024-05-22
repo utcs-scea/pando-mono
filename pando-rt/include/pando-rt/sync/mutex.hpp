@@ -22,7 +22,7 @@ class Mutex {
    */
   void initialize() {
     auto desiredValue = static_cast<MutexState>(State::IsUnlocked);
-    atomicStore(GlobalPtr<MutexState>(&m_state), GlobalPtr<const MutexState>(&desiredValue),
+    atomicStore(GlobalPtr<MutexState>(&m_state), desiredValue,
                 std::memory_order_release);
   }
 
@@ -80,7 +80,7 @@ public:
    */
   void unlock() {
     auto desiredValue = static_cast<MutexState>(State::IsUnlocked);
-    atomicStore(GlobalPtr<MutexState>(&m_state), GlobalPtr<const MutexState>(&desiredValue),
+    atomicStore(GlobalPtr<MutexState>(&m_state), desiredValue,
                 std::memory_order_release);
   }
 };
