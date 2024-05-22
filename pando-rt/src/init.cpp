@@ -65,6 +65,13 @@ void initialize() {
     if (auto status = CommandProcessor::initialize(); status != Status::Success) {
       PANDO_ABORT("CP was not initialized");
     }
+    auto coreDims = pando::getCoreDims();
+    for(std::int8_t i = 0; i < coreDims.x; i++) {
+      perCoreRNG.get(false, i, coreDims.x) = std::minstd_rand(i);
+      perCoreDist.get(false, i, coreDims.x) = std::uniform_int_distribution<std::int8_t> (0, coreDims.x - 1);
+    }
+    perCoreRNG.get(true, 0, coreDims.x) = std::minstd_rand(-1);
+    perCoreDist.get(true, 0, coreDims.x) = std::uniform_int_distribution<std::int8_t>(0, coreDims.x - 1);
   } else {
     Cores::initializeQueues();
   }
