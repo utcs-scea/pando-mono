@@ -22,7 +22,7 @@
 #include "drvx/drvx.hpp"
 #endif
 
-constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 128;
+constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 16;
 
 constexpr bool IDLE_TIMER_ENABLE = false;
 counter::Record<std::int64_t> idleCount = counter::Record<std::int64_t>();
