@@ -16,9 +16,12 @@
       [&]() {  \
         ElementType tmp;  \
         using ReturnType = decltype(tmp.func()); \
-        ReturnType test = \
-        pando::GlobalPtr<ReturnType> (ptrComputed##__LINE__  + 4);       \
-        return test; \
+        pando::GlobalPtr<void> vvec = static_cast<pando::GlobalPtr<void>>(ptrComputed##__LINE__);  \
+        pando::GlobalPtr<std::byte> bvec = static_cast<pando::GlobalPtr<std::byte>>(vvec); \
+        auto offsetVec = bvec + offsetof(ElementType,m_size); \
+        auto offsetVVec = static_cast<pando::GlobalPtr<void>>(offsetVec); \
+        ReturnType desired = *static_cast<pando::GlobalPtr<ReturnType>> (offsetVVec); \
+        return desired; \
         }() :                           \
       [&]() {                                                       \
         ElementType tmp = *ptrComputed##__LINE__;                                     \
