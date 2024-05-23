@@ -45,15 +45,21 @@ static inline uint64_t getTotalThreads() {
 
 enum SchedulerPolicy {
   RANDOM,
-  STRIPE,
+  UNSAFE_STRIPE,
+  CORE_STRIPE,
 };
 
 template <enum SchedulerPolicy>
 struct LoopLocalSchedulerStruct {};
 
 template <>
-struct LoopLocalSchedulerStruct<SchedulerPolicy::STRIPE> {
-  std::uint64_t lastThreadIdx;
+struct LoopLocalSchedulerStruct<SchedulerPolicy::UNSAFE_STRIPE> {
+  std::uint64_t lastThreadIdx = 0;
+};
+
+template <>
+struct LoopLocalSchedulerStruct<SchedulerPolicy::CORE_STRIPE> {
+  std::uint64_t lastCoreIdx = 0;
 };
 
 template <SchedulerPolicy Policy>
@@ -63,10 +69,14 @@ pando::Place schedulerImpl(pando::Place preferredLocality,
     auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
     assert(coreIdx < pando::getCoreDims().x);
     return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
-  } else if constexpr (Policy == STRIPE) {
+  } else if constexpr (Policy == UNSAFE_STRIPE) {
     auto threadIdx = ++loopLocal.lastThreadIdx;
     threadIdx %= getNumThreads();
     return std::get<0>(getPlaceFromThreadIdx(threadIdx));
+  } else if constexpr (Policy == CORE_STRIPE) {
+    auto coreIdx = ++loopLocal.lastCoreIdx;
+    coreIdx %= pando::getCoreDims().x;
+    return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
   } else {
     PANDO_ABORT("SCHEDULER POLICY NOT IMPLEMENTED");
   }
@@ -347,6 +357,8 @@ public:
   template <typename State, typename F>
   static pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
                                             const F& func) {
+    constexpr SchedulerPolicy EVENLY_PARITION_SCHEDULER_POLICY = SchedulerPolicy::CORE_STRIPE;
+    LoopLocalSchedulerStruct<EVENLY_PARITION_SCHEDULER_POLICY> loopLocal;
     pando::Status err = pando::Status::Success;
     if (workItems == 0) {
       return err;
@@ -375,7 +387,8 @@ public:
       }
       wgh.addOne();
       // Required hack without workstealing
-      auto nodePlace = pando::Place{pando::NodeIndex(assignedHost), pando::anyPod, pando::anyCore};
+      auto nodePlace = schedulerImpl<EVENLY_PARITION_SCHEDULER_POLICY>(
+          pando::Place{pando::NodeIndex(assignedHost), pando::anyPod, pando::anyCore}, loopLocal);
       err = pando::executeOn(nodePlace, &notifyFuncOnEach<F, State>, func, s, curr, workItems, wgh);
       if (err != pando::Status::Success) {
         wgh.done();
