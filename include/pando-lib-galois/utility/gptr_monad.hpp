@@ -3,18 +3,28 @@
 
 #ifndef PANDO_LIB_GALOIS_UTILITY_GPTR_MONAD_HPP_
 #define PANDO_LIB_GALOIS_UTILITY_GPTR_MONAD_HPP_
-
 /**
  * @brief lifts a function with no arguments to work on references
  */
-#define lift(ref, func)                                                               \
-  __extension__({                                                                     \
-    auto ptrComputed##__LINE__ = &(ref);                                              \
-    typename std::pointer_traits<decltype(ptrComputed##__LINE__)>::element_type tmp = \
-        *ptrComputed##__LINE__;                                                       \
-    auto ret = tmp.func();                                                            \
-    *ptrComputed##__LINE__ = tmp;                                                     \
-    ret;                                                                              \
+
+#define lift(ref, func)                                                              \
+  __extension__({                                                                    \
+    auto ptrComputed##__LINE__ = &(ref);                                             \
+    using ElementType =                                                              \
+        typename std::pointer_traits<decltype(ptrComputed##__LINE__)>::element_type; \
+    auto ret = (strcmp(#func, "size") == 0) ?                               \
+      [&]() {  \
+        ElementType tmp;  \
+        using ReturnType = decltype(tmp.func()); \
+        pando::GlobalRef<ReturnType> test = \
+        static_cast<pando::GlobalRef<ReturnType>> (ptrComputed##__LINE__  + 4);        \
+        }() :                           \
+      [&]() {                                                       \
+        ElementType tmp = *ptrComputed##__LINE__;                                     \
+        *ptrComputed##__LINE__ = tmp;                                                 \
+        return tmp.func();                                                            \
+      }();        \
+    ret;                                                                             \
   })
 
 /**
