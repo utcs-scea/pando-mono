@@ -6,11 +6,19 @@
 
 #include <pando-rt/export.h>
 
+#include <cassert>
+#include <random>
+
 #include <pando-lib-galois/sync/wait_group.hpp>
 #include <pando-lib-galois/utility/counted_iterator.hpp>
+#include <pando-lib-galois/utility/locality.hpp>
+#include <pando-rt/benchmark/counters.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
+
+extern counter::Record<std::minstd_rand> perCoreRNG;
+extern counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
 
 namespace galois {
 
@@ -33,6 +41,52 @@ static inline uint64_t getTotalThreads() {
   uint64_t threads = pando::getThreadDims().id;
   uint64_t hosts = pando::getPlaceDims().node.id;
   return hosts * cores * threads;
+}
+
+enum SchedulerPolicy {
+  RANDOM,
+  UNSAFE_STRIPE,
+  CORE_STRIPE,
+};
+
+template <enum SchedulerPolicy>
+struct LoopLocalSchedulerStruct {};
+
+template <>
+struct LoopLocalSchedulerStruct<SchedulerPolicy::UNSAFE_STRIPE> {
+  std::uint64_t lastThreadIdx = 0;
+};
+
+template <>
+struct LoopLocalSchedulerStruct<SchedulerPolicy::CORE_STRIPE> {
+  std::uint64_t lastCoreIdx = 0;
+};
+
+template <SchedulerPolicy Policy>
+pando::Place schedulerImpl(pando::Place preferredLocality,
+                           [[maybe_unused]] LoopLocalSchedulerStruct<Policy>& loopLocal) noexcept {
+  if constexpr (Policy == RANDOM) {
+    auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
+    assert(coreIdx < pando::getCoreDims().x);
+    return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
+  } else if constexpr (Policy == UNSAFE_STRIPE) {
+    auto threadIdx = ++loopLocal.lastThreadIdx;
+    threadIdx %= getNumThreads();
+    return std::get<0>(getPlaceFromThreadIdx(threadIdx));
+  } else if constexpr (Policy == CORE_STRIPE) {
+    auto coreIdx = ++loopLocal.lastCoreIdx;
+    coreIdx %= pando::getCoreDims().x;
+    return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
+  } else {
+    PANDO_ABORT("SCHEDULER POLICY NOT IMPLEMENTED");
+  }
+}
+
+constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = SchedulerPolicy::RANDOM;
+
+inline pando::Place scheduler(pando::Place preferredLocality,
+                              LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY>& loopLocal) {
+  return schedulerImpl<CURRENT_SCHEDULER_POLICY>(preferredLocality, loopLocal);
 }
 
 class DoAll {
@@ -109,6 +163,7 @@ public:
   template <typename State, typename R, typename F, typename L>
   static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func,
                              const L& localityFunc) {
+    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
@@ -119,7 +174,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityFunc(s, *curr).node, pando::anyPod, pando::anyCore};
+      auto nodePlace = scheduler(localityFunc(s, *curr), loopLocal);
       err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
                              wgh);
       if (err != pando::Status::Success) {
@@ -148,6 +203,7 @@ public:
    */
   template <typename State, typename R, typename F>
   static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func) {
+    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
@@ -158,7 +214,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
+      auto nodePlace = scheduler(localityOf(curr), loopLocal);
       err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
                              wgh);
       if (err != pando::Status::Success) {
@@ -187,6 +243,7 @@ public:
    */
   template <typename R, typename F>
   static pando::Status doAll(WaitGroup::HandleType wgh, R& range, const F& func) {
+    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
@@ -197,7 +254,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = pando::Place{localityOf(curr).node, pando::anyPod, pando::anyCore};
+      auto nodePlace = scheduler(localityOf(curr), loopLocal);
       err = pando::executeOn(nodePlace, &notifyFunc<F, typename R::iterator>, func, curr, wgh);
       if (err != pando::Status::Success) {
         for (std::uint64_t i = iter; i < size; i++) {
@@ -300,6 +357,8 @@ public:
   template <typename State, typename F>
   static pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
                                             const F& func) {
+    constexpr SchedulerPolicy EVENLY_PARITION_SCHEDULER_POLICY = SchedulerPolicy::CORE_STRIPE;
+    LoopLocalSchedulerStruct<EVENLY_PARITION_SCHEDULER_POLICY> loopLocal;
     pando::Status err = pando::Status::Success;
     if (workItems == 0) {
       return err;
@@ -328,7 +387,8 @@ public:
       }
       wgh.addOne();
       // Required hack without workstealing
-      auto nodePlace = pando::Place{pando::NodeIndex(assignedHost), pando::anyPod, pando::anyCore};
+      auto nodePlace = schedulerImpl<EVENLY_PARITION_SCHEDULER_POLICY>(
+          pando::Place{pando::NodeIndex(assignedHost), pando::anyPod, pando::anyCore}, loopLocal);
       err = pando::executeOn(nodePlace, &notifyFuncOnEach<F, State>, func, s, curr, workItems, wgh);
       if (err != pando::Status::Success) {
         wgh.done();

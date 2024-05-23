@@ -34,8 +34,8 @@ int pandoMain(int argc, char** argv) {
 #if BENCHMARK
     auto time_e2e_end = std::chrono::high_resolution_clock().now();
     std::cout
-        << "Time_E2E(ms), "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(time_e2e_end - time_e2e_st).count()
+        << "Time_E2E(ns), "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(time_e2e_end - time_e2e_st).count()
         << "\n";
 #endif
   }
