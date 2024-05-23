@@ -4,6 +4,7 @@
 #ifndef DRV_API_MEMORY_H
 #define DRV_API_MEMORY_H
 #include <DrvAPIAddress.hpp>
+#include <DrvAPIAddressToNative.hpp>
 #include <DrvAPIThread.hpp>
 
 namespace DrvAPI
