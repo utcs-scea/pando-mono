@@ -16,8 +16,9 @@
       [&]() {  \
         ElementType tmp;  \
         using ReturnType = decltype(tmp.func()); \
-        pando::GlobalRef<ReturnType> test = \
-        static_cast<pando::GlobalRef<ReturnType>> (ptrComputed##__LINE__  + 4);        \
+        ReturnType test = \
+        pando::GlobalPtr<ReturnType> (ptrComputed##__LINE__  + 4);       \
+        return test; \
         }() :                           \
       [&]() {                                                       \
         ElementType tmp = *ptrComputed##__LINE__;                                     \
