@@ -35,9 +35,8 @@ struct ELEdge {
 };
 
 void loadELFilePerThread(
-    galois::WaitGroup::HandleType wgh, pando::Array<char> filename, std::uint64_t segmentsPerThread,
-    std::uint64_t numThreads, std::uint64_t threadID,
-    galois::ThreadLocalVector<pando::Vector<ELEdge>> localReadEdges,
+    pando::Array<char> filename, std::uint64_t segmentsPerThread, std::uint64_t numThreads,
+    std::uint64_t threadID, galois::ThreadLocalVector<pando::Vector<ELEdge>> localReadEdges,
     galois::ThreadLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> perThreadRename,
     std::uint64_t numVertices);
 
@@ -70,19 +69,19 @@ ReturnType initializeELDACSR(pando::Array<char> filename, std::uint64_t numVerti
     PANDO_CHECK(fmap(hashRef, initialize, 0));
   }
 
-  std::uint64_t hosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
-
   galois::WaitGroup wg;
-  PANDO_CHECK(wg.initialize(numThreads));
+  PANDO_CHECK(wg.initialize(0));
   auto wgh = wg.getHandle();
 
   PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread Start");
-  for (std::uint64_t i = 0; i < numThreads; i++) {
-    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i % hosts)},
-                                      pando::anyPod, pando::anyCore};
-    PANDO_CHECK(pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, 1, numThreads,
-                                 i, localReadEdges, perThreadRename, numVertices));
-  }
+  auto elFileTuple = galois::make_tpl(filename, 1, localReadEdges, perThreadRename, numVertices);
+  PANDO_CHECK(galois::doAllEvenlyPartition(
+      wgh, elFileTuple, numThreads,
+      +[](decltype(elFileTuple) elFileTuple, uint64_t i, uint64_t numThreads) {
+        auto [filename, striping, localReadEdges, perThreadRename, numVertices] = elFileTuple;
+        galois::loadELFilePerThread(filename, striping, numThreads, i, localReadEdges,
+                                    perThreadRename, numVertices);
+      }));
   PANDO_CHECK(wg.wait());
   PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread End");
 
@@ -137,19 +136,21 @@ ReturnType initializeELDLCSR(pando::Array<char> filename, std::uint64_t numVerti
   const std::uint64_t numVHosts = hosts * vHostsScaleFactor;
 
   galois::WaitGroup wg;
-  PANDO_CHECK(wg.initialize(numThreads));
+  PANDO_CHECK(wg.initialize(0));
   auto wgh = wg.getHandle();
 
   galois::DAccumulator<std::uint64_t> totVerts;
   PANDO_CHECK(totVerts.initialize());
 
   PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread Start");
-  for (std::uint64_t i = 0; i < numThreads; i++) {
-    pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i % hosts)},
-                                      pando::anyPod, pando::anyCore};
-    PANDO_CHECK(pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, 1, numThreads,
-                                 i, localReadEdges, perThreadRename, numVertices));
-  }
+  auto elFileTuple = galois::make_tpl(filename, 1, localReadEdges, perThreadRename, numVertices);
+  PANDO_CHECK(galois::doAllEvenlyPartition(
+      wgh, elFileTuple, numThreads,
+      +[](decltype(elFileTuple) elFileTuple, uint64_t i, uint64_t numThreads) {
+        auto [filename, striping, localReadEdges, perThreadRename, numVertices] = elFileTuple;
+        galois::loadELFilePerThread(filename, striping, numThreads, i, localReadEdges,
+                                    perThreadRename, numVertices);
+      }));
 
   PANDO_CHECK(wg.wait());
   PANDO_MEM_STAT_NEW_KERNEL("loadELFilePerThread End");

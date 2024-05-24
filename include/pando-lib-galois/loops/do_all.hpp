@@ -358,7 +358,7 @@ public:
   static pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
                                             const F& func) {
     constexpr SchedulerPolicy EVENLY_PARITION_SCHEDULER_POLICY = SchedulerPolicy::CORE_STRIPE;
-    LoopLocalSchedulerStruct<EVENLY_PARITION_SCHEDULER_POLICY> loopLocal;
+    LoopLocalSchedulerStruct<EVENLY_PARITION_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
     if (workItems == 0) {
       return err;

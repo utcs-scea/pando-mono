@@ -753,17 +753,17 @@ TEST(loadGraphFilePerThread, loadEdgeList) {
   }
 
   galois::WaitGroup wg;
-  EXPECT_EQ(pando::Status::Success, wg.initialize(numThreads));
+  EXPECT_EQ(pando::Status::Success, wg.initialize(0));
   auto wgh = wg.getHandle();
-  for (uint64_t i = 0; i < numThreads; i++) {
-    std::int64_t nodeId =
-        static_cast<std::int64_t>(i % static_cast<std::uint64_t>(pando::getPlaceDims().node.id));
-    pando::Place place = pando::Place{pando::NodeIndex{nodeId}, pando::anyPod, pando::anyCore};
-    pando::Status err =
-        pando::executeOn(place, &galois::loadELFilePerThread, wgh, filename, segmentsPerThread,
-                         numThreads, i, localEdges, perThreadRename, numVertices);
-    EXPECT_EQ(err, pando::Status::Success);
-  }
+  auto elFileTuple =
+      galois::make_tpl(filename, segmentsPerThread, localEdges, perThreadRename, numVertices);
+  PANDO_CHECK(galois::doAllEvenlyPartition(
+      wgh, elFileTuple, numThreads,
+      +[](decltype(elFileTuple) elFileTuple, uint64_t i, uint64_t numThreads) {
+        auto [filename, striping, localReadEdges, perThreadRename, numVertices] = elFileTuple;
+        galois::loadELFilePerThread(filename, striping, numThreads, i, localReadEdges,
+                                    perThreadRename, numVertices);
+      }));
   EXPECT_EQ(wg.wait(), pando::Status::Success);
 
   for (galois::HashTable<std::uint64_t, std::uint64_t> hash : perThreadRename) {
