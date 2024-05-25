@@ -4,8 +4,8 @@
 #include <utils.hpp>
 
 // Process command line flags
-std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
-  std::shared_ptr<CommandLineOptions> opts_ptr = std::make_shared<CommandLineOptions>();
+std::unique_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
+  std::unique_ptr<CommandLineOptions> opts_ptr = std::make_unique<CommandLineOptions>();
 
   // Other libraries may have called getopt before, so we reset optind for correctness
   optind = 0;

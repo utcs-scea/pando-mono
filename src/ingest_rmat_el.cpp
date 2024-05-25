@@ -80,9 +80,10 @@ pando::Vector<pando::Vector<galois::ELEdge>> galois::reduceLocalEdges(
 
   for (std::uint64_t i = 0; i < localEdges.size(); i++) {
     pando::Vector<pando::Vector<galois::ELEdge>> threadLocalEdges = *localEdges.get(i);
-    for (pando::Vector<galois::ELEdge> ev : threadLocalEdges) {
-      if (ev.size() > 0) {
-        ELEdge first_edge = ev[0];
+    for (pando::GlobalRef<pando::Vector<galois::ELEdge>> ev : threadLocalEdges) {
+      const pando::Vector<galois::ELEdge>& unboxEV = ev;
+      if (unboxEV.size() > 0) {
+        ELEdge first_edge = unboxEV[0];
         uint64_t src = first_edge.src;
         pando::Vector<galois::ELEdge> src_ev = reducedEL[src];
         PANDO_CHECK(src_ev.append(&ev));

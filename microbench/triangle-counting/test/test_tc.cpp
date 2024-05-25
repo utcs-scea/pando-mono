@@ -16,12 +16,7 @@ void e2e_tc_test(uint64_t expected_tc, pando::Array<char> filename, uint64_t num
                  bool load_balanced_graph, TC_CHUNK tc_chunk) {
   galois::DAccumulator<uint64_t> final_tri_count;
   EXPECT_EQ(final_tri_count.initialize(), pando::Status::Success);
-  pando::Notification necessary;
-  PANDO_CHECK(necessary.init());
-  PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
-                               &HBMainTC, necessary.getHandle(), filename, num_vertices,
-                               load_balanced_graph, tc_chunk, final_tri_count));
-  necessary.wait();
+  HBMainTC(filename, num_vertices, load_balanced_graph, tc_chunk, final_tri_count);
   EXPECT_EQ(final_tri_count.reduce(), expected_tc);
   final_tri_count.deinitialize();
 }
