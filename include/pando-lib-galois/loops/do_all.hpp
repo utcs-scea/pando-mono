@@ -17,8 +17,11 @@
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
 
+constexpr bool SCHEDULER_TIMER_ENABLE = false;
+
 extern counter::Record<std::minstd_rand> perCoreRNG;
 extern counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
+extern counter::Record<std::int64_t> schedulerCount;
 
 namespace galois {
 
@@ -47,7 +50,11 @@ enum SchedulerPolicy {
   RANDOM,
   UNSAFE_STRIPE,
   CORE_STRIPE,
+  NODE_ONLY,
 };
+
+constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = SchedulerPolicy::RANDOM;
+constexpr SchedulerPolicy EVENLY_PARITION_SCHEDULER_POLICY = SchedulerPolicy::CORE_STRIPE;
 
 template <enum SchedulerPolicy>
 struct LoopLocalSchedulerStruct {};
@@ -65,24 +72,30 @@ struct LoopLocalSchedulerStruct<SchedulerPolicy::CORE_STRIPE> {
 template <SchedulerPolicy Policy>
 pando::Place schedulerImpl(pando::Place preferredLocality,
                            [[maybe_unused]] LoopLocalSchedulerStruct<Policy>& loopLocal) noexcept {
+  counter::HighResolutionCount<SCHEDULER_TIMER_ENABLE> schedulerTimer;
+  schedulerTimer.start();
   if constexpr (Policy == RANDOM) {
     auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
     assert(coreIdx < pando::getCoreDims().x);
-    return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
+    preferredLocality =
+        pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
   } else if constexpr (Policy == UNSAFE_STRIPE) {
     auto threadIdx = ++loopLocal.lastThreadIdx;
     threadIdx %= getNumThreads();
-    return std::get<0>(getPlaceFromThreadIdx(threadIdx));
+    preferredLocality = std::get<0>(getPlaceFromThreadIdx(threadIdx));
   } else if constexpr (Policy == CORE_STRIPE) {
     auto coreIdx = ++loopLocal.lastCoreIdx;
     coreIdx %= pando::getCoreDims().x;
-    return pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
+    preferredLocality =
+        pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
+  } else if constexpr (Policy == NODE_ONLY) {
+    preferredLocality = pando::Place(preferredLocality.node, pando::anyPod, pando::anyCore);
   } else {
     PANDO_ABORT("SCHEDULER POLICY NOT IMPLEMENTED");
   }
+  counter::recordHighResolutionEvent(schedulerCount, schedulerTimer);
+  return preferredLocality;
 }
-
-constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = SchedulerPolicy::RANDOM;
 
 inline pando::Place scheduler(pando::Place preferredLocality,
                               LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY>& loopLocal) {
@@ -357,7 +370,6 @@ public:
   template <typename State, typename F>
   static pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
                                             const F& func) {
-    constexpr SchedulerPolicy EVENLY_PARITION_SCHEDULER_POLICY = SchedulerPolicy::CORE_STRIPE;
     LoopLocalSchedulerStruct<EVENLY_PARITION_SCHEDULER_POLICY> loopLocal;
     pando::Status err = pando::Status::Success;
     if (workItems == 0) {

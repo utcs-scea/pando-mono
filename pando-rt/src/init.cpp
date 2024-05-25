@@ -34,6 +34,7 @@
 
 counter::Record<std::minstd_rand> perCoreRNG;
 counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
+counter::Record<std::int64_t> schedulerCount = counter::Record<std::int64_t>();
 
 namespace pando {
 
@@ -211,6 +212,10 @@ int main(int argc, char* argv[]) {
         thisPlace.node.id,
         std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
         pointerCount.get(i));
+    SPDLOG_WARN("Scheduler time on node: {}, core: {} was {}",
+        thisPlace.node.id,
+        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
+        schedulerCount.get(i));
   }
 
 
