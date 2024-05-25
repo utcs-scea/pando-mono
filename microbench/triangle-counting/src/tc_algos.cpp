@@ -294,15 +294,12 @@ void HBGraphDA(pando::Place thisPlace, pando::Array<char> filename, int64_t num_
   pando::deallocateMemory(graph_ptr, 1);
 }
 
-void HBMainTC(pando::Notification::HandleType hb_done, pando::Array<char> filename,
-              int64_t num_vertices, bool load_balanced_graph, TC_CHUNK tc_chunk,
-              galois::DAccumulator<uint64_t> final_tri_count) {
+void HBMainTC(pando::Array<char> filename, int64_t num_vertices, bool load_balanced_graph,
+              TC_CHUNK tc_chunk, galois::DAccumulator<uint64_t> final_tri_count) {
   auto thisPlace = pando::getCurrentPlace();
 
   if (load_balanced_graph)
     HBGraphDL(thisPlace, filename, num_vertices, tc_chunk, final_tri_count);
   else
     HBGraphDA(thisPlace, filename, num_vertices, final_tri_count);
-
-  hb_done.notify();
 }

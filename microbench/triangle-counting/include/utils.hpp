@@ -56,7 +56,7 @@ struct CommandLineOptions {
       : elFile(""), num_vertices(0), load_balanced_graph(false), tc_chunk(TC_CHUNK::NO_CHUNK) {}
 };
 
-std::shared_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv);
+std::unique_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv);
 void printUsageExit(char* argv0);
 void printUsage(char* argv0);
 // #####################################################################

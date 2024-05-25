@@ -5,7 +5,7 @@
 
 int pandoMain(int argc, char** argv) {
   auto thisPlace = pando::getCurrentPlace();
-  std::shared_ptr<CommandLineOptions> opts = read_cmd_line_args(argc, argv);
+  std::unique_ptr<CommandLineOptions> opts = read_cmd_line_args(argc, argv);
 
   if (thisPlace.node.id == COORDINATOR_ID) {
     galois::HostLocalStorageHeap::HeapInit();
@@ -22,13 +22,8 @@ int pandoMain(int argc, char** argv) {
     galois::DAccumulator<uint64_t> final_tri_count{};
     PANDO_CHECK(final_tri_count.initialize());
 
-    pando::Notification necessary;
-    PANDO_CHECK(necessary.init());
-    PANDO_CHECK(pando::executeOn(pando::Place{pando::NodeIndex{0}, pando::anyPod, pando::anyCore},
-                                 &HBMainTC, necessary.getHandle(), filename, opts->num_vertices,
-                                 opts->load_balanced_graph, opts->tc_chunk, final_tri_count));
-    necessary.wait();
-    filename.deinitialize();
+    HBMainTC(filename, opts->num_vertices, opts->load_balanced_graph, opts->tc_chunk,
+             final_tri_count);
     std::cout << "*** FINAL TRI COUNT = " << final_tri_count.reduce() << "\n";
 
 #if BENCHMARK
@@ -38,6 +33,7 @@ int pandoMain(int argc, char** argv) {
         << std::chrono::duration_cast<std::chrono::nanoseconds>(time_e2e_end - time_e2e_st).count()
         << "\n";
 #endif
+    filename.deinitialize();
   }
   pando::waitAll();
   return 0;
