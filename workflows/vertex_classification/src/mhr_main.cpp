@@ -117,6 +117,8 @@ void checkGraph(wf1::MHRGraph& graph) {
 
 int pandoMain(int argc, char** argv) {
   if (pando::getCurrentPlace().node.id == 0) {
+    galois::HostLocalStorageHeap::HeapInit();
+    galois::PodLocalStorageHeap::HeapInit();
     galois::Timer workflow_timer("Start workflow 1 Multi-Hop Reasoning",
                                  "Finished workflow 1 Multi-Hop Reasoning");
 

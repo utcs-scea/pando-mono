@@ -89,6 +89,8 @@ int pandoMain(int argc, char** argv) {
   ProgramOptions programOptions;
   programOptions.Parse(argc, argv);
   if (thisPlace.node.id == 0) {
+    galois::HostLocalStorageHeap::HeapInit();
+    galois::PodLocalStorageHeap::HeapInit();
     const char* graphFile = programOptions.graphFile;
     pando::GlobalPtr<char> fname = static_cast<pando::GlobalPtr<char>>(
         pando::getDefaultMainMemoryResource()->allocate(sizeof(char) * strlen(graphFile)));
