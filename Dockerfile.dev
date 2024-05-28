@@ -104,6 +104,8 @@ RUN apt update -y \
       &&  apt clean \
       &&  update-locale
 
+RUN apt install -y linux-tools-$(uname -r) wget build-essential
+
 # CMake
 RUN apt-get update -y \
       &&  apt install -y ca-certificates gpg wget \
