@@ -18,10 +18,12 @@
 #include <pando-rt/pando-rt.hpp>
 
 constexpr bool SCHEDULER_TIMER_ENABLE = false;
+constexpr bool DOALL_TIMER_ENABLE = false;
 
 extern counter::Record<std::minstd_rand> perCoreRNG;
 extern counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
 extern counter::Record<std::int64_t> schedulerCount;
+extern counter::Record<std::int64_t> doAllCount;
 
 namespace galois {
 
@@ -176,6 +178,8 @@ public:
   template <typename State, typename R, typename F, typename L>
   static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func,
                              const L& localityFunc) {
+    counter::HighResolutionCount<DOALL_TIMER_ENABLE> doAllTimer;
+    doAllTimer.start();
     LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
@@ -198,6 +202,7 @@ public:
       }
       iter++;
     }
+    counter::recordHighResolutionEvent(doAllCount, doAllTimer);
     return err;
   }
 
@@ -216,6 +221,8 @@ public:
    */
   template <typename State, typename R, typename F>
   static pando::Status doAll(WaitGroup::HandleType wgh, State s, R& range, const F& func) {
+    counter::HighResolutionCount<DOALL_TIMER_ENABLE> doAllTimer;
+    doAllTimer.start();
     LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
@@ -238,6 +245,7 @@ public:
       }
       iter++;
     }
+    counter::recordHighResolutionEvent(doAllCount, doAllTimer);
     return err;
   }
 
@@ -256,6 +264,8 @@ public:
    */
   template <typename R, typename F>
   static pando::Status doAll(WaitGroup::HandleType wgh, R& range, const F& func) {
+    counter::HighResolutionCount<DOALL_TIMER_ENABLE> doAllTimer;
+    doAllTimer.start();
     LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
@@ -277,6 +287,7 @@ public:
       }
       iter++;
     }
+    counter::recordHighResolutionEvent(doAllCount, doAllTimer);
     return err;
   }
 
@@ -370,9 +381,12 @@ public:
   template <typename State, typename F>
   static pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
                                             const F& func) {
+    counter::HighResolutionCount<DOALL_TIMER_ENABLE> doAllTimer;
+    doAllTimer.start();
     LoopLocalSchedulerStruct<EVENLY_PARITION_SCHEDULER_POLICY> loopLocal;
     pando::Status err = pando::Status::Success;
     if (workItems == 0) {
+      counter::recordHighResolutionEvent(doAllCount, doAllTimer);
       return err;
     }
 
@@ -407,6 +421,7 @@ public:
         return err;
       }
     }
+    counter::recordHighResolutionEvent(doAllCount, doAllTimer);
     return err;
   }
 
