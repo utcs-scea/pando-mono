@@ -5,6 +5,7 @@
 set(EXAMPLE_SOURCES
   benchmark_pointer
   benchmark_loadbalance
+  benchmark_runtime
 )
 
 function(add_example EXAMPLES)
