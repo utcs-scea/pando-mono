@@ -22,7 +22,7 @@ pushd sst-core-src &&
     ./autogen.sh &&
     mkdir -p sst-core-build &&
     pushd sst-core-build &&
-    ../configure --prefix=$DRV_ROOT &&
+    CXXFLAGS="-g" CFLAGS="-g" ../configure --prefix=$DRV_ROOT &&
     make -j $(nproc) install || exit 1
 popd
 popd
@@ -37,7 +37,7 @@ pushd sst-elements-src &&
     ./autogen.sh &&
     mkdir -p sst-elements-build &&
     pushd sst-elements-build &&
-    ../configure --prefix=$DRV_ROOT --with-sst-core=$DRV_ROOT &&
+    CXXFLAGS="-g" CFLAGS="-g" ../configure --prefix=$DRV_ROOT --with-sst-core=$DRV_ROOT &&
     make -j $(nproc) install || exit 1
 popd
 popd
