@@ -13,6 +13,8 @@
 #include <pando-rt/sync/notification.hpp>
 #include <pando-rt/tracing.hpp>
 
+#include "DrvAPIMemory.hpp"
+
 namespace galois {
 /**
  * @brief This is a termination detection mechanism that is used for detecting nested parallelism
@@ -117,11 +119,27 @@ public:
    * @brief Waits until the number of items to wait on is zero.
    */
   [[nodiscard]] pando::Status wait() {
-    pando::waitUntil([this] {
-      const bool ready = *m_count <= static_cast<std::int64_t>(0);
-      PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
-      return ready;
-    });
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      pando::waitUntil([this] {
+        const bool ready = *m_count <= static_cast<std::int64_t>(0);
+        PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
+        return ready;
+      });
+    } else {
+      DrvAPI::monitor_until(m_count.address, static_cast<std::int64_t>(0));
+    }
+#else
+    DrvAPI::monitor_until(m_count.address, static_cast<std::int64_t>(0));
+#endif
+    /*
+        pando::waitUntil([this] {
+          const bool ready = *m_count <= static_cast<std::int64_t>(0);
+          PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
+          return ready;
+        });
+        DrvAPI::monitor_until(m_count.address, static_cast<std::int64_t>(0));
+    */
     pando::atomicThreadFence(std::memory_order_acquire);
     PANDO_MEM_STAT_NEW_PHASE();
     if (*m_count < static_cast<std::int64_t>(0)) {

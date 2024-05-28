@@ -319,7 +319,7 @@ template <typename T>
 class DrvAPIMemMonitorUntil : public DrvAPIMemMonitor
 {
 public:
-  DrvAPIMonitorUntil(DrvAPIAddress address, T value)
+  DrvAPIMemMonitorUntil(DrvAPIAddress address, T value)
       : DrvAPIMemMonitor(address), expected_(value) {}
 
   void getExpected(void *p) override {

@@ -50,4 +50,8 @@ MemEventBase* DefCustomCmdMemHandler::finish(MemEventBase *ev, uint32_t flags){
     return MEB;
 }
 
+MemEventBase* DefCustomCmdMemHandler::getMonitorResponse(){
+    return nullptr;
+}
+
 // EOF

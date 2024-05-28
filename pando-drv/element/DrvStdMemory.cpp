@@ -412,26 +412,41 @@ DrvStdMemory::handleEvent(SST::Interfaces::StandardMem::Request *req) {
     }
 
     auto custom_rsp = dynamic_cast<StandardMem::CustomResp*>(req);
-    AtomicReqData* areq_data = nullptr;
     if (custom_rsp) {
-        areq_data = dynamic_cast<AtomicReqData*>(custom_rsp->data);
-        if (areq_data) {
+        AtomicReqData* atomic_data = dynamic_cast<AtomicReqData*>(custom_rsp->data);
+        if (atomic_data) {
             output_.verbose(CALL_INFO, 10, DrvMemory::VERBOSE_REQ,
-                            "Received custom response\n");
+                            "Received atomic response\n");
             DrvThread *thread = core_->getThread(custom_rsp->tid);
-            DrvAPI::DrvAPIPAddress paddr{areq_data->pAddr};
+            DrvAPI::DrvAPIPAddress paddr{atomic_data->pAddr};
             if (paddr.pxn() != (uint64_t)core_->pxn_) {
-                core_->traceRemotePxnMem(DrvCore::TRACE_REMOTE_PXN_ATOMIC, "atomic_rsp", areq_data->pAddr, thread);
+                core_->traceRemotePxnMem(DrvCore::TRACE_REMOTE_PXN_ATOMIC, "atomic_rsp", atomic_data->pAddr, thread);
             }
             auto atomic_req = std::dynamic_pointer_cast<DrvAPI::DrvAPIMemAtomic>(thread->getAPIThread().getState());
             if (atomic_req) {
-                atomic_req->setResult(&areq_data->rdata[0]);
+                atomic_req->setResult(&atomic_data->rdata[0]);
                 atomic_req->complete();
             } else {
                 output_.fatal(CALL_INFO, -1, "Failed to find memory request for tid=%" PRIu32 "\n", custom_rsp->tid);
             }
         }
-        delete areq_data;
+
+        MonitorReqData* monitor_data = dynamic_cast<MonitorReqData*>(custom_rsp->data);
+        if (monitor_data) {
+            output_.verbose(CALL_INFO, 10, DrvMemory::VERBOSE_REQ,
+                            "Received monitor response\n");
+            DrvThread *thread = core_->getThread(custom_rsp->tid);
+            DrvAPI::DrvAPIPAddress paddr{monitor_data->pAddr};
+            if (paddr.pxn() != (uint64_t)core_->pxn_) {
+                core_->traceRemotePxnMem(DrvCore::TRACE_REMOTE_PXN_MONITOR, "monitor_rsp", monitor_data->pAddr, thread);
+            }
+            auto monitor_req = std::dynamic_pointer_cast<DrvAPI::DrvAPIMemMonitor>(thread->getAPIThread().getState());
+            if (monitor_req) {
+                monitor_req->complete();
+            } else {
+                output_.fatal(CALL_INFO, -1, "Failed to find memory request for tid=%" PRIu32 "\n", custom_rsp->tid);
+            }
+        }
     }
 
     auto write_req = dynamic_cast<StandardMem::Write*>(req);
@@ -448,7 +463,7 @@ DrvStdMemory::handleEvent(SST::Interfaces::StandardMem::Request *req) {
     delete req;
 
     // fatally error if we don't know the response type
-    if (!(write_rsp || read_rsp || (custom_rsp && areq_data) || write_req)) {
+    if (!(write_rsp || read_rsp || custom_rsp || write_req)) {
         output_.fatal(CALL_INFO, -1, "Unknown memory response type\n");
     }
     core_->assertCoreOn();

@@ -148,7 +148,8 @@ public:
    */
   DrvCmdMemHandler(SST::ComponentId_t id, SST::Params& params,
                    std::function<void(MemHierarchy::Addr,size_t,std::vector<uint8_t>&)> read, // read backing store
-                   std::function<void(MemHierarchy::Addr,std::vector<uint8_t>*)> write, // write backing store
+                   std::function<MemHierarchy::MemEventBase*(MemHierarchy::Addr,std::vector<uint8_t>*)> write, // write backing store
+                   std::function<bool(MemHierarchy::Addr,size_t,std::vector<uint8_t>&,MemHierarchy::MemEventBase*)> monitor, // monitor backing store
                    std::function<MemHierarchy::Addr(MemHierarchy::Addr)> globalToLocal); // translate global to local address
 
   /* destructor */
@@ -177,8 +178,11 @@ public:
    */
   MemHierarchy::MemEventBase* finish(MemHierarchy::MemEventBase *ev, uint32_t flags);
 
+  MemHierarchy::MemEventBase* getMonitorResponse();
+
 private:
   SST::Output output;
+  MemHierarchy::MemEventBase* monitor_resp;
 };
 
 /**

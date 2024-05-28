@@ -289,10 +289,11 @@ public:
   static constexpr uint32_t DEBUG_LOOPBACK = (1<<28); //!< debug messages we expect to see when receiving loopback events
   static constexpr uint32_t DEBUG_MMIO     = (1<<27); //!< debug messages we expect to see when receiving mmio events
 
-  static constexpr uint32_t TRACE_REMOTE_PXN_STORE = (1<< 0); //!< trace remote store events
-  static constexpr uint32_t TRACE_REMOTE_PXN_LOAD  = (1<< 1); //!< trace remote load events
-  static constexpr uint32_t TRACE_REMOTE_PXN_ATOMIC= (1<< 2); //!< trace remote atomic events
-  static constexpr uint32_t TRACE_REMOTE_PXN_MEMORY = (TRACE_REMOTE_PXN_STORE | TRACE_REMOTE_PXN_LOAD | TRACE_REMOTE_PXN_ATOMIC); //!< trace remote memory events
+  static constexpr uint32_t TRACE_REMOTE_PXN_STORE   = (1<< 0); //!< trace remote store events
+  static constexpr uint32_t TRACE_REMOTE_PXN_LOAD    = (1<< 1); //!< trace remote load events
+  static constexpr uint32_t TRACE_REMOTE_PXN_ATOMIC  = (1<< 2); //!< trace remote atomic events
+  static constexpr uint32_t TRACE_REMOTE_PXN_MONITOR = (1<< 3); //!< trace remote monitor events
+  static constexpr uint32_t TRACE_REMOTE_PXN_MEMORY  = (TRACE_REMOTE_PXN_STORE | TRACE_REMOTE_PXN_LOAD | TRACE_REMOTE_PXN_ATOMIC); //!< trace remote memory events
 private:
   std::unique_ptr<SST::Output> trace_; //!< for tracing
 
