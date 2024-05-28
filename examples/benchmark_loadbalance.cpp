@@ -55,20 +55,25 @@ int pandoMain(int argc, char** argv) {
     if (numItemsPerChunk != 1) {
       printUsageExit(argv[0]);
     }
-    Arr<G<std::uint64_t>> arr;
+    Arr<std::uint64_t> arr;
     PANDO_CHECK(arr.initialize(galois::getNumThreads()));
-    G<std::uint64_t> hello;
-    pando::LocalStorageGuard<std::uint64_t> helloGuard(hello, 1);
-    *hello = 0;
-    for (Ref<G<std::uint64_t>> item : arr) {
-      item = hello;
-    }
-    galois::doAll(
-        arr, +[](G<std::uint64_t> hello) {
-          pando::atomicFetchAdd(hello, 1, std::memory_order_relaxed);
-          while (pando::atomicLoad(hello, std::memory_order_relaxed) != galois::getNumThreads()) {}
+    galois::WaitGroup wg;
+    PANDO_CHECK(wg.initialize(0));
+    auto wgh = wg.getHandle();
+    counter::HighResolutionCount<true> makeSpanCounter;
+    makeSpanCounter.start();
+    galois::doAllEvenlyPartition(
+        wgh, arr, arr.size(),
+        +[](Arr<std::uint64_t> arr, std::uint64_t i, std::uint64_t numThreads) {
+          UNUSED(arr);
+          UNUSED(i);
+          UNUSED(numThreads);
         });
+    PANDO_CHECK(wg.wait());
+    auto time = makeSpanCounter.stop();
     arr.deinitialize();
+    wg.deinitialize();
+    std::cout << "The makespan of one task per thread was " << time.count() << std::endl;
   }
   pando::waitAll();
   return 0;
