@@ -162,6 +162,7 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
   auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
   auto byteSrc = srcGlobalAddr + bytesRead;
 
+#if defined(PANDO_RT_BYPASS_INIT)
   if (DrvAPI::isStageInit()) {
     for (std::size_t i = 0; i < numBlocks; i++) {
       const auto bytesOffset = i * blockSize;
@@ -190,6 +191,16 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
       *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
     }
   }
+#else
+  for (std::size_t i = 0; i < numBlocks; i++) {
+    const auto bytesOffset = i * blockSize;
+    *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset);
+  }
+
+  for (std::size_t i = 0; i < remainderBytes; i++) {
+    *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
+  }
+#endif
 
 // Adding an extra layer for message payload granularity
 // Currently does not work for types more than 64 bits
@@ -286,6 +297,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
   auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
   auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
 
+#if defined(PANDO_RT_BYPASS_INIT)
   if (DrvAPI::isStageInit()) {
     for (std::size_t i = 0; i < numBlocks; i++) {
       auto blockData = *(blockSrc + i);
@@ -319,6 +331,18 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
       DrvAPI::write<std::byte>(byteDst + i, byteData);
     }
   }
+#else
+  for (std::size_t i = 0; i < numBlocks; i++) {
+    auto blockData = *(blockSrc + i);
+    const auto offset = i * blockSize;
+    DrvAPI::write<BlockType>(blockDst + offset, blockData);
+  }
+
+  for (std::size_t i = 0; i < remainderBytes; i++) {
+    auto byteData = *(byteSrc + i);
+    DrvAPI::write<std::byte>(byteDst + i, byteData);
+  }
+#endif
 
 // Adding an extra layer for message payload granularity
 // Currently does not work for types more than 64 bits

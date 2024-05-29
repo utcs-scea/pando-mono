@@ -7,7 +7,8 @@ option(PANDO_WERROR "Make all warnings into errors." ON)
 set(PANDO_RT_ENABLE_MEM_TRACE "OFF" CACHE STRING "Enable memory tracing feature.")
 set_property(CACHE PANDO_RT_ENABLE_MEM_TRACE PROPERTY STRINGS "OFF" "INTER-PXN" "ALL")
 option(PANDO_RT_ENABLE_MEM_STAT "Enable reporting memory access count statistics." OFF)
-option(PANDO_RT_ENABLE_DMA "Enable reporting memory access count statistics." ON)
+option(PANDO_RT_DRVX_ENABLE_DMA "Enable reporting memory access count statistics." ON)
+option(PANDO_RT_DRVX_BYPASS_INIT "Enable bypassing SST simulation in DrvX for the initialization stage." ON)
 
 
 # Default compiler options for targets

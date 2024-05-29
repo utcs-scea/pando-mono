@@ -54,10 +54,17 @@ target_compile_definitions(pando-rt-drvx
         "-DPANDO_RT_USE_BACKEND_DRVX=1"
 )
 
-if(PANDO_RT_ENABLE_DMA STREQUAL "ON")
+if(PANDO_RT_DRVX_ENABLE_DMA STREQUAL "ON")
     target_compile_definitions(pando-rt-drvx
             PUBLIC
                 "-DPANDO_RT_USE_DMA=1"
+    )
+endif()
+
+if(PANDO_RT_DRVX_BYPASS_INIT STREQUAL "ON")
+    target_compile_definitions(pando-rt-drvx
+            PUBLIC
+                "-DPANDO_RT_BYPASS_INIT=1"
     )
 endif()
 
