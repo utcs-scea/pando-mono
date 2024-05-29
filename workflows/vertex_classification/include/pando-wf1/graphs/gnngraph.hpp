@@ -309,7 +309,7 @@ public:
           std::uint32_t host = pando::getCurrentPlace().node.id;
           std::uint64_t numLocalVertices = g.localSize(host);
 
-          pando::Array<std::uint64_t> av = avRef;
+          pando::Array<std::uint64_t> av;
           PANDO_CHECK(av.initialize(numLocalVertices));
 
           for (std::uint64_t i = 0; i < av.size(); ++i) {
@@ -325,6 +325,7 @@ public:
             av[i] = av[j];
             av[j] = temp;
           }
+          avRef = av;
         });
 
     struct TplOut {
