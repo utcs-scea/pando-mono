@@ -40,8 +40,18 @@ void CommandProcessor::barrier() {
     *toNativeDrvPointerOnDram(pxnBarrierDone, Drvx::getCurrentNode()) = 0u;
 
     // enter the global barrier by incrementing the global counter on PXN-0
-    std::int64_t curBarrierCount =
-        DrvAPI::atomic_add(toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)), 1u);
+#if defined(PANDO_RT_BYPASS_INIT)
+    void *addr_native = nullptr;
+    std::size_t size = 0;
+    DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)), &addr_native, &size);
+    std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
+    std::int64_t curBarrierCount = __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
+    // hartYield
+    DrvAPI::nop(1u);
+#else
+    std::int64_t curBarrierCount = DrvAPI::atomic_add(toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)), 1u);
+#endif
+
     if (curBarrierCount == Drvx::getNodeDims().id - 1) {
       // last PXN to reach barrier; reset global barrier counter and signal to other PXNs that we
       // are done
@@ -61,7 +71,17 @@ void CommandProcessor::barrier() {
 }
 
 void CommandProcessor::signalCoresDone() {
+#if defined(PANDO_RT_BYPASS_INIT)
+  void *addr_native = nullptr;
+  std::size_t size = 0;
+  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), &addr_native, &size);
+  std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
+  __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
+  // hartYield
+  DrvAPI::nop(1u);
+#else
   DrvAPI::atomic_add(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), 1u);
+#endif
 }
 
 /// Wait for all cores on all PXNs to be done.
