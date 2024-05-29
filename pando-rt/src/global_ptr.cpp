@@ -157,16 +157,38 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 
   auto blockDst = static_cast<BlockType*>(dstNativePtr);
   auto blockSrc = srcGlobalAddr;
-  for (std::size_t i = 0; i < numBlocks; i++) {
-    const auto bytesOffset = i * blockSize;
-    *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset);
-  }
 
   const auto bytesRead = numBlocks * blockSize;
   auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
   auto byteSrc = srcGlobalAddr + bytesRead;
-  for (std::size_t i = 0; i < remainderBytes; i++) {
-    *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
+
+  if (DrvAPI::isStageInit()) {
+    for (std::size_t i = 0; i < numBlocks; i++) {
+      const auto bytesOffset = i * blockSize;
+
+      void *addr_native = nullptr;
+      std::size_t size = 0;
+      DrvAPI::DrvAPIAddressToNative(blockSrc + bytesOffset, &addr_native, &size);
+      BlockType* as_native_pointer = reinterpret_cast<BlockType*>(addr_native);
+      *(blockDst + i) = *as_native_pointer;
+    }
+
+    for (std::size_t i = 0; i < remainderBytes; i++) {
+      void *addr_native = nullptr;
+      std::size_t size = 0;
+      DrvAPI::DrvAPIAddressToNative(byteSrc + i, &addr_native, &size);
+      std::byte* as_native_pointer = reinterpret_cast<std::byte*>(addr_native);
+      *(byteDst + i) = *as_native_pointer;
+    }
+  } else {
+    for (std::size_t i = 0; i < numBlocks; i++) {
+      const auto bytesOffset = i * blockSize;
+      *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset);
+    }
+
+    for (std::size_t i = 0; i < remainderBytes; i++) {
+      *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
+    }
   }
 
 // Adding an extra layer for message payload granularity
@@ -259,18 +281,43 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
 
   auto blockSrc = static_cast<const BlockType*>(srcNativePtr);
   auto blockDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr);
-  for (std::size_t i = 0; i < numBlocks; i++) {
-    auto blockData = *(blockSrc + i);
-    const auto offset = i * blockSize;
-    DrvAPI::write<BlockType>(blockDst + offset, blockData);
-  }
 
   const auto bytesWritten = numBlocks * blockSize;
   auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
   auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
-  for (std::size_t i = 0; i < remainderBytes; i++) {
-    auto byteData = *(byteSrc + i);
-    DrvAPI::write<std::byte>(byteDst + i, byteData);
+
+  if (DrvAPI::isStageInit()) {
+    for (std::size_t i = 0; i < numBlocks; i++) {
+      auto blockData = *(blockSrc + i);
+      const auto offset = i * blockSize;
+
+      void *addr_native = nullptr;
+      std::size_t size = 0;
+      DrvAPI::DrvAPIAddressToNative(blockDst + offset, &addr_native, &size);
+      BlockType* as_native_pointer = reinterpret_cast<BlockType*>(addr_native);
+      *as_native_pointer = blockData;
+    }
+
+    for (std::size_t i = 0; i < remainderBytes; i++) {
+      auto byteData = *(byteSrc + i);
+
+      void *addr_native = nullptr;
+      std::size_t size = 0;
+      DrvAPI::DrvAPIAddressToNative(byteDst + i, &addr_native, &size);
+      std::byte* as_native_pointer = reinterpret_cast<std::byte*>(addr_native);
+      *as_native_pointer = byteData;
+    }
+  } else {
+    for (std::size_t i = 0; i < numBlocks; i++) {
+      auto blockData = *(blockSrc + i);
+      const auto offset = i * blockSize;
+      DrvAPI::write<BlockType>(blockDst + offset, blockData);
+    }
+
+    for (std::size_t i = 0; i < remainderBytes; i++) {
+      auto byteData = *(byteSrc + i);
+      DrvAPI::write<std::byte>(byteDst + i, byteData);
+    }
   }
 
 // Adding an extra layer for message payload granularity

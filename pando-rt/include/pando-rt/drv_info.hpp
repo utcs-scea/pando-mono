@@ -6,13 +6,17 @@
 
 #ifdef PANDO_RT_USE_BACKEND_DRVX
 #include "DrvAPIMemory.hpp"
+#include "DrvAPIThread.hpp"
 
 namespace DrvAPI {
+extern stage_t stage;
+
 void setStageInit();
 void setStageExecComp();
 void setStageExecComm();
 void setStageOther();
 void incrementPhase();
+bool isStageInit();
 } // namespace DrvAPI
 
 #define PANDO_DRV_SET_STAGE_INIT() {DrvAPI::setStageInit();} 
