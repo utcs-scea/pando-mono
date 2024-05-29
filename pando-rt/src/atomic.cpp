@@ -251,24 +251,30 @@ bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, T& expected, const T desired,
 
 #else
 
+
 #if defined(PANDO_RT_BYPASS_INIT)
-  T foundValue;
   if (DrvAPI::isStageInit()) {
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
     T* as_native_pointer = reinterpret_cast<T*>(addr_native);
-    __atomic_compare_exchange_n(as_native_pointer, &expected, desired, false, static_cast<int>(std::memory_order_relaxed), static_cast<int>(std::memory_order_relaxed));
+    auto result = __atomic_compare_exchange_n(as_native_pointer, &expected, desired, false, static_cast<int>(std::memory_order_relaxed), static_cast<int>(std::memory_order_relaxed));
     // hartYield
     DrvAPI::nop(1u);
 
-    foundValue = expected;
+    return result;
   } else {
-    foundValue = DrvAPI::atomic_cas<T>(ptr.address, expected, desired);
+    const auto foundValue = DrvAPI::atomic_cas<T>(ptr.address, expected, desired);
+    if (foundValue == expected) {
+      return true;
+    }
+    else {
+      expected = foundValue;
+      return false;
+    }
   }
 #else
   const auto foundValue = DrvAPI::atomic_cas<T>(ptr.address, expected, desired);
-#endif
   if (foundValue == expected) {
     return true;
   }
@@ -276,6 +282,7 @@ bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, T& expected, const T desired,
     expected = foundValue;
     return false;
   }
+#endif
 
 #endif
 }
