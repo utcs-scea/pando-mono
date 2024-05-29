@@ -19,6 +19,7 @@
 #endif
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 #include "drvx/drvx.hpp"
+#include "pando-rt/drv_info.hpp"
 #endif // PANDO_RT_USE_BACKEND_PREP
 
 namespace pando {
@@ -249,7 +250,25 @@ bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, T& expected, const T desired,
   }
 
 #else
+
+#if defined(PANDO_RT_BYPASS_INIT)
+  T foundValue;
+  if (DrvAPI::isStageInit()) {
+    void *addr_native = nullptr;
+    std::size_t size = 0;
+    DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
+    T* as_native_pointer = reinterpret_cast<T*>(addr_native);
+    __atomic_compare_exchange_n(as_native_pointer, &expected, desired, false, static_cast<int>(std::memory_order_relaxed), static_cast<int>(std::memory_order_relaxed));
+    // hartYield
+    DrvAPI::nop(1u);
+
+    foundValue = expected;
+  } else {
+    foundValue = DrvAPI::atomic_cas<T>(ptr.address, expected, desired);
+  }
+#else
   const auto foundValue = DrvAPI::atomic_cas<T>(ptr.address, expected, desired);
+#endif
   if (foundValue == expected) {
     return true;
   }
@@ -323,7 +342,21 @@ void atomicIncrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
 
 #else
 
+#if defined(PANDO_RT_BYPASS_INIT)
+  if (DrvAPI::isStageInit()) {
+    void *addr_native = nullptr;
+    std::size_t size = 0;
+    DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
+    T* as_native_pointer = reinterpret_cast<T*>(addr_native);
+    __atomic_fetch_add(as_native_pointer, value, static_cast<int>(std::memory_order_relaxed));
+    // hartYield
+    DrvAPI::nop(1u);
+  } else {
+    DrvAPI::atomic_add(ptr.address, value);
+  }
+#else
   DrvAPI::atomic_add(ptr.address, value);
+#endif
 
 #endif
 }
@@ -380,7 +413,21 @@ void atomicDecrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
 
 #else
 
+#if defined(PANDO_RT_BYPASS_INIT)
+  if (DrvAPI::isStageInit()) {
+    void *addr_native = nullptr;
+    std::size_t size = 0;
+    DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
+    T* as_native_pointer = reinterpret_cast<T*>(addr_native);
+    __atomic_fetch_add(as_native_pointer, static_cast<T>(-1) * value, static_cast<int>(std::memory_order_relaxed));
+    // hartYield
+    DrvAPI::nop(1u);
+  } else {
+    DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
+  }
+#else
   DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
+#endif
 
 #endif
 }
@@ -440,7 +487,22 @@ T atomicFetchAddImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
 
 #else
 
+#if defined(PANDO_RT_BYPASS_INIT)
+  if (DrvAPI::isStageInit()) {
+    void *addr_native = nullptr;
+    std::size_t size = 0;
+    DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
+    T* as_native_pointer = reinterpret_cast<T*>(addr_native);
+    auto result = __atomic_fetch_add(as_native_pointer, value, static_cast<int>(std::memory_order_relaxed));
+    // hartYield
+    DrvAPI::nop(1u);
+    return result;
+  } else {
+    return DrvAPI::atomic_add(ptr.address, value);
+  }
+#else
   return DrvAPI::atomic_add(ptr.address, value);
+#endif
 
 #endif
 }
@@ -501,7 +563,22 @@ T atomicFetchSubImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
 
 #else
 
+#if defined(PANDO_RT_BYPASS_INIT)
+  if (DrvAPI::isStageInit()) {
+    void *addr_native = nullptr;
+    std::size_t size = 0;
+    DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
+    T* as_native_pointer = reinterpret_cast<T*>(addr_native);
+    auto result = __atomic_fetch_add(as_native_pointer, static_cast<T>(-1) * value, static_cast<int>(std::memory_order_relaxed));
+    // hartYield
+    DrvAPI::nop(1u);
+    return result;
+  } else {
+    return DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
+  }
+#else
   return DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
+#endif
 
 #endif
 }
