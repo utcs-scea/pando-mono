@@ -36,11 +36,28 @@ void HBMainDLCSR(std::uint64_t numVertices, pando::Array<char>&& filename) {
   galois::WaitGroup wg{};
   PANDO_CHECK(wg.initialize(0));
   auto wgh = wg.getHandle();
+
+  galois::HostLocalStorage<bool> temp;
+  PANDO_CHECK(temp.initialize());
+  /*
+    PANDO_CHECK(galois::doAll(
+        wgh, temp, +[](bool) {
+          PANDO_MEM_STAT_NEW_KERNEL("BENCHMARK START");
+        }));
+    PANDO_CHECK(wg.wait());
+  */
   PANDO_CHECK(galois::doAll(
       wgh, graph.vertexDataRange(), +[](pando::GlobalRef<typename Graph::VertexData> ref) {
         ref = static_cast<std::uint64_t>(0);
       }));
   PANDO_CHECK(wg.wait());
+  /*
+    PANDO_CHECK(galois::doAll(
+        wgh, temp, +[](bool) {
+          PANDO_MEM_STAT_NEW_KERNEL("BENCHMARK END");
+        }));
+    PANDO_CHECK(wg.wait());
+  */
 }
 
 int pandoMain(int argc, char** argv) {
