@@ -1140,11 +1140,11 @@ public:
   }
 
   /**
-   * @brief gives the number of edges
+   * @brief gives the number of vertices
    */
 
-  std::uint64_t localSize(std::uint32_t host) noexcept {
-    return lift(arrayOfCSRs[host], size);
+  std::uint64_t localSize(std::uint64_t host) noexcept {
+    return lift(getCSR(host), size);
   }
 
   /**
