@@ -62,8 +62,8 @@ PANDO_RT_EXPORT void store(GlobalAddress globalAddr, std::size_t n, const void* 
 template <typename T>
 void load(GlobalAddress globalAddr, void* nativePtr) {
   T* destPtr = static_cast<T*>(nativePtr);
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(globalAddr, &addr_native, &size);
@@ -91,8 +91,8 @@ void load(GlobalAddress globalAddr, void* nativePtr) {
 template <typename T>
 void store(GlobalAddress globalAddr, const void* nativePtr) {
   const T* srcPtr = static_cast<const T*>(nativePtr);
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(globalAddr, &addr_native, &size);

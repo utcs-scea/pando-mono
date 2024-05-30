@@ -61,10 +61,10 @@ if(PANDO_RT_DRVX_ENABLE_DMA STREQUAL "ON")
     )
 endif()
 
-if(PANDO_RT_DRVX_BYPASS_INIT STREQUAL "ON")
+if(PANDO_RT_DRVX_ENABLE_BYPASS STREQUAL "ON")
     target_compile_definitions(pando-rt-drvx
             PUBLIC
-                "-DPANDO_RT_BYPASS_INIT=1"
+                "-DPANDO_RT_BYPASS=1"
     )
 endif()
 

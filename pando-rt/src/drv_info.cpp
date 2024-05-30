@@ -7,11 +7,7 @@
 
 namespace DrvAPI {
 
-stage_t stage = stage_t::STAGE_INIT;
-
 void setStageInit() {
-  stage = stage_t::STAGE_INIT;
-
   // for the command processor
   set_stage(stage_t::STAGE_INIT);
   
@@ -37,8 +33,6 @@ void setStageInit() {
   }
 }
 void setStageExecComp() {
-  stage = stage_t::STAGE_EXEC_COMP;
-
   // for the command processor
   set_stage(stage_t::STAGE_EXEC_COMP);
   
@@ -64,8 +58,6 @@ void setStageExecComp() {
   }
 }
 void setStageExecComm() {
-  stage = stage_t::STAGE_EXEC_COMM;
-
   // for the command processor
   set_stage(stage_t::STAGE_EXEC_COMM);
   
@@ -91,8 +83,6 @@ void setStageExecComm() {
   }
 }
 void setStageOther() {
-  stage = stage_t::STAGE_OTHER;
-
   // for the command processor
   set_stage(stage_t::STAGE_OTHER);
   
@@ -143,9 +133,16 @@ void incrementPhase() {
   }
 }
 
-bool isStageInit() {
-  return stage == stage_t::STAGE_INIT;
-}
-
 } // namespace DrvAPI
+
+bool bypass_flag = false;
+void setBypassFlag() {
+  bypass_flag = true;
+}
+void clearBypassFlag() {
+  bypass_flag = false;
+}
+bool getBypassFlag() {
+  return bypass_flag;
+}
 #endif // PANDO_RT_USE_BACKEND_DRVX

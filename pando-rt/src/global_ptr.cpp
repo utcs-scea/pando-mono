@@ -162,8 +162,8 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
   auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
   auto byteSrc = srcGlobalAddr + bytesRead;
 
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     for (std::size_t i = 0; i < numBlocks; i++) {
       const auto bytesOffset = i * blockSize;
 
@@ -301,8 +301,8 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
   auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
   auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
 
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     for (std::size_t i = 0; i < numBlocks; i++) {
       auto blockData = *(blockSrc + i);
       const auto offset = i * blockSize;

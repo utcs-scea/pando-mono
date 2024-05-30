@@ -46,7 +46,7 @@ Drvx::StaticMainMem<std::int64_t> numCoresReady;
 void Cores::initializeQueues() {
   // One hart per core does all the initialization. Use CAS to choose some/any hart for this
   // purpose.
-#if defined(PANDO_RT_BYPASS_INIT)
+#if defined(PANDO_RT_BYPASS)
   void *addr_native = nullptr;
   std::size_t size = 0;
   DrvAPI::DrvAPIAddressToNative(&coreState, &addr_native, &size);
@@ -68,7 +68,7 @@ void Cores::initializeQueues() {
     coreState = +CoreState::Ready;
 
     // CP waits for this variable to equal total number of cores in the PXN
-#if defined(PANDO_RT_BYPASS_INIT)
+#if defined(PANDO_RT_BYPASS)
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(numCoresReady, NodeIndex(0)), &addr_native, &size);
@@ -90,7 +90,7 @@ void Cores::initializeQueues() {
 void Cores::finalizeQueues() {
   // One hart per core does all the finalization. Use CAS to choose some/any hart for this
   // purpose.
-#if defined(PANDO_RT_BYPASS_INIT)
+#if defined(PANDO_RT_BYPASS)
   void *addr_native = nullptr;
   std::size_t size = 0;
   DrvAPI::DrvAPIAddressToNative(&coreState, &addr_native, &size);
@@ -137,7 +137,7 @@ void Cores::waitForCoresInit() {
 }
 
 void Cores::finalize() {
-#if defined(PANDO_RT_BYPASS_INIT)
+#if defined(PANDO_RT_BYPASS)
   void *addr_native = nullptr;
   std::size_t size = 0;
   DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), &addr_native, &size);

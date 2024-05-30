@@ -252,8 +252,8 @@ bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, T& expected, const T desired,
 #else
 
 
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
@@ -349,8 +349,8 @@ void atomicIncrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
 
 #else
 
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
@@ -420,8 +420,8 @@ void atomicDecrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
 
 #else
 
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
@@ -494,8 +494,8 @@ T atomicFetchAddImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
 
 #else
 
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
@@ -570,8 +570,8 @@ T atomicFetchSubImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
 
 #else
 
-#if defined(PANDO_RT_BYPASS_INIT)
-  if (DrvAPI::isStageInit()) {
+#if defined(PANDO_RT_BYPASS)
+  if (getBypassFlag()) {
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);

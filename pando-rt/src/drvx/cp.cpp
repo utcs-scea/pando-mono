@@ -40,7 +40,7 @@ void CommandProcessor::barrier() {
     *toNativeDrvPointerOnDram(pxnBarrierDone, Drvx::getCurrentNode()) = 0u;
 
     // enter the global barrier by incrementing the global counter on PXN-0
-#if defined(PANDO_RT_BYPASS_INIT)
+#if defined(PANDO_RT_BYPASS)
     void *addr_native = nullptr;
     std::size_t size = 0;
     DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)), &addr_native, &size);
@@ -71,7 +71,7 @@ void CommandProcessor::barrier() {
 }
 
 void CommandProcessor::signalCoresDone() {
-#if defined(PANDO_RT_BYPASS_INIT)
+#if defined(PANDO_RT_BYPASS)
   void *addr_native = nullptr;
   std::size_t size = 0;
   DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), &addr_native, &size);
