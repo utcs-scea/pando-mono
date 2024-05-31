@@ -60,7 +60,7 @@ public:
     galois::doAll(
         Tpl{this->secondMoments_, this->beta1Power_, this->beta2Power_, numTrainableLayers,
             trainableLayerSizes, this->config_},
-        this->firstMoments_, +[](Tpl tpl, pando::Array<pando::Array<GNNFloat>> fmRef) {
+        this->firstMoments_, +[](Tpl tpl, pando::GlobalRef<pando::Array<pando::Array<GNNFloat>>> fmRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
           pando::GlobalRef<pando::Array<pando::Array<GNNFloat>>> smRef = *fmap(tpl.sm, get, host);
@@ -91,6 +91,7 @@ public:
             pando::Array<GNNFloat> ifm = ifmRef;
             pando::Array<GNNFloat> ism = ismRef;
 
+
             galois::doAll(
                 ifm, +[](pando::GlobalRef<GNNFloat> v) {
                   v = 0;
@@ -100,6 +101,9 @@ public:
                   v = 0;
                 });
           }
+
+          fmRef = fm;
+          smRef = sm;
 
           pando::Array<GNNFloat> b1 = b1Ref;
           pando::Array<GNNFloat> b2 = b2Ref;
