@@ -38,6 +38,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   using Graph = galois::DistLocalCSR<VT, ET>;
 
   PANDO_DRV_SET_STAGE_INIT();
+  PANDO_DRV_SET_BYPASS_FLAG();
 
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
@@ -88,6 +89,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   using Graph = galois::MirrorDistLocalCSR<VT, ET>;
 
   PANDO_DRV_SET_STAGE_INIT();
+  PANDO_DRV_SET_BYPASS_FLAG();
 
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();

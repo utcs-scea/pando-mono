@@ -134,4 +134,15 @@ void incrementPhase() {
 }
 
 } // namespace DrvAPI
+
+bool bypass_flag = false;
+void setBypassFlag() {
+  bypass_flag = true;
+}
+void clearBypassFlag() {
+  bypass_flag = false;
+}
+bool getBypassFlag() {
+  return bypass_flag;
+}
 #endif // PANDO_RT_USE_BACKEND_DRVX
