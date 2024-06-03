@@ -308,8 +308,8 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
         uint64_t result;
         for (uint64_t j = 0; j < lift(exchangedVec, size); j++) {
           pando::GlobalRef<pando::Vector<EdgeType>> v = exchangedVec.get(j);
-          pando::Vector<EdgeType> v1 = v;
-          EdgeType e = v1[0];
+          pando::Gvector<EdgeType> v1(&v);
+          EdgeType e = fmap(v1, at, 0);
           bool ret = fmap(hashMap, get, e.src, result);
           if (!ret) {
             return pando::Status::Error;
