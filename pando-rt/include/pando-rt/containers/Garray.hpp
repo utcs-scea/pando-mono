@@ -146,7 +146,7 @@ public:
       // Step 7: Dereference to get the desired element
       auto elementGlobalPtr = static_cast<GlobalPtr<void>>(elementOffset);
       T desiredElement = *static_cast<GlobalPtr<T>>(elementGlobalPtr);
-      printf("Garray at: %d\n", static_cast<int>(desiredElement));
+      //printf("Garray at: %d\n", static_cast<int>(desiredElement));
       return desiredElement;
   }
 
