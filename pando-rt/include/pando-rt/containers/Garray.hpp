@@ -50,6 +50,8 @@ public:
   constexpr GArray(GArray&&) noexcept = default;
   constexpr GArray(const GArray&) noexcept = default;
 
+  constexpr GArray(GlobalPtr<pando::Array<T>> arr) noexcept : array_ptr(arr) {}
+
   ~GArray() = default;
 
   constexpr GArray& operator=(const GArray&) noexcept = default;
@@ -116,13 +118,38 @@ public:
   }
 
   constexpr std::uint64_t size() const noexcept {
-    pando::GlobalPtr<void> vvec = static_cast<pando::GlobalPtr<void>>(arrary_ptr);  
+    pando::GlobalPtr<void> vvec = static_cast<pando::GlobalPtr<void>>(array_ptr);  
     pando::GlobalPtr<std::byte> bvec = static_cast<pando::GlobalPtr<std::byte>>(vvec); 
-    auto offsetVec = bvec + offsetof(galois::Array,m_size); 
+    auto offsetVec = bvec + offsetof(pando::Array<T>,m_size); 
     auto offsetVVec = static_cast<pando::GlobalPtr<void>>(offsetVec); 
     std::uint64_t desired = *static_cast<pando::GlobalPtr<std::uint64_t>> (offsetVVec); 
-    return desired; 
+    return desired;
   }
+
+  constexpr T at(std::uint64_t pos) {
+      // Step 1: Cast vec_ptr to void* and then to std::byte*
+      GlobalPtr<void> voidPtr = static_cast<GlobalPtr<void>>(array_ptr);
+      GlobalPtr<std::byte> bytePtr = static_cast<GlobalPtr<std::byte>>(voidPtr);
+
+      // Step 4: Calculate offset to m_data within Array<T>
+      auto dataOffset = bytePtr + offsetof(Array<T>, m_data);
+
+      // Step 5: Dereference to get GlobalPtr<T> from m_data
+      auto globalPtrOffset = static_cast<GlobalPtr<void>>(dataOffset);
+      GlobalPtr<T> dataPtr = *static_cast<GlobalPtr<GlobalPtr<T>>>(globalPtrOffset);
+
+      // Step 6: Calculate the final offset using the provided position
+      voidPtr = static_cast<GlobalPtr<void>>(dataPtr);
+      bytePtr = static_cast<GlobalPtr<std::byte>>(voidPtr);
+      auto elementOffset = bytePtr + pos * sizeof(T);
+
+      // Step 7: Dereference to get the desired element
+      auto elementGlobalPtr = static_cast<GlobalPtr<void>>(elementOffset);
+      T desiredElement = *static_cast<GlobalPtr<T>>(elementGlobalPtr);
+      printf("Garray at: %d\n", static_cast<int>(desiredElement));
+      return desiredElement;
+  }
+
 
   /**
    * @brief Assigns @p value to all elements in the container.
@@ -220,120 +247,6 @@ bool isSame(const GArray<T>& a, const GArray<T>& b) noexcept {
   return a.data() == b.data();
 }
 
-/**
- * @brief View over a contiguous range of data.
- *
- * TODO(ypapadop-amd): This needs to extend to the rest of the interface of std::span.
- */
-template <typename T>
-class Span {
-  GlobalPtr<T> m_data{};
-  std::uint64_t m_size{};
-
-public:
-  using iterator = GlobalPtr<T>;
-  using const_iterator = GlobalPtr<const T>;
-  using reverse_iterator = std::reverse_iterator<iterator>;
-  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-
-  constexpr Span() noexcept = default;
-
-  constexpr Span(GlobalPtr<T> data, std::uint64_t size) noexcept : m_data(data), m_size(size) {}
-
-  constexpr GlobalPtr<T> data() const noexcept {
-    return m_data;
-  }
-
-  constexpr std::uint64_t size() const noexcept {
-    return m_size;
-  }
-
-  constexpr GlobalRef<T> operator[](std::uint64_t pos) noexcept {
-    return m_data[pos];
-  }
-
-  constexpr GlobalRef<const T> operator[](std::uint64_t pos) const noexcept {
-    return m_data[pos];
-  }
-
-  iterator begin() noexcept {
-    return iterator(m_data);
-  }
-
-  iterator begin() const noexcept {
-    return iterator(m_data);
-  }
-
-  const_iterator cbegin() const noexcept {
-    return const_iterator(m_data);
-  }
-
-  iterator end() noexcept {
-    return iterator(m_data + size());
-  }
-
-  iterator end() const noexcept {
-    return iterator(m_data + size());
-  }
-
-  const_iterator cend() const noexcept {
-    return const_iterator(m_data + size());
-  }
-
-  /**
-   * @brief reverse iterator to the first element
-   */
-  reverse_iterator rbegin() noexcept {
-    return reverse_iterator(end()--);
-  }
-
-  /**
-   * @copydoc rbegin()
-   */
-  reverse_iterator rbegin() const noexcept {
-    return reverse_iterator(end()--);
-  }
-
-  /**
-   * @copydoc rbegin()
-   */
-  const_reverse_iterator crbegin() const noexcept {
-    return const_reverse_iterator(cend()--);
-  }
-
-  /**
-   * reverse iterator to the last element
-   */
-  reverse_iterator rend() noexcept {
-    return reverse_iterator(begin()--);
-  }
-
-  /**
-   * @copydoc rend()
-   */
-  reverse_iterator rend() const noexcept {
-    return reverse_iterator(begin()--);
-  }
-
-  /**
-   * @copydoc rend()
-   */
-  const_reverse_iterator crend() const noexcept {
-    return const_reverse_iterator(cbegin()--);
-  }
-};
-
-/// @ingroup ROOT
-template <typename T>
-bool operator==(const Span<T>& a, const Span<T>& b) noexcept {
-  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
-}
-
-/// @ingroup ROOT
-template <typename T>
-bool operator!=(const Span<T>& a, const Span<T>& b) noexcept {
-  return !(a == b);
-}
 
 } // namespace pando
 
