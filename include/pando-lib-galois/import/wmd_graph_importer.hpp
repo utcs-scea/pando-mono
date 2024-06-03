@@ -29,6 +29,7 @@
 #include <pando-lib-galois/utility/pair.hpp>
 #include <pando-lib-galois/utility/string_view.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
+#include <pando-rt/containers/Garray.hpp>
 #include <pando-rt/containers/Gvector.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
@@ -105,6 +106,7 @@ buildEdgeCountToSend(std::uint64_t numVirtualHosts,
     galois::Pair<std::uint64_t, std::uint64_t> p{0, i};
     sumArray[i] = p;
   }
+  pando::GArray<galois::Pair<std::uint64_t, std::uint64_t>> sumGArray(&sumArray);
   galois::WaitGroup wg{};
   PANDO_CHECK(wg.initialize(0));
   auto wgh = wg.getHandle();
@@ -112,14 +114,15 @@ buildEdgeCountToSend(std::uint64_t numVirtualHosts,
   using UPair = galois::Pair<std::uint64_t, std::uint64_t>;
   const uint64_t pairOffset = offsetof(UPair, first);
 
-  auto state = galois::make_tpl(wgh, sumArray);
+  auto state = galois::make_tpl(wgh, sumGArray);
   PANDO_CHECK(galois::doAll(
       wgh, state, localEdges, +[](decltype(state) state, pando::Vector<EdgeType> localEdges) {
-        auto [wgh, sumArray] = state;
+        auto [wgh, sumGArray] = state;
         PANDO_CHECK(galois::doAll(
-            wgh, sumArray, localEdges, +[](decltype(sumArray) counts, EdgeType localEdge) {
-              pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
-                  static_cast<pando::GlobalPtr<void>>(&counts[localEdge.src % counts.size()]));
+            wgh, sumGArray, localEdges, +[](decltype(sumGArray) counts, EdgeType localEdge) {
+              pando::GlobalPtr<char> toAdd =
+                  static_cast<pando::GlobalPtr<char>>(static_cast<pando::GlobalPtr<void>>(
+                      &fmap(counts, at, localEdge.src % counts.size())));
               toAdd += pairOffset;
               pando::GlobalPtr<std::uint64_t> p = static_cast<pando::GlobalPtr<std::uint64_t>>(
                   static_cast<pando::GlobalPtr<void>>(toAdd));
