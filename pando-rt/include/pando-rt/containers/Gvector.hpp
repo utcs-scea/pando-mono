@@ -53,6 +53,8 @@ public:
   constexpr Gvector& operator=(const Gvector&) noexcept = default;
   constexpr Gvector& operator=(Gvector&&) noexcept = default;
 
+  constexpr Gvector(GlobalPtr<pando::Vector<T>> vec) noexcept : vec_ptr(vec) {}
+
   /**
    * @copydoc initialize(std::uint64_t)
    *
@@ -61,7 +63,7 @@ public:
    */
   [[nodiscard]] Status initialize(std::uint64_t size, Place place, MemoryType memoryType) {
     vec_ptr = PANDO_EXPECT_RETURN(allocateMemory<pando::Vector<T>>(1, place, memoryType));
-    return vec_ptr->initialize(size,place,memoryType);
+    return fmap(vec_ptr, initialize, size, place, memoryType);
   }
 
   /**
@@ -150,6 +152,35 @@ public:
 
   constexpr GlobalPtr<const T> data() const noexcept {
     return vec_ptr->data();
+  }
+  constexpr T at(std::uint64_t pos) {
+      // Step 1: Cast vec_ptr to void* and then to std::byte*
+      GlobalPtr<void> voidPtr = static_cast<GlobalPtr<void>>(vec_ptr);
+      GlobalPtr<std::byte> bytePtr = static_cast<GlobalPtr<std::byte>>(voidPtr);
+
+      // Step 2: Calculate offset to m_buf within Vector<T>
+      auto bufOffset = bytePtr + offsetof(Vector<T>, m_buf);
+
+      // Step 3: Cast to void* and then to std::byte* again for the next calculation
+      voidPtr = static_cast<GlobalPtr<void>>(bufOffset);
+      bytePtr = static_cast<GlobalPtr<std::byte>>(voidPtr);
+
+      // Step 4: Calculate offset to m_data within Array<T>
+      auto dataOffset = bytePtr + offsetof(Array<T>, m_data);
+
+      // Step 5: Dereference to get GlobalPtr<T> from m_data
+      auto globalPtrOffset = static_cast<GlobalPtr<void>>(dataOffset);
+      GlobalPtr<T> dataPtr = *static_cast<GlobalPtr<GlobalPtr<T>>>(globalPtrOffset);
+
+      // Step 6: Calculate the final offset using the provided position
+      voidPtr = static_cast<GlobalPtr<void>>(dataPtr);
+      bytePtr = static_cast<GlobalPtr<std::byte>>(voidPtr);
+      auto elementOffset = bytePtr + pos * sizeof(T);
+
+      // Step 7: Dereference to get the desired element
+      auto elementGlobalPtr = static_cast<GlobalPtr<void>>(elementOffset);
+      T desiredElement = *static_cast<GlobalPtr<T>>(elementGlobalPtr);
+      return desiredElement;
   }
 
   constexpr std::uint64_t size() const noexcept {
