@@ -75,18 +75,18 @@ void CommandProcessor::signalCoresDone() {
 #if defined(PANDO_RT_BYPASS)
   void *addr_native = nullptr;
   std::size_t size = 0;
-  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), &addr_native, &size);
+  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)), &addr_native, &size);
   std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
   __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
   // hartYield
   DrvAPI::nop(1u);
 #else
-  DrvAPI::atomic_add(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), 1u);
+  DrvAPI::atomic_add(toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)), 1u);
 #endif
 }
 
 void CommandProcessor::waitForCoresDone() {
-  while (*toNativeDrvPointerOnDram(coresDone, NodeIndex(0)) != Drvx::getNumSystemCores()) {
+  while (*toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)) != Drvx::getCoreDims().x) {
     hartYield();
   }
 }
