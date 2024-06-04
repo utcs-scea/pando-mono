@@ -30,6 +30,9 @@ void HBMainDLCSR(std::uint64_t numVertices, pando::Array<char>&& filename) {
   using ET = std::uint64_t;
   using Graph = galois::DistLocalCSR<VT, ET>;
 
+  PANDO_DRV_SET_STAGE_INIT();
+  PANDO_DRV_SET_BYPASS_FLAG();
+
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
@@ -46,11 +49,18 @@ void HBMainDLCSR(std::uint64_t numVertices, pando::Array<char>&& filename) {
         }));
     PANDO_CHECK(wg.wait());
   */
+
+  PANDO_DRV_SET_STAGE_EXEC_COMP();
+  PANDO_DRV_CLEAR_BYPASS_FLAG();
+
   PANDO_CHECK(galois::doAll(
       wgh, graph.vertexDataRange(), +[](pando::GlobalRef<typename Graph::VertexData> ref) {
         ref = static_cast<std::uint64_t>(0);
       }));
   PANDO_CHECK(wg.wait());
+
+  PANDO_DRV_SET_STAGE_OTHER();
+
   /*
     PANDO_CHECK(galois::doAll(
         wgh, temp, +[](bool) {
