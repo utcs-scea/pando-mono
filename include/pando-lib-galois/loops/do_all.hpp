@@ -18,8 +18,8 @@
 #include <pando-rt/pando-rt.hpp>
 
 constexpr bool SCHEDULER_TIMER_ENABLE = false;
-constexpr bool DOALL_TIMER_ENABLE = true;
-constexpr bool NOTIFY_TIMER_ENABLE = true;
+constexpr bool DOALL_TIMER_ENABLE = false;
+constexpr bool NOTIFY_TIMER_ENABLE = false;
 
 extern counter::Record<std::minstd_rand> perCoreRNG;
 extern counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;

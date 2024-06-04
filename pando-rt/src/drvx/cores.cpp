@@ -46,8 +46,21 @@ Drvx::StaticMainMem<std::int64_t> numCoresReady;
 void Cores::initializeQueues() {
   // One hart per core does all the initialization. Use CAS to choose some/any hart for this
   // purpose.
-  if (DrvAPI::atomic_cas(&coreState, +CoreState::Stopped, +CoreState::Idle) ==
-      +CoreState::Stopped) {
+#if defined(PANDO_RT_BYPASS)
+  void *addr_native = nullptr;
+  std::size_t size = 0;
+  DrvAPI::DrvAPIAddressToNative(&coreState, &addr_native, &size);
+  std::int8_t* as_native_pointer = reinterpret_cast<std::int8_t*>(addr_native);
+  std::int8_t expected = +CoreState::Stopped;
+  std::int8_t desired = +CoreState::Idle;
+  __atomic_compare_exchange_n(as_native_pointer, &expected, desired, false, static_cast<int>(std::memory_order_relaxed), static_cast<int>(std::memory_order_relaxed));
+  // hartYield
+  DrvAPI::nop(1u);
+
+  if (expected == +CoreState::Stopped) {
+#else
+  if (DrvAPI::atomic_cas(&coreState, +CoreState::Stopped, +CoreState::Idle) == +CoreState::Stopped) {
+#endif
     // initialize core object
     coreQueue = new TaskQueue;
 
@@ -55,7 +68,17 @@ void Cores::initializeQueues() {
     coreState = +CoreState::Ready;
 
     // CP waits for this variable to equal total number of cores in the PXN
+#if defined(PANDO_RT_BYPASS)
+    void *addr_native = nullptr;
+    std::size_t size = 0;
+    DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(numCoresReady, NodeIndex(0)), &addr_native, &size);
+    std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
+    __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
+    // hartYield
+    DrvAPI::nop(1u);
+#else
     DrvAPI::atomic_add(toNativeDrvPointerOnDram(numCoresReady, NodeIndex(0)), 1u);
+#endif
   }
 
   // Other harts just wait until state is ready
@@ -67,7 +90,21 @@ void Cores::initializeQueues() {
 void Cores::finalizeQueues() {
   // One hart per core does all the finalization. Use CAS to choose some/any hart for this
   // purpose.
+#if defined(PANDO_RT_BYPASS)
+  void *addr_native = nullptr;
+  std::size_t size = 0;
+  DrvAPI::DrvAPIAddressToNative(&coreState, &addr_native, &size);
+  std::int8_t* as_native_pointer = reinterpret_cast<std::int8_t*>(addr_native);
+  std::int8_t expected = +CoreState::Ready;
+  std::int8_t desired = +CoreState::Idle;
+  __atomic_compare_exchange_n(as_native_pointer, &expected, desired, false, static_cast<int>(std::memory_order_relaxed), static_cast<int>(std::memory_order_relaxed));
+  // hartYield
+  DrvAPI::nop(1u);
+
+  if (expected == +CoreState::Ready) {
+#else
   if (DrvAPI::atomic_cas(&coreState, +CoreState::Ready, +CoreState::Idle) == +CoreState::Ready) {
+#endif
     coreState = +CoreState::Stopped;
 
     TaskQueue* queue = coreQueue;
@@ -100,7 +137,17 @@ void Cores::waitForCoresInit() {
 }
 
 void Cores::finalize() {
+#if defined(PANDO_RT_BYPASS)
+  void *addr_native = nullptr;
+  std::size_t size = 0;
+  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), &addr_native, &size);
+  std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
+  __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
+  // hartYield
+  DrvAPI::nop(1u);
+#else
   DrvAPI::atomic_add(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), 1u);
+#endif
 }
 
 } // namespace pando
