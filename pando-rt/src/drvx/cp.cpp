@@ -18,6 +18,7 @@ namespace {
 Drvx::StaticMainMem<std::int64_t> globalBarrierCounter;
 Drvx::StaticMainMem<std::int64_t> pxnBarrierDone;
 Drvx::StaticMainMem<std::int64_t> coresDone;
+Drvx::StaticMainMem<std::int64_t> numPxnsDone;
 
 } // namespace
 
@@ -84,15 +85,46 @@ void CommandProcessor::signalCoresDone() {
 #endif
 }
 
-/// Wait for all cores on all PXNs to be done.
-static void waitForCoresDone() {
+void CommandProcessor::waitForCoresDone() {
   while (*toNativeDrvPointerOnDram(coresDone, NodeIndex(0)) != Drvx::getNumSystemCores()) {
     hartYield();
   }
 }
 
+void CommandProcessor::signalCommandProcessorDone() {
+#if defined(PANDO_RT_BYPASS)
+  void *addr_native = nullptr;
+  std::size_t size = 0;
+  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), &addr_native, &size);
+  std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
+  __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
+  // hartYield
+  DrvAPI::nop(1u);
+#else
+  DrvAPI::atomic_add(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), 1u);
+#endif
+}
+
+void CommandProcessor::waitForCommandProcessorDone() {
+  while (*toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)) != Drvx::getNodeDims().id) {
+    hartYield();
+  }
+}
+
 void CommandProcessor::finalize() {
-  Cores::finalize();
+  signalCommandProcessorDone();
+  waitForCommandProcessorDone();
+  // terminate all cores
+  const auto podDims = pando::getPodDims();
+  const auto coreDims = pando::getCoreDims();
+  const auto thisPlace = pando::getCurrentPlace();
+  for(std::uint8_t i = 0; i < podDims.x; i++) {
+    for(std::uint8_t j = 0; j <= coreDims.x; j++) {
+      const pando::Place dstPlace(thisPlace.node, pando::PodIndex(i, 0), pando::CoreIndex(j, 0));
+      auto* dstQueue =  pando::Cores::getTaskQueue(dstPlace);
+      dstQueue->setTerminate();
+    }
+  }
 
   // wait for all cores to complete their hart loop
   waitForCoresDone();

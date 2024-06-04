@@ -38,7 +38,6 @@ Drvx::StaticL1SP<Cores::TaskQueue*> coreQueue;
 Drvx::StaticL1SP<std::underlying_type_t<CoreState>> coreState;
 
 // Per-PXN (main memory) variables
-Drvx::StaticMainMem<std::int64_t> numPxnsDone;
 Drvx::StaticMainMem<std::int64_t> numCoresReady;
 
 } // namespace
@@ -116,38 +115,15 @@ void Cores::finalizeQueues() {
   // Other harts simply exit
 }
 
-bool Cores::CoreActiveFlag::operator*() const noexcept {
-  hartYield();
-  return (*toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)) != Drvx::getNodeDims().id);
-}
-
 Cores::TaskQueue* Cores::getTaskQueue(Place place) noexcept {
   if(*toNativeDrvPtr(coreState, place) != +CoreState::Ready) return nullptr;
   return *toNativeDrvPtr(coreQueue, place);
-}
-
-Cores::CoreActiveFlag Cores::getCoreActiveFlag() noexcept {
-  return CoreActiveFlag{};
 }
 
 void Cores::waitForCoresInit() {
   while (*toNativeDrvPointerOnDram(numCoresReady, NodeIndex(0)) != Drvx::getNumSystemCores()) {
     hartYield();
   }
-}
-
-void Cores::finalize() {
-#if defined(PANDO_RT_BYPASS)
-  void *addr_native = nullptr;
-  std::size_t size = 0;
-  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), &addr_native, &size);
-  std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
-  __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
-  // hartYield
-  DrvAPI::nop(1u);
-#else
-  DrvAPI::atomic_add(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), 1u);
-#endif
 }
 
 } // namespace pando

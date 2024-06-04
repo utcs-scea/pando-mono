@@ -145,6 +145,7 @@ template <typename T, bool Logging = false>
 class Queue {
   std::deque<T> m_queue;
   mutable std::mutex m_mutex;
+  bool m_terminate = false;
 
 public:
   using ProducerToken = std::uint64_t;
@@ -263,6 +264,22 @@ public:
 
   ConsumerToken makeConsumerToken() {
     return 0;
+  }
+
+  /**
+   * @brief Sets the termination signal.
+   */
+  void setTerminate() {
+    std::lock_guard lock{m_mutex};
+    m_terminate = true;
+  }
+
+  /**
+   * @brief Get the termination signal.
+   */
+  bool getTerminate() {
+    std::lock_guard lock{m_mutex};
+    return m_terminate;
   }
 };
 #endif

@@ -26,6 +26,21 @@ public:
   static void signalCoresDone();
 
   /**
+   * @brief Wait for all cores on all PXNs to be done.
+   */
+  static void waitForCoresDone();
+
+  /**
+   * @brief Signal that this command processor is done.
+   */
+  static void signalCommandProcessorDone();
+
+  /**
+   * @brief Wait for all command processors on all PXNs to be done.
+   */
+  static void waitForCommandProcessorDone();
+
+  /**
    * @brief Barrier for all CPs.
    */
   static void barrier();
