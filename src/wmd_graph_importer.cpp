@@ -24,7 +24,7 @@ galois::internal::buildVirtualToPhysicalMapping(
   for (std::uint64_t i = 0; i < numHosts; i++) {
     intermediateSort[i] =
         galois::Pair<std::uint64_t, std::uint64_t>{static_cast<std::uint64_t>(0), i};
-    numEdges.get(0) = 0;
+    numEdges[i] = 0;
   }
 
   for (auto it = labeledVirtualCounts.rbegin(); it != labeledVirtualCounts.rend(); it++) {
