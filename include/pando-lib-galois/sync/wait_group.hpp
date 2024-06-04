@@ -6,6 +6,7 @@
 
 #include <pando-rt/export.h>
 
+#include <pando-rt/drv_info.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/global_ptr.hpp>
 #include <pando-rt/pando-rt.hpp>
@@ -20,15 +21,20 @@ namespace galois {
 class WaitGroup {
   ///@brief This is a pointer to the counter used by everyone
   pando::GlobalPtr<std::int64_t> m_count = nullptr;
+  // std::int64_t m_countValue = 0;
 
 public:
   class HandleType {
     pando::GlobalPtr<std::int64_t> m_count = nullptr;
-    explicit HandleType(pando::GlobalPtr<std::int64_t> countPtr) : m_count(countPtr) {}
+    explicit HandleType(pando::GlobalPtr<std::int64_t> _m_count) : m_count(_m_count) {}
+    // std::int64_t& m_countValue;
+    // explicit HandleType(pando::GlobalPtr<std::int64_t> _m_count, std::int64_t& _m_countValue) :
+    // m_count(_m_count), m_countValue(_m_countValue) {}
     friend WaitGroup;
 
   public:
     HandleType() : m_count(nullptr) {}
+    // HandleType(std::int64_t& _m_countValue) : m_count(nullptr), m_countValue(_m_countValue)  {}
     HandleType(const HandleType&) = default;
     HandleType& operator=(const HandleType&) = default;
 
@@ -42,6 +48,8 @@ public:
      */
     void add(std::uint32_t delta) {
       pando::atomicFetchAdd(m_count, static_cast<std::int64_t>(delta), std::memory_order_release);
+      //__atomic_fetch_add(&m_countValue, static_cast<std::int64_t>(delta),
+      // static_cast<int>(std::memory_order_release));
     }
     /**
      * @brief adds to the barrier to represent one more done to wait on
@@ -54,10 +62,13 @@ public:
      */
     void done() {
       pando::atomicDecrement(m_count, static_cast<std::int64_t>(1), std::memory_order_release);
+      //__atomic_fetch_sub(&m_countValue, static_cast<std::int64_t>(1),
+      // static_cast<int>(std::memory_order_release));
     }
   };
 
   WaitGroup() : m_count(nullptr) {}
+  // WaitGroup() : m_count(nullptr), m_countValue(0) {}
 
   WaitGroup(const WaitGroup&) = delete;
   WaitGroup& operator=(const WaitGroup&) = delete;
@@ -82,6 +93,7 @@ public:
     }
     m_count = expected.value();
     *m_count = static_cast<std::int64_t>(initialCount);
+    // m_countValue = static_cast<std::int64_t>(initialCount);
     pando::atomicThreadFence(std::memory_order_release);
     return pando::Status::Success;
   }
@@ -110,7 +122,8 @@ public:
   }
 
   HandleType getHandle() {
-    return HandleType{m_count};
+    return HandleType(m_count);
+    // return HandleType(m_count, m_countValue);
   }
 
   /**
@@ -119,10 +132,12 @@ public:
   [[nodiscard]] pando::Status wait() {
     pando::waitUntil([this] {
       const bool ready = *m_count <= static_cast<std::int64_t>(0);
+      // const bool ready = m_countValue <= 0;
       PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
       return ready;
     });
     pando::atomicThreadFence(std::memory_order_acquire);
+
     PANDO_MEM_STAT_NEW_PHASE();
     if (*m_count < static_cast<std::int64_t>(0)) {
       return pando::Status::Error;
