@@ -29,8 +29,8 @@ public:
   constexpr SoftmaxLayer<InnerGraph>& operator=(SoftmaxLayer<InnerGraph>&&) noexcept = default;
 
   void initialize(std::uint32_t layerNumber,
-                  galois::HostIndexedMap<pando::Array<GNNFloat>>& backwardOutputMatrix,
-                  galois::HostIndexedMap<GNNLayerDimensions> dimensions) {
+                  galois::HostLocalStorage<pando::Array<GNNFloat>>& backwardOutputMatrix,
+                  galois::HostLocalStorage<GNNLayerDimensions> dimensions) {
     std::cout << "[Softmax] Starts initialization\n" << std::flush;
     GNNLayer<InnerGraph>::initialize(layerNumber, backwardOutputMatrix, dimensions, false);
     std::cout << "[Softmax] Starts initialization [DONE]\n" << std::flush;
@@ -39,13 +39,13 @@ public:
   /**
    * @brief Start the forward phase of the softmax layer.
    */
-  const galois::HostIndexedMap<pando::Array<GNNFloat>> ForwardPhase(
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inputEmbeddings,
+  const galois::HostLocalStorage<pando::Array<GNNFloat>> ForwardPhase(
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inputEmbeddings,
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr) {
     struct Tpl {
-      galois::HostIndexedMap<GNNLayerDimensions> dim;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> outMat;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inMat;
+      galois::HostLocalStorage<GNNLayerDimensions> dim;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> outMat;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inMat;
       std::uint64_t numClasses;
     };
 
@@ -127,7 +127,7 @@ public:
    * Derivation of the full combined derivative is not there,
    * but some empirical inspection showed that this is likely correct.
    */
-  galois::HostIndexedMap<pando::Array<GNNFloat>> BackwardPhase(
+  galois::HostLocalStorage<pando::Array<GNNFloat>> BackwardPhase(
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr) {
     struct InnerTpl {
       graph::GNNGraph<InnerGraph> g;

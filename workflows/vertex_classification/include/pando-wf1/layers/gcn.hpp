@@ -32,8 +32,8 @@ public:
   constexpr GraphConvolutionalLayer() : GNNLayer<InnerGraph>() {}
 
   void initialize(std::uint32_t layerNumber, LayerDimension inColumnLen,
-                  galois::HostIndexedMap<pando::Array<GNNFloat>>& backwardOutputMatrix,
-                  galois::HostIndexedMap<GNNLayerDimensions>& dimensions) {
+                  galois::HostLocalStorage<pando::Array<GNNFloat>>& backwardOutputMatrix,
+                  galois::HostLocalStorage<GNNLayerDimensions>& dimensions) {
     std::cout << "[GCN Layer " << layerNumber << "] Starts initialization\n" << std::flush;
     this->inColumnLen_ = inColumnLen;
     // Call and initialize operand matrices
@@ -54,9 +54,9 @@ public:
    */
   void InitializeTempMatrices() {
     struct Tpl {
-      galois::HostIndexedMap<pando::Array<GNNFloat>> tmpin1_;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> tmpin2_;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> tmpout_;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> tmpin1_;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> tmpin2_;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> tmpout_;
     };
 
     PANDO_CHECK(this->tempInputMatrix1_.initialize());
@@ -93,7 +93,7 @@ public:
    * topology. Other GCN layers use vertex embedding in separate GNNFloat arrays.
    * This method is for the first GCN layer.
    */
-  const galois::HostIndexedMap<pando::Array<GNNFloat>> ForwardPhase(
+  const galois::HostLocalStorage<pando::Array<GNNFloat>> ForwardPhase(
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr, bool isLastGCN) {
     this->AggregateEmbeddings_0(this->tempInputMatrix2_, gPtr);
     this->UpdateEmbedding(this->tempInputMatrix2_, this->forwardOutputMatrix_);
@@ -105,8 +105,8 @@ public:
   /**
    * @brief Start the forward phase of the GCN layer which is not the first GCN layer.
    */
-  const galois::HostIndexedMap<pando::Array<GNNFloat>> ForwardPhase(
-      galois::HostIndexedMap<pando::Array<GNNFloat>>& inputEmbeddings,
+  const galois::HostLocalStorage<pando::Array<GNNFloat>> ForwardPhase(
+      galois::HostLocalStorage<pando::Array<GNNFloat>>& inputEmbeddings,
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr, bool isLastGCN) {
     // This follows the AGILE GNN's implementation.
     // Only the last layer applies feature dropout.
@@ -125,8 +125,8 @@ public:
   /**
    * @brief Start the backward phase of the GCN layer.
    */
-  galois::HostIndexedMap<pando::Array<GNNFloat>> BackwardPhase(
-      galois::HostIndexedMap<pando::Array<GNNFloat>>& inputGradients,
+  galois::HostLocalStorage<pando::Array<GNNFloat>> BackwardPhase(
+      galois::HostLocalStorage<pando::Array<GNNFloat>>& inputGradients,
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr, bool isLastGCN) {
     if (!isLastGCN) {
       this->ReLUActivationDerivative(inputGradients);
@@ -148,7 +148,7 @@ public:
   /**
    * @brief Each vertex aggregates vertex embeddings of its immediate neighborhoods.
    */
-  void AggregateEmbeddings_0(galois::HostIndexedMap<pando::Array<GNNFloat>>& aggrEmbeddings,
+  void AggregateEmbeddings_0(galois::HostLocalStorage<pando::Array<GNNFloat>>& aggrEmbeddings,
                              pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr) {
     struct Tpl {
       LayerDimension columnLen;
@@ -245,12 +245,12 @@ public:
   /**
    * @brief Each vertex aggregates embeddings of the immediate neighborhoods.
    */
-  void AggregateEmbeddings(galois::HostIndexedMap<pando::Array<GNNFloat>>& inputEmbeddings,
-                           galois::HostIndexedMap<pando::Array<GNNFloat>>& aggrEmbeddings,
+  void AggregateEmbeddings(galois::HostLocalStorage<pando::Array<GNNFloat>>& inputEmbeddings,
+                           galois::HostLocalStorage<pando::Array<GNNFloat>>& aggrEmbeddings,
                            pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr) {
     struct Tpl {
       LayerDimension columnLen;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inMat;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inMat;
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>> gPtr;
     };
 
@@ -332,8 +332,8 @@ public:
    * @brief Update vertex embeddings by multiplying the current vertex embeddings times
    * this layer's weight matrix.
    */
-  void UpdateEmbedding(galois::HostIndexedMap<pando::Array<GNNFloat>>& inputEmbeddings,
-                       galois::HostIndexedMap<pando::Array<GNNFloat>>& outputMatrix) {
+  void UpdateEmbedding(galois::HostLocalStorage<pando::Array<GNNFloat>>& inputEmbeddings,
+                       galois::HostLocalStorage<pando::Array<GNNFloat>>& outputMatrix) {
     gnn::multiplyMatricesPerHost(inputEmbeddings, this->layerWeights_, outputMatrix,
                                  this->dimensions_);
 
@@ -375,13 +375,13 @@ public:
    * So, transposed input embeddings (input column x input row) x gradient (input row x output
    * column)
    */
-  void CalculateWeightGradient(galois::HostIndexedMap<pando::Array<GNNFloat>>& vertexEmbedding,
-                               galois::HostIndexedMap<pando::Array<GNNFloat>>& inputGradients,
-                               galois::HostIndexedMap<pando::Array<GNNFloat>>& outputMatrix) {
+  void CalculateWeightGradient(galois::HostLocalStorage<pando::Array<GNNFloat>>& vertexEmbedding,
+                               galois::HostLocalStorage<pando::Array<GNNFloat>>& inputGradients,
+                               galois::HostLocalStorage<pando::Array<GNNFloat>>& outputMatrix) {
     struct Tpl {
-      galois::HostIndexedMap<GNNLayerDimensions> dim;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inMat;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inGradMat;
+      galois::HostLocalStorage<GNNLayerDimensions> dim;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inMat;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inGradMat;
     };
 
     struct InnerTpl {
@@ -424,12 +424,12 @@ public:
    * @brief This calculates layer embedding gradient.
    * So, gradient (input row x output column) x transposed weight (output column x input columns)
    */
-  void CalculateLayerGradient(galois::HostIndexedMap<pando::Array<GNNFloat>>& inputGradients,
-                              galois::HostIndexedMap<pando::Array<GNNFloat>>& outputMatrix) {
+  void CalculateLayerGradient(galois::HostLocalStorage<pando::Array<GNNFloat>>& inputGradients,
+                              galois::HostLocalStorage<pando::Array<GNNFloat>>& outputMatrix) {
     struct Tpl {
-      galois::HostIndexedMap<GNNLayerDimensions> dim;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inGradMat;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> weightMat;
+      galois::HostLocalStorage<GNNLayerDimensions> dim;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inGradMat;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> weightMat;
     };
 
     struct InnerTpl {
@@ -469,9 +469,9 @@ public:
 
 private:
   LayerDimension inColumnLen_;
-  galois::HostIndexedMap<pando::Array<GNNFloat>> tempInputMatrix1_;
-  galois::HostIndexedMap<pando::Array<GNNFloat>> tempInputMatrix2_;
-  galois::HostIndexedMap<pando::Array<GNNFloat>> tempOutputMatrix_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> tempInputMatrix1_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> tempInputMatrix2_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> tempOutputMatrix_;
 };
 
 } // namespace gnn

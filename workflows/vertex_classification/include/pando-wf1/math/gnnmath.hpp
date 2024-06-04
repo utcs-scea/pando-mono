@@ -30,13 +30,11 @@ private:
  *
  */
 template <bool isPull = false, bool cIsAlreadyZeroInit = false>
-pando::Status multiplyMatricesPerHost(galois::HostIndexedMap<pando::Array<GNNFloat>> a,
-                                      galois::HostIndexedMap<pando::Array<GNNFloat>> b,
-                                      galois::HostIndexedMap<pando::Array<GNNFloat>> c,
-                                      galois::HostIndexedMap<gnn::GNNLayerDimensions> dims) {
+pando::Status multiplyMatricesPerHost(galois::HostLocalStorage<pando::Array<GNNFloat>> a,
+                                      galois::HostLocalStorage<pando::Array<GNNFloat>> b,
+                                      galois::HostLocalStorage<pando::Array<GNNFloat>> c,
+                                      galois::HostLocalStorage<gnn::GNNLayerDimensions> dims) {
   using galois::make_tpl;
-  assert(a != c);
-  assert(b != c);
   using AF = pando::Array<GNNFloat>;
 
   auto nextTpl = make_tpl(a, b, c);

@@ -32,8 +32,8 @@ public:
   constexpr TraceLayer() : GNNLayer<InnerGraph>() {}
 
   void initialize(std::uint32_t layerNumber,
-                  galois::HostIndexedMap<pando::Array<GNNFloat>>& backwardOutputMatrix,
-                  galois::HostIndexedMap<GNNLayerDimensions>& dimensions) {
+                  galois::HostLocalStorage<pando::Array<GNNFloat>>& backwardOutputMatrix,
+                  galois::HostLocalStorage<GNNLayerDimensions>& dimensions) {
 #if PRINTS
     std::cerr << "[Trace Layer " << layerNumber << "] Starts initialization\n" << std::flush;
 #endif
@@ -61,8 +61,8 @@ public:
    * @brief Start the forward phase of the trace
    */
   template <bool isPull = false>
-  const galois::HostIndexedMap<pando::Array<GNNFloat>> ForwardPhase(
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inputEmbeddings) {
+  const galois::HostLocalStorage<pando::Array<GNNFloat>> ForwardPhase(
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inputEmbeddings) {
     auto tpl = galois::make_tpl(inputEmbeddings, this->forwardOutputMatrix_);
     PANDO_CHECK(galois::doAll(
         tpl, this->dimensions_, +[](decltype(tpl) tpl, GNNLayerDimensions dims) {
@@ -96,8 +96,8 @@ public:
    * @brief Start the backward phase of the GCN layer.
    */
   template <bool BackOutIsAlreadyZero = false>
-  galois::HostIndexedMap<pando::Array<GNNFloat>> BackwardPhase(
-      galois::HostIndexedMap<pando::Array<GNNFloat>>& inputGradients,
+  galois::HostLocalStorage<pando::Array<GNNFloat>> BackwardPhase(
+      galois::HostLocalStorage<pando::Array<GNNFloat>>& inputGradients,
       pando::GlobalPtr<graph::GNNGraph<InnerGraph>>, bool) {
     auto tpl = galois::make_tpl(inputGradients, this->backwardOutputMatrix_);
     PANDO_CHECK(galois::doAll(

@@ -1135,9 +1135,8 @@ public:
    * @brief get vertex local dense ID
    */
   std::uint64_t getVertexLocalIndex(VertexTopologyID vertex) {
-    std::uint64_t hostNum = static_cast<std::uint64_t>(galois::localityOf(vertex).node.id);
-    HostIndexedMap<CSR> arrayOfCSR = arrayOfCSRs[hostNum];
-    return fmap(arrayOfCSR[hostNum], getVertexIndex, vertex);
+    pando::GlobalRef<CSR> localCSR = this->getCSR(vertex);
+    return fmap(localCSR, getVertexIndex, vertex);
   }
 
   /**

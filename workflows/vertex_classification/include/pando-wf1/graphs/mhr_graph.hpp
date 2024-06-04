@@ -93,7 +93,7 @@ public:
 private:
   [[nodiscard]] pando::Status importFeatures(galois::VertexParser<wf1::MHRNode>& parser);
 
-  galois::HostIndexedMap<galois::HashTable<MHRGraph::VertexTokenID, pando::Vector<double>>>
+  galois::HostLocalStorage<galois::HashTable<MHRGraph::VertexTokenID, pando::Vector<double>>>
       features;
 };
 

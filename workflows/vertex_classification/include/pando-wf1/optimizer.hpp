@@ -49,9 +49,9 @@ public:
     PANDO_CHECK(this->beta2Power_.initialize());
 
     struct Tpl {
-      galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> sm;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> b1;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> b2;
+      galois::HostLocalStorage<pando::Array<pando::Array<GNNFloat>>> sm;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> b1;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> b2;
       std::uint32_t numLayers;
       pando::Vector<LayerDimension> optDim;
       AdamConfiguration config;
@@ -121,17 +121,17 @@ public:
   /**
    * @brief Update weight matrices.
    */
-  void GradientDescent(galois::HostIndexedMap<GNNLayerDimensions> dim,
-                       galois::HostIndexedMap<pando::Array<GNNFloat>>& derivatives,
-                       galois::HostIndexedMap<pando::Array<GNNFloat>>& inputMatrix,
+  void GradientDescent(galois::HostLocalStorage<GNNLayerDimensions> dim,
+                       galois::HostLocalStorage<pando::Array<GNNFloat>>& derivatives,
+                       galois::HostLocalStorage<pando::Array<GNNFloat>>& inputMatrix,
                        std::uint32_t layerNumber) {
     struct Tpl {
-      galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> fm;
-      galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> sm;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inGradMat;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> b1p;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> b2p;
-      galois::HostIndexedMap<GNNLayerDimensions> dim;
+      galois::HostLocalStorage<pando::Array<pando::Array<GNNFloat>>> fm;
+      galois::HostLocalStorage<pando::Array<pando::Array<GNNFloat>>> sm;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inGradMat;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> b1p;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> b2p;
+      galois::HostLocalStorage<GNNLayerDimensions> dim;
       AdamConfiguration config;
       std::uint32_t layerNumber;
     };
@@ -193,10 +193,10 @@ private:
   /// @brief Adam optimizer configurations
   AdamConfiguration config_;
   /// @brief Adaptive Adam optimizer parameters
-  galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> firstMoments_;
-  galois::HostIndexedMap<pando::Array<pando::Array<GNNFloat>>> secondMoments_;
-  galois::HostIndexedMap<pando::Array<GNNFloat>> beta1Power_;
-  galois::HostIndexedMap<pando::Array<GNNFloat>> beta2Power_;
+  galois::HostLocalStorage<pando::Array<pando::Array<GNNFloat>>> firstMoments_;
+  galois::HostLocalStorage<pando::Array<pando::Array<GNNFloat>>> secondMoments_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> beta1Power_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> beta2Power_;
 };
 
 } // namespace gnn

@@ -298,8 +298,8 @@ public:
    * array[0] to array[# of a vertex type] as the type.
    */
   void RandomMaskSampling(std::uint64_t sampleSize,
-                          galois::HostIndexedMap<pando::Array<bool>>& mask) {
-    galois::HostIndexedMap<pando::Array<std::uint64_t>> allVertices;
+                          galois::HostLocalStorage<pando::Array<bool>>& mask) {
+    galois::HostLocalStorage<pando::Array<std::uint64_t>> allVertices;
     PANDO_CHECK(allVertices.initialize());
 
     // Fills vertice local IDs to each per-host arrays.
@@ -330,7 +330,7 @@ public:
 
     struct TplOut {
       std::uint64_t ss;
-      galois::HostIndexedMap<pando::Array<bool>> masks;
+      galois::HostLocalStorage<pando::Array<bool>> masks;
     };
 
     struct TplIn {
@@ -425,7 +425,7 @@ public:
    * @brief Returns vertex type masks; for example, if the current phase is `GNNPhase::kTran`, it
    * returns a per-host array that marks vertices sampled for training.
    */
-  galois::HostIndexedMap<pando::Array<bool>> GetVertexTypeMask(const GNNPhase currentPhase) {
+  galois::HostLocalStorage<pando::Array<bool>> GetVertexTypeMask(const GNNPhase currentPhase) {
     switch (currentPhase) {
       case GNNPhase::kTrain:
         return this->trainingVertices_;
@@ -522,7 +522,7 @@ public:
 
     struct Tpl {
       InnerGraph g;
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> idMapping;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> idMapping;
     };
 
     galois::doAll(
@@ -550,10 +550,10 @@ public:
     struct Tpl {
       InnerGraph g;
       bool useSubgraph;
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledSrcs;
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledDsts;
-      galois::HostIndexedMap<VertexDenseID> numSampledVertices;
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> idMapping;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> sampledSrcs;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> sampledDsts;
+      galois::HostLocalStorage<VertexDenseID> numSampledVertices;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> idMapping;
     };
 
     galois::doAll(
@@ -623,8 +623,8 @@ public:
 
     struct Tpl {
       InnerGraph g;
-      galois::HostIndexedMap<pando::Array<bool>> sampled;
-      galois::HostIndexedMap<pando::Array<bool>> mask;
+      galois::HostLocalStorage<pando::Array<bool>> sampled;
+      galois::HostLocalStorage<pando::Array<bool>> mask;
       galois::DAccumulator<VertexDenseID> accum;
     };
 
@@ -670,24 +670,24 @@ public:
    * @brief Samples outgoing edges and vertices from seed vertices.
    * Different from `SampleEdges()`, all layers will use the same sampled graph.
    */
-  galois::HostIndexedMap<VertexDenseID> SampleEdges() {
+  galois::HostLocalStorage<VertexDenseID> SampleEdges() {
     std::cout << "[GNNGraph] Starts graph sampling\n" << std::flush;
     // TODO(hc): This is parallelized only in PXN level.
     // AGILE WF1 VC asynchronously samples edges per each vertex in parallel.
     // This version needs to increase parallelism to the vertex level.
 
-    galois::HostIndexedMap<pando::Vector<VertexDenseID>> frontier;
+    galois::HostLocalStorage<pando::Vector<VertexDenseID>> frontier;
     PANDO_CHECK(frontier.initialize());
 
     struct Tpl {
       InnerGraph g;
-      galois::HostIndexedMap<pando::Array<bool>> svs;
+      galois::HostLocalStorage<pando::Array<bool>> svs;
       galois::DAccumulator<VertexDenseID> accum;
-      galois::HostIndexedMap<pando::Array<bool>> subgraph;
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> idMapping;
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledSrcs;
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledDsts;
-      galois::HostIndexedMap<VertexDenseID> numSampledVertices;
+      galois::HostLocalStorage<pando::Array<bool>> subgraph;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> idMapping;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> sampledSrcs;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> sampledDsts;
+      galois::HostLocalStorage<VertexDenseID> numSampledVertices;
       bool useSubgraph;
     };
 
@@ -863,10 +863,10 @@ public:
    */
   void ConstructSubgraph() {
     struct Tpl {
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledSrcs;
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledDsts;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> sampledSrcs;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> sampledDsts;
       bool useSubgraph;
-      galois::HostIndexedMap<VertexDenseID> numSampledVertices;
+      galois::HostLocalStorage<VertexDenseID> numSampledVertices;
     };
 
     // Construct a matrix corresponding to a subgraph
@@ -1012,7 +1012,7 @@ public:
    * @brief Calculate accuracy.
    */
   std::pair<VertexDenseID, VertexDenseID> GetGlobalAccuracy(
-      galois::HostIndexedMap<pando::Array<GNNFloat>>& predictions, GNNPhase phase) {
+      galois::HostLocalStorage<pando::Array<GNNFloat>>& predictions, GNNPhase phase) {
     galois::DAccumulator<VertexDenseID> totalAccum, correctAccum;
     PANDO_CHECK(totalAccum.initialize());
     PANDO_CHECK(correctAccum.initialize());
@@ -1147,14 +1147,14 @@ private:
   /// @brief Length of the Vertex embedding
   LayerDimension vertexFeatureLength_;
   /// @brief Vertex embeddings
-  galois::HostIndexedMap<pando::Vector<GNNFloat>> vertexFeatures_;
+  galois::HostLocalStorage<pando::Vector<GNNFloat>> vertexFeatures_;
   /// @brief Number of classes for vertexs/edges
   LayerDimension numClasses_;
   /// @brief Vertex type masks: training, testing, validation
-  galois::HostIndexedMap<pando::Array<bool>> trainingVertices_;
-  galois::HostIndexedMap<pando::Array<bool>> testVertices_;
-  galois::HostIndexedMap<pando::Array<bool>> validationVertices_;
-  galois::HostIndexedMap<pando::Array<bool>> batchVertices_;
+  galois::HostLocalStorage<pando::Array<bool>> trainingVertices_;
+  galois::HostLocalStorage<pando::Array<bool>> testVertices_;
+  galois::HostLocalStorage<pando::Array<bool>> validationVertices_;
+  galois::HostLocalStorage<pando::Array<bool>> batchVertices_;
   /// @brief Number of vertices for each type
   std::uint64_t numTrainingVertices_;
   std::uint64_t numTestingVertices_;
@@ -1164,22 +1164,22 @@ private:
   GNNRange testVertexRange_;
   GNNRange validationVertexRange_;
   /// @brief Degree for each vertex
-  galois::HostIndexedMap<pando::Array<EdgeDenseID>> vertexDegree_;
+  galois::HostLocalStorage<pando::Array<EdgeDenseID>> vertexDegree_;
   /// @brief Minibatch generator
   pando::GlobalPtr<MinibatchGenerator<InnerGraph>> trainMinibatcher_;
   pando::GlobalPtr<MinibatchGenerator<InnerGraph>> testMinibatcher_;
   /// @brief Per-host sampled vertices
-  galois::HostIndexedMap<pando::Array<bool>> sampledVertices_;
+  galois::HostLocalStorage<pando::Array<bool>> sampledVertices_;
   /// @brief True if a subgraph has been constructed and is used
   bool useSubgraph_;
-  galois::HostIndexedMap<pando::Array<bool>> subgraph_;
+  galois::HostLocalStorage<pando::Array<bool>> subgraph_;
   /// @brief Per-host subgraph vertex ID mapping to original graph vertex ID
-  galois::HostIndexedMap<pando::Vector<VertexDenseID>> subgraphIdMapping_;
+  galois::HostLocalStorage<pando::Vector<VertexDenseID>> subgraphIdMapping_;
   /// @brief Per-host sampled source and destination
-  galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledSrcs_;
-  galois::HostIndexedMap<pando::Vector<VertexDenseID>> sampledDsts_;
+  galois::HostLocalStorage<pando::Vector<VertexDenseID>> sampledSrcs_;
+  galois::HostLocalStorage<pando::Vector<VertexDenseID>> sampledDsts_;
   /// @brief The number of sampled vertices for each host
-  galois::HostIndexedMap<VertexDenseID> numSampledVertices_;
+  galois::HostLocalStorage<VertexDenseID> numSampledVertices_;
 };
 
 } // namespace graph

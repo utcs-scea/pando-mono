@@ -37,8 +37,8 @@ public:
   constexpr MinibatchGenerator<InnerGraph>& operator=(MinibatchGenerator<InnerGraph>&&) noexcept =
       default;
 
-  void initialize(const galois::HostIndexedMap<pando::Array<bool>>& targetMask,
-                  galois::HostIndexedMap<pando::Array<bool>>& minibatchMask,
+  void initialize(const galois::HostLocalStorage<pando::Array<bool>>& targetMask,
+                  galois::HostLocalStorage<pando::Array<bool>>& minibatchMask,
                   VertexDenseID minibatchSize, const InnerGraph& graph) {
     std::cout << "[Minibatcher] Starts minibatcher initialization\n" << std::flush;
     this->minibatchMask_ = minibatchMask;
@@ -53,7 +53,7 @@ public:
   void InitializePerHostMinibatchState(VertexDenseID minibatchSize) {
     struct Tpl {
       VertexDenseID minibatchSize;
-      galois::HostIndexedMap<VertexDenseID> currentPoint;
+      galois::HostLocalStorage<VertexDenseID> currentPoint;
     };
 
     PANDO_CHECK(this->minibatchSize_.initialize());
@@ -81,12 +81,12 @@ public:
    * of which types match to the current phase.
    */
   void InitializeVertexIDArray(const InnerGraph& graph,
-                               const galois::HostIndexedMap<pando::Array<bool>>& targetMask) {
+                               const galois::HostLocalStorage<pando::Array<bool>>& targetMask) {
     PANDO_CHECK(this->vertexSet_.initialize());
 
     struct Tpl {
       InnerGraph g;
-      galois::HostIndexedMap<pando::Array<bool>> targetMask;
+      galois::HostLocalStorage<pando::Array<bool>> targetMask;
     };
 
     galois::doAll(
@@ -116,7 +116,7 @@ public:
   void ResetMinibatching() {
     galois::doAll(
         this->currentPoint_, this->vertexSet_,
-        +[](galois::HostIndexedMap<VertexDenseID> cPtr,
+        +[](galois::HostLocalStorage<VertexDenseID> cPtr,
             pando::GlobalRef<pando::Vector<VertexDenseID>> tvRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
@@ -158,9 +158,9 @@ public:
    */
   void GetNextMinibatch() {
     struct Tpl {
-      galois::HostIndexedMap<pando::Vector<VertexDenseID>> tvs;
-      galois::HostIndexedMap<VertexDenseID> points;
-      galois::HostIndexedMap<VertexDenseID> mbSz;
+      galois::HostLocalStorage<pando::Vector<VertexDenseID>> tvs;
+      galois::HostLocalStorage<VertexDenseID> points;
+      galois::HostLocalStorage<VertexDenseID> mbSz;
     };
     galois::doAll(
         Tpl{this->vertexSet_, this->currentPoint_, this->minibatchSize_}, this->minibatchMask_,
@@ -227,13 +227,13 @@ public:
 
 private:
   /// @brief Per-host minibatched vertex mask
-  galois::HostIndexedMap<pando::Array<bool>> minibatchMask_;
+  galois::HostLocalStorage<pando::Array<bool>> minibatchMask_;
   /// @brief Per-host minibatched vertices
-  galois::HostIndexedMap<pando::Vector<VertexDenseID>> vertexSet_;
+  galois::HostLocalStorage<pando::Vector<VertexDenseID>> vertexSet_;
   /// @brief Per-host minibatch size
-  galois::HostIndexedMap<VertexDenseID> minibatchSize_;
+  galois::HostLocalStorage<VertexDenseID> minibatchSize_;
   /// @brief Per-host pointer to the first vertex of the next minibatch
-  galois::HostIndexedMap<VertexDenseID> currentPoint_;
+  galois::HostLocalStorage<VertexDenseID> currentPoint_;
 };
 
 } // namespace gnn

@@ -36,8 +36,8 @@ public:
   constexpr GNNLayer<Graph>& operator=(GNNLayer<Graph>&&) noexcept = default;
 
   void initialize(std::uint32_t layerNumber,
-                  galois::HostIndexedMap<pando::Array<GNNFloat>>& backwardOutputMatrix,
-                  galois::HostIndexedMap<GNNLayerDimensions>& dimensions, bool needWeight) {
+                  galois::HostLocalStorage<pando::Array<GNNFloat>>& backwardOutputMatrix,
+                  galois::HostLocalStorage<GNNLayerDimensions>& dimensions, bool needWeight) {
     this->layerNumber_ = layerNumber;
     this->backwardOutputMatrix_ = backwardOutputMatrix;
     this->dimensions_ = dimensions;
@@ -65,11 +65,11 @@ public:
     }
 
     struct Tpl {
-      galois::HostIndexedMap<pando::Array<GNNFloat>> fwMat;
-      galois::HostIndexedMap<pando::Array<bool>> reluMat;
-      galois::HostIndexedMap<pando::Array<bool>> doMat;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> lwMat;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> lwgMat;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> fwMat;
+      galois::HostLocalStorage<pando::Array<bool>> reluMat;
+      galois::HostLocalStorage<pando::Array<bool>> doMat;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> lwMat;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> lwgMat;
       bool needWeight;
     };
 
@@ -148,8 +148,8 @@ public:
    * @brief Perform dropout over an embedding in which drops some features by setting 0 while
    * rescale other features.
    */
-  void DoDropout(galois::HostIndexedMap<pando::Array<GNNFloat>>& inputToDropout,
-                 galois::HostIndexedMap<pando::Array<GNNFloat>>& outputMatrix) {
+  void DoDropout(galois::HostLocalStorage<pando::Array<GNNFloat>>& inputToDropout,
+                 galois::HostLocalStorage<pando::Array<GNNFloat>>& outputMatrix) {
 #if 0
     for (std::uint32_t host = 0; host < static_cast<std::uint32_t>(pando::getPlaceDims().node.id);
          ++host) {
@@ -188,9 +188,9 @@ public:
         });
 
     struct OutTpl {
-      galois::HostIndexedMap<GNNLayerDimensions> dimensions;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> outEmbed;
-      galois::HostIndexedMap<pando::Array<GNNFloat>> inEmbed;
+      galois::HostLocalStorage<GNNLayerDimensions> dimensions;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> outEmbed;
+      galois::HostLocalStorage<pando::Array<GNNFloat>> inEmbed;
       GNNFloat scale;
     };
 
@@ -266,7 +266,7 @@ public:
 
     galois::doAll(
         this->forwardOutputMatrix_, this->reluActivation_,
-        +[](galois::HostIndexedMap<pando::Array<GNNFloat>> fwOuts,
+        +[](galois::HostLocalStorage<pando::Array<GNNFloat>> fwOuts,
             pando::GlobalRef<pando::Array<bool>> reluActRef) {
           std::uint32_t host = pando::getCurrentPlace().node.id;
 
@@ -325,7 +325,7 @@ public:
   /**
    * @brief Get the current layer's forward output matrix.
    */
-  galois::HostIndexedMap<pando::Array<GNNFloat>> GetForwardOutputMatrix() {
+  galois::HostLocalStorage<pando::Array<GNNFloat>> GetForwardOutputMatrix() {
     return this->forwardOutputMatrix_;
   }
 
@@ -339,10 +339,10 @@ public:
   /**
    * @brief Inactive gradients of the features that had been inactived by ReLU
    */
-  void ReLUActivationDerivative(galois::HostIndexedMap<pando::Array<GNNFloat>>& gradient) {
+  void ReLUActivationDerivative(galois::HostLocalStorage<pando::Array<GNNFloat>>& gradient) {
     struct Tpl {
-      galois::HostIndexedMap<GNNLayerDimensions> dim;
-      galois::HostIndexedMap<pando::Array<bool>> mask;
+      galois::HostLocalStorage<GNNLayerDimensions> dim;
+      galois::HostLocalStorage<pando::Array<bool>> mask;
     };
 
     struct InnerTpl {
@@ -398,8 +398,8 @@ public:
    */
   void DoDropoutDerivative() {
     struct Tpl {
-      galois::HostIndexedMap<GNNLayerDimensions> dim;
-      galois::HostIndexedMap<pando::Array<bool>> mask;
+      galois::HostLocalStorage<GNNLayerDimensions> dim;
+      galois::HostLocalStorage<pando::Array<bool>> mask;
     };
 
     struct InnerTpl {
@@ -443,10 +443,10 @@ public:
    * (Without this, each phase would use dummy values to calculate inference
    *  and gradient descent)
    */
-  void ResizeRowDimension(galois::HostIndexedMap<VertexDenseID> newRowDim) {
+  void ResizeRowDimension(galois::HostLocalStorage<VertexDenseID> newRowDim) {
     galois::doAll(
         newRowDim, this->dimensions_,
-        +[](galois::HostIndexedMap<VertexDenseID> newRowDim,
+        +[](galois::HostLocalStorage<VertexDenseID> newRowDim,
             pando::GlobalRef<GNNLayerDimensions> dim) {
           VertexDenseID newRow = *fmap(newRowDim, get, pando::getCurrentPlace().node.id);
           GNNLayerDimensions newDim = dim;
@@ -460,23 +460,23 @@ protected:
   /// @brief Layer ID starting from 0
   std::uint32_t layerNumber_;
   /// @brief Per-host forward output matrices
-  galois::HostIndexedMap<pando::Array<GNNFloat>> forwardOutputMatrix_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> forwardOutputMatrix_;
   /// @brief Per-host backward output matrices
-  galois::HostIndexedMap<pando::Array<GNNFloat>> backwardOutputMatrix_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> backwardOutputMatrix_;
   /// @brief Per-host input/output dimensions
-  galois::HostIndexedMap<GNNLayerDimensions> dimensions_;
+  galois::HostLocalStorage<GNNLayerDimensions> dimensions_;
   /// @brief Per-host weight matrices
-  galois::HostIndexedMap<pando::Array<GNNFloat>> layerWeights_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> layerWeights_;
   /// @brief Per-host weight gradient matrices
-  galois::HostIndexedMap<pando::Array<GNNFloat>> layerWeightGradients_;
+  galois::HostLocalStorage<pando::Array<GNNFloat>> layerWeightGradients_;
   /// @brief It is true if this layer requires weight (e.g., GCN)
   bool needWeight_{false};
   /// @brief Per-host dropout mask matrices
-  galois::HostIndexedMap<pando::Array<bool>> dropoutMask_;
+  galois::HostLocalStorage<pando::Array<bool>> dropoutMask_;
   /// @brief Random number generator for dropout
   RandomNumberGenerator dropoutSampler_;
   /// @brief Per-host ReLU activation matrices
-  galois::HostIndexedMap<pando::Array<bool>> reluActivation_;
+  galois::HostLocalStorage<pando::Array<bool>> reluActivation_;
 };
 
 } // namespace gnn
