@@ -116,7 +116,7 @@ jobs:
         PANDO_PREP_LOG_LEVEL: warning
       run: |
         mkdir -p data
-        CONTAINER_CMD="setarch `uname -m` -R bash -lc 'export HOST_THREADS=8 && scripts/run-drv.sh dockerbuild-drv/pando-rt/examples/libhelloworld.so'" \
+        CONTAINER_CMD="setarch `uname -m` -R bash -lc 'export HOST_THREADS=1 && scripts/run-drv.sh dockerbuild-drv/pando-rt/examples/libhelloworld.so'" \
           IMAGE_NAME="${{ env.IMAGE_NAME }}" \
           VERSION="${{ env.IMAGE_VERSION }}" \
           make docker
