@@ -114,23 +114,14 @@ void CommandProcessor::waitForCommandProcessorDone() {
 
 void CommandProcessor::finalize() {
   signalCommandProcessorDone();
-  waitForCommandProcessorDone();
-  // terminate all cores
-  setTerminateFlag();
-/*
-  const auto podDims = pando::getPodDims();
-  const auto coreDims = pando::getCoreDims();
-  const auto thisPlace = pando::getCurrentPlace();
-  for(std::uint8_t i = 0; i < podDims.x; i++) {
-    for(std::uint8_t j = 0; j <= coreDims.x; j++) {
-      const pando::Place dstPlace(thisPlace.node, pando::PodIndex(i, 0), pando::CoreIndex(j, 0));
-      auto* dstQueue =  pando::Cores::getTaskQueue(dstPlace);
-      dstQueue->setTerminate();
-    }
-  }
-*/
 
-  // wait for all cores to complete their hart loop
+  // wait for all CP to finish
+  waitForCommandProcessorDone();
+
+  // set termination flag
+  setTerminateFlag();
+
+  // wait for all cores to complete finalization
   waitForCoresDone();
   SPDLOG_INFO("CP finalized on PXN {}", Drvx::getCurrentNode());
 }
