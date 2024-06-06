@@ -24,6 +24,13 @@ public:
   using TaskQueue = Queue<Task>;
 
   /**
+   * @brief Flag to check if the core is active.
+   */
+  struct CoreActiveFlag {
+    bool operator*() const noexcept;
+  };
+
+  /**
    * @brief Initializes queues.
    */
   static void initializeQueues();
@@ -42,6 +49,11 @@ public:
    * @brief Returns the queue associated with place @p place.
    */
   [[nodiscard]] static TaskQueue* getTaskQueue(Place place) noexcept;
+
+  /**
+   * @brief Returns a flag to check if the core is active.
+   */
+  static CoreActiveFlag getCoreActiveFlag() noexcept;
 };
 
 } // namespace pando

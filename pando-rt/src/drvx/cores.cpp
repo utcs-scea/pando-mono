@@ -21,6 +21,7 @@
 #include "index.hpp"
 #include "log.hpp"
 #include "status.hpp"
+#include "termination.hpp"
 
 namespace pando {
 
@@ -113,6 +114,15 @@ void Cores::finalizeQueues() {
   }
 
   // Other harts simply exit
+}
+
+Cores::CoreActiveFlag Cores::getCoreActiveFlag() noexcept {
+  return CoreActiveFlag{};
+}
+
+bool Cores::CoreActiveFlag::operator*() const noexcept {
+  hartYield();
+  return !getTerminateFlag();
 }
 
 Cores::TaskQueue* Cores::getTaskQueue(Place place) noexcept {

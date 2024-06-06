@@ -147,6 +147,8 @@ class Queue {
   mutable std::mutex m_mutex;
 
 public:
+  using ProducerToken = std::uint64_t;
+  using ConsumerToken = std::uint64_t;
   Queue() = default;
 
   Queue(const Queue&) = delete;
@@ -169,6 +171,17 @@ public:
   }
 
   /**
+   * @brief Enqueues @p t.
+   */
+  [[nodiscard]] Status enqueue(ProducerToken &, const T& t) noexcept {
+    std::lock_guard lock{m_mutex};
+    if constexpr(Logging)
+      SPDLOG_WARN("Added to {}", (void*)this);
+    m_queue.push_back(t);
+    return Status::Success;
+  }
+
+  /**
    * @copydoc enqueue(const T& t) noexcept
    */
   [[nodiscard]] Status enqueue(T&& t) noexcept {
@@ -180,9 +193,35 @@ public:
   }
 
   /**
+   * @copydoc enqueue(const T& t) noexcept
+   */
+  [[nodiscard]] Status enqueue(ProducerToken &, T&& t) noexcept {
+    std::lock_guard lock{m_mutex};
+    if constexpr(Logging)
+      SPDLOG_WARN("Added to {}", (void*)this);
+    m_queue.push_back(std::move(t));
+    return Status::Success;
+  }
+
+  /**
    * @brief Returns the first element in the queue if it exists.
    */
   std::optional<T> tryDequeue() {
+    std::lock_guard lock{m_mutex};
+    if (m_queue.empty()) {
+      return std::nullopt;
+    }
+    std::optional<T> o = std::move(m_queue.front());
+    m_queue.pop_front();
+    if constexpr(Logging)
+      SPDLOG_WARN("Removed from {}", (void*)this);
+    return o;
+  }
+
+  /**
+   * @brief Returns the first element in the queue if it exists.
+   */
+  std::optional<T> tryDequeue(ConsumerToken &) {
     std::lock_guard lock{m_mutex};
     if (m_queue.empty()) {
       return std::nullopt;
@@ -216,6 +255,14 @@ public:
   void clear() noexcept {
     std::lock_guard lock{m_mutex};
     return m_queue.clear();
+  }
+
+  ProducerToken makeProducerToken() {
+    return 0;
+  }
+
+  ConsumerToken makeConsumerToken() {
+    return 0;
   }
 };
 #endif

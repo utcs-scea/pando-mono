@@ -20,7 +20,6 @@
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 #include "drvx/cores.hpp"
 #include "drvx/drvx.hpp"
-#include "drvx/termination.hpp"
 #endif
 
 constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 32;
@@ -51,11 +50,8 @@ extern "C" int __start(int argc, char** argv) {
       SPDLOG_WARN("Node: {}, core: {}, queue {}", thisPlace.node.id, thisPlace.core.x, (void*)queue);
     }
 
-#ifdef PANDO_RT_USE_BACKEND_PREP
     auto coreActive = pando::Cores::getCoreActiveFlag();
-
     auto ctok = queue->makeConsumerToken();
-#endif
 
     // PH hart
     if (thisPlace.core.x < coreDims.x) {
@@ -68,11 +64,8 @@ extern "C" int __start(int argc, char** argv) {
 
       do {
         idleTimer.start();
-#ifdef PANDO_RT_USE_BACKEND_PREP
         task = queue->tryDequeue(ctok);
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
-        task = queue->tryDequeue();
-#endif
+
         if (!task.has_value()) {
 
           switch(failState) {
@@ -104,12 +97,7 @@ extern "C" int __start(int argc, char** argv) {
         } else {
           counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
         }
-#ifdef PANDO_RT_USE_BACKEND_PREP
       } while (*coreActive == true);
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
-        pando::hartYield();
-      } while (!getTerminateFlag());
-#endif
     } else if (thisPlace.core.x == coreDims.x) {
       // scheduler
       // distributes tasks from the core's queue to other cores
@@ -120,43 +108,34 @@ extern "C" int __start(int argc, char** argv) {
       // uniform distribution of potential target cores not including this scheduler core
       std::uniform_int_distribution<std::int8_t> dist(0, coreDims.x - 1);
 
-#ifdef PANDO_RT_USE_BACKEND_PREP
       std::vector<pando::Queue<pando::Task>::ProducerToken> ptoks;
       for(std::uint8_t i = 0; i < coreDims.x; i++){
+#ifdef PANDO_RT_USE_BACKEND_PREP
         const pando::Place dstPlace(thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0));
         auto* otherQueue =  pando::Cores::getTaskQueue(dstPlace);
         ptoks.push_back(otherQueue->makeProducerToken());
-      }
+#elif defined(PANDO_RT_USE_BACKEND_DRVX)
+        ptoks.push_back(0);
 #endif
+      }
+
 
       do {
         // distribute tasks from the queue
-#ifdef PANDO_RT_USE_BACKEND_PREP
         auto task = queue->tryDequeue(ctok);
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
-        auto task = queue->tryDequeue();
-#endif
+
         if (task.has_value()) {
           // enqueue in a random core in this node and pod
           auto coreIdx = dist(rng);
           const pando::Place dstPlace(thisPlace.node, thisPlace.pod,
                                       pando::CoreIndex(coreIdx, 0));
           auto* dstQueue = pando::Cores::getTaskQueue(dstPlace);
-#ifdef PANDO_RT_USE_BACKEND_PREP
           if (auto status = dstQueue->enqueue(ptoks[coreIdx], std::move(task.value()));
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
-          if (auto status = dstQueue->enqueue(std::move(task.value()));
-#endif
               status != pando::Status::Success) {
             PANDO_ABORT("Could not enqueue from scheduler to worker core");
           }
         }
-#ifdef PANDO_RT_USE_BACKEND_PREP
       } while (*coreActive == true);
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
-        pando::hartYield();
-      } while (!getTerminateFlag());
-#endif
     }
   }
 
