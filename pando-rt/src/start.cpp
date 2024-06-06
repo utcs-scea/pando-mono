@@ -65,11 +65,7 @@ extern "C" int __start(int argc, char** argv) {
 
       SchedulerFailState failState = SchedulerFailState::YIELD;
 
-#ifdef PANDO_RT_USE_BACKEND_PREP
       do {
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
-      while (true) {
-#endif
         idleTimer.start();
 #ifdef PANDO_RT_USE_BACKEND_PREP
         task = queue->tryDequeue(ctok);
@@ -77,11 +73,6 @@ extern "C" int __start(int argc, char** argv) {
         task = queue->tryDequeue();
 #endif
         if (!task.has_value()) {
-#if defined(PANDO_RT_USE_BACKEND_DRVX)
-          if (queue->getTerminate()) { // termination signal
-            break;
-          }
-#endif
 
           switch(failState) {
             case SchedulerFailState::YIELD:
@@ -112,12 +103,11 @@ extern "C" int __start(int argc, char** argv) {
         } else {
           counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
         }
-
 #ifdef PANDO_RT_USE_BACKEND_PREP
       } while (*coreActive == true);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
         pando::hartYield();
-      }
+      } while (!queue->getTerminate());
 #endif
     } else if (thisPlace.core.x == coreDims.x) {
       // scheduler
@@ -136,13 +126,13 @@ extern "C" int __start(int argc, char** argv) {
         auto* otherQueue =  pando::Cores::getTaskQueue(dstPlace);
         ptoks.push_back(otherQueue->makeProducerToken());
       }
+#endif
 
       do {
         // distribute tasks from the queue
+#ifdef PANDO_RT_USE_BACKEND_PREP
         auto task = queue->tryDequeue(ctok);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
-      while (true) {
-        // distribute tasks from the queue
         auto task = queue->tryDequeue();
 #endif
         if (task.has_value()) {
@@ -163,14 +153,8 @@ extern "C" int __start(int argc, char** argv) {
 #ifdef PANDO_RT_USE_BACKEND_PREP
       } while (*coreActive == true);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
-        else {
-          if (queue->getTerminate()) { // termination signal
-            break;
-          }
-        }
-
         pando::hartYield();
-      }
+      } while (!queue->getTerminate());
 #endif
     }
   }
