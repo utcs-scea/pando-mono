@@ -145,11 +145,8 @@ template <typename T, bool Logging = false>
 class Queue {
   std::deque<T> m_queue;
   mutable std::mutex m_mutex;
-  bool m_terminate = false;
 
 public:
-  using ProducerToken = std::uint64_t;
-  using ConsumerToken = std::uint64_t;
   Queue() = default;
 
   Queue(const Queue&) = delete;
@@ -172,17 +169,6 @@ public:
   }
 
   /**
-   * @brief Enqueues @p t.
-   */
-  [[nodiscard]] Status enqueue(ProducerToken &, const T& t) noexcept {
-    std::lock_guard lock{m_mutex};
-    if constexpr(Logging)
-      SPDLOG_WARN("Added to {}", (void*)this);
-    m_queue.push_back(t);
-    return Status::Success;
-  }
-
-  /**
    * @copydoc enqueue(const T& t) noexcept
    */
   [[nodiscard]] Status enqueue(T&& t) noexcept {
@@ -194,35 +180,9 @@ public:
   }
 
   /**
-   * @copydoc enqueue(const T& t) noexcept
-   */
-  [[nodiscard]] Status enqueue(ProducerToken &, T&& t) noexcept {
-    std::lock_guard lock{m_mutex};
-    if constexpr(Logging)
-      SPDLOG_WARN("Added to {}", (void*)this);
-    m_queue.push_back(std::move(t));
-    return Status::Success;
-  }
-
-  /**
    * @brief Returns the first element in the queue if it exists.
    */
   std::optional<T> tryDequeue() {
-    std::lock_guard lock{m_mutex};
-    if (m_queue.empty()) {
-      return std::nullopt;
-    }
-    std::optional<T> o = std::move(m_queue.front());
-    m_queue.pop_front();
-    if constexpr(Logging)
-      SPDLOG_WARN("Removed from {}", (void*)this);
-    return o;
-  }
-
-  /**
-   * @brief Returns the first element in the queue if it exists.
-   */
-  std::optional<T> tryDequeue(ConsumerToken &) {
     std::lock_guard lock{m_mutex};
     if (m_queue.empty()) {
       return std::nullopt;
@@ -256,30 +216,6 @@ public:
   void clear() noexcept {
     std::lock_guard lock{m_mutex};
     return m_queue.clear();
-  }
-
-  ProducerToken makeProducerToken() {
-    return 0;
-  }
-
-  ConsumerToken makeConsumerToken() {
-    return 0;
-  }
-
-  /**
-   * @brief Sets the termination signal.
-   */
-  void setTerminate() {
-    std::lock_guard lock{m_mutex};
-    m_terminate = true;
-  }
-
-  /**
-   * @brief Get the termination signal.
-   */
-  bool getTerminate() {
-    std::lock_guard lock{m_mutex};
-    return m_terminate;
   }
 };
 #endif

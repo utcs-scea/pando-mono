@@ -20,6 +20,7 @@
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 #include "drvx/cores.hpp"
 #include "drvx/drvx.hpp"
+#include "drvx/termination.hpp"
 #endif
 
 constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 32;
@@ -107,7 +108,7 @@ extern "C" int __start(int argc, char** argv) {
       } while (*coreActive == true);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
         pando::hartYield();
-      } while (!queue->getTerminate());
+      } while (!getTerminateFlag());
 #endif
     } else if (thisPlace.core.x == coreDims.x) {
       // scheduler
@@ -154,7 +155,7 @@ extern "C" int __start(int argc, char** argv) {
       } while (*coreActive == true);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
         pando::hartYield();
-      } while (!queue->getTerminate());
+      } while (!getTerminateFlag());
 #endif
     }
   }

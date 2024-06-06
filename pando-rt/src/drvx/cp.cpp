@@ -9,6 +9,7 @@
 #include "index.hpp"
 #include "pando-rt/status.hpp"
 #include "status.hpp"
+#include "termination.hpp"
 
 namespace pando {
 
@@ -115,6 +116,8 @@ void CommandProcessor::finalize() {
   signalCommandProcessorDone();
   waitForCommandProcessorDone();
   // terminate all cores
+  setTerminateFlag();
+/*
   const auto podDims = pando::getPodDims();
   const auto coreDims = pando::getCoreDims();
   const auto thisPlace = pando::getCurrentPlace();
@@ -125,6 +128,7 @@ void CommandProcessor::finalize() {
       dstQueue->setTerminate();
     }
   }
+*/
 
   // wait for all cores to complete their hart loop
   waitForCoresDone();
