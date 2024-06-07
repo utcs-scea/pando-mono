@@ -50,16 +50,6 @@ private:
    * @brief Wait for all command processors on all PXNs to be done.
    */
   static void waitForCommandProcessorsDone();
-
-  /**
-   * @brief Barrier for all CPs.
-   */
-  static void barrier();
-
-  /**
-   * @brief Finalizes the CP.
-   */
-  static void finalize();
 };
 
 } // namespace pando

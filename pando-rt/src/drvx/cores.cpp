@@ -92,7 +92,7 @@ void Cores::initializeQueues() {
 void Cores::finalizeQueues() {
   // One hart per core does all the finalization. Use CAS to choose some/any hart for this
   // purpose.
-  signalHartDone();
+  Cores::signalHartDone();
 
 #if defined(PANDO_RT_BYPASS)
   void *addr_native = nullptr;
@@ -110,12 +110,12 @@ void Cores::finalizeQueues() {
   if (DrvAPI::atomic_cas(&coreState, +CoreState::Ready, +CoreState::Idle) == +CoreState::Ready) {
 #endif
     // wait for all harts on this core to be done
-    waitForHartsDone();
+    Cores::waitForHartsDone();
 
-    signalCoreFinalized();
+    Cores::signalCoreFinalized();
 
     // wait for all cores on this PXN to be finalized
-    waitForCoresFinalized();
+    Cores::waitForCoresFinalized();
 
     DrvAPI::write(&coreState, +CoreState::Stopped);
 

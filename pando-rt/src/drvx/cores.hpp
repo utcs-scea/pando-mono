@@ -51,6 +51,17 @@ public:
   static void waitForCoresInitialized();
 
   /**
+   * @brief Returns the queue associated with place @p place.
+   */
+  [[nodiscard]] static TaskQueue* getTaskQueue(Place place) noexcept;
+
+  /**
+   * @brief Returns a flag to check if the core is active.
+   */
+  static CoreActiveFlag getCoreActiveFlag() noexcept;
+
+private:
+  /**
    * @brief Signal that this hart is done.
    */
   static void signalHartDone();
@@ -69,16 +80,6 @@ public:
    * @brief Wait for all cores to be finalized.
    */
   static void waitForCoresFinalized();
-
-  /**
-   * @brief Returns the queue associated with place @p place.
-   */
-  [[nodiscard]] static TaskQueue* getTaskQueue(Place place) noexcept;
-
-  /**
-   * @brief Returns a flag to check if the core is active.
-   */
-  static CoreActiveFlag getCoreActiveFlag() noexcept;
 };
 
 } // namespace pando
