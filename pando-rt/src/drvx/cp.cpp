@@ -113,16 +113,16 @@ void CommandProcessor::waitForCommandProcessorDone() {
 }
 
 void CommandProcessor::finalize() {
-  signalCommandProcessorDone();
+  CommandProcessor::signalCommandProcessorDone();
 
   // wait for all CP to finish
-  waitForCommandProcessorDone();
+  CommandProcessor::waitForCommandProcessorDone();
 
   // set termination flag
   setTerminateFlag();
 
   // wait for all cores to complete finalization
-  waitForCoresDone();
+  CommandProcessor::waitForCoresDone();
   SPDLOG_INFO("CP finalized on PXN {}", Drvx::getCurrentNode());
 }
 

@@ -136,4 +136,7 @@ void Cores::waitForCoresInit() {
   }
 }
 
+void Cores::finalize() {
+}
+
 } // namespace pando

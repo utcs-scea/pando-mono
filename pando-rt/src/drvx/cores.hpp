@@ -41,6 +41,11 @@ public:
   static void finalizeQueues();
 
   /**
+   * @brief Finalizes the cores subsystem.
+   */
+  static void finalize();
+
+  /**
    * @brief Waits for all cores.
    */
   static void waitForCoresInit();

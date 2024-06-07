@@ -26,6 +26,17 @@ public:
   static void signalCoresDone();
 
   /**
+   * @brief Barrier for all CPs.
+   */
+  static void barrier();
+
+  /**
+   * @brief Finalizes the CP.
+   */
+  static void finalize();
+
+private:
+  /**
    * @brief Wait for all cores on all PXNs to be done.
    */
   static void waitForCoresDone();
@@ -39,16 +50,6 @@ public:
    * @brief Wait for all command processors on all PXNs to be done.
    */
   static void waitForCommandProcessorDone();
-
-  /**
-   * @brief Barrier for all CPs.
-   */
-  static void barrier();
-
-  /**
-   * @brief Finalizes the CP.
-   */
-  static void finalize();
 };
 
 } // namespace pando

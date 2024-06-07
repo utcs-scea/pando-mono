@@ -110,13 +110,9 @@ extern "C" int __start(int argc, char** argv) {
 
       std::vector<pando::Queue<pando::Task>::ProducerToken> ptoks;
       for(std::uint8_t i = 0; i < coreDims.x; i++){
-#ifdef PANDO_RT_USE_BACKEND_PREP
         const pando::Place dstPlace(thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0));
         auto* otherQueue =  pando::Cores::getTaskQueue(dstPlace);
         ptoks.push_back(otherQueue->makeProducerToken());
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
-        ptoks.push_back(0);
-#endif
       }
 
 
