@@ -46,9 +46,29 @@ public:
   static void finalize();
 
   /**
-   * @brief Waits for all cores.
+   * @brief Waits for all cores to be initialized.
    */
-  static void waitForCoresInit();
+  static void waitForCoresInitialized();
+
+  /**
+   * @brief Signal that this hart is done.
+   */
+  static void signalHartDone();
+
+  /**
+   * @brief Wait for all harts on this core to be done.
+   */
+  static void waitForHartsDone();
+
+  /**
+   * @brief Signal that this core is finalized.
+   */
+  static void signalCoreFinalized();
+
+  /**
+   * @brief Wait for all cores to be finalized.
+   */
+  static void waitForCoresFinalized();
 
   /**
    * @brief Returns the queue associated with place @p place.

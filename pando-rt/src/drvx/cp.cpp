@@ -26,7 +26,7 @@ Drvx::StaticMainMem<std::int64_t> numPxnsDone;
 // Initialize logger and memory resources
 [[nodiscard]] Status CommandProcessor::initialize() {
   // wait until all cores have initialized
-  Cores::waitForCoresInit();
+  Cores::waitForCoresInitialized();
 
   // wait for all CP to finish initialization
   barrier();
@@ -106,7 +106,7 @@ void CommandProcessor::signalCommandProcessorDone() {
 #endif
 }
 
-void CommandProcessor::waitForCommandProcessorDone() {
+void CommandProcessor::waitForCommandProcessorsDone() {
   while (*toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)) != Drvx::getNodeDims().id) {
     hartYield();
   }
@@ -116,7 +116,7 @@ void CommandProcessor::finalize() {
   CommandProcessor::signalCommandProcessorDone();
 
   // wait for all CP to finish
-  CommandProcessor::waitForCommandProcessorDone();
+  CommandProcessor::waitForCommandProcessorsDone();
 
   // set termination flag
   setTerminateFlag();
