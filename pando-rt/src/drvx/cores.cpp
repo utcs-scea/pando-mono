@@ -65,7 +65,7 @@ void Cores::initializeQueues() {
     coreQueue = new TaskQueue;
 
     // indicate that core initialization is complete and state is ready
-    coreState = +CoreState::Ready;
+    DrvAPI::write(&coreState, +CoreState::Ready);
 
     // CP waits for this variable to equal total number of cores in the PXN
 #if defined(PANDO_RT_BYPASS)
@@ -105,7 +105,7 @@ void Cores::finalizeQueues() {
 #else
   if (DrvAPI::atomic_cas(&coreState, +CoreState::Ready, +CoreState::Idle) == +CoreState::Ready) {
 #endif
-    coreState = +CoreState::Stopped;
+    DrvAPI::write(&coreState, +CoreState::Stopped);
 
     TaskQueue* queue = coreQueue;
     delete queue;
