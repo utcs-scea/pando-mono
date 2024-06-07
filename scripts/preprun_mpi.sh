@@ -62,4 +62,4 @@ fi
 
 export PANDO_PREP_MAIN_NODE=$main_memory_size
 
-gasnetrun_mpi -n $nodes $prog
+echo gasnetrun_mpi -n $nodes $prog

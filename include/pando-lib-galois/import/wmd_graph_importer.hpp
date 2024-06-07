@@ -241,12 +241,12 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
         for (pando::Vector<EdgeType> vec : localEdges) {
           EdgeType e = vec[0];
           uint64_t hostID = v2PM[e.src % v2PM.size()];
-          PANDO_CHECK(fmap(edgeVec[hostID], pushBack, vec));
+          PANDO_CHECK(fmap(edgeVec[hostID], pushBack, vec)); //TODO: 32 Bytes per line
         }
         std::uint64_t numHosts = static_cast<std::uint64_t>(pando::getPlaceDims().node.id);
         for (uint64_t i = 0; i < numHosts; i++) {
-          galois::Array<uint64_t> arr = prefixArr[i];
-          *(arr.begin() + tid) = lift(edgeVec[i], size);
+          galois::Array<uint64_t> arr = prefixArr[i]; // TODO: 16 Bytes per line
+          *(arr.begin() + tid) = lift(edgeVec[i], size); // TODO: 32 Bytes per line. Need to improve for sure...
         }
       });
   localReadEdges.deinitialize();
@@ -290,7 +290,7 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
             start = 0;
           uint64_t end = prefixArr[threadID];
           uint64_t idx = 0;
-          pando::Vector<pando::Vector<EdgeType>> vec = phVec[i];
+          pando::Vector<pando::Vector<EdgeType>> vec = phVec[i]; // TODO: It is the most expensive load
           for (auto it = vec.begin() + start; it != vec.begin() + end; it++) {
             *it = vert.get(idx);
             idx++;

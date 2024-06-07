@@ -556,7 +556,7 @@ public:
     return getEdgeData(mintEdgeHandle(vertex, off));
   }
 
-private:
+public:
   pando::Array<Vertex> vertexEdgeOffsets;
   pando::Array<HalfEdge> edgeDestinations;
   pando::Array<VertexData> vertexData;
