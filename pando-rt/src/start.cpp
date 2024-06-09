@@ -51,7 +51,6 @@ extern "C" int __start(int argc, char** argv) {
     }
 
     auto coreActive = pando::Cores::getCoreActiveFlag();
-
     auto ctok = queue->makeConsumerToken();
 
     // PH hart
@@ -66,7 +65,9 @@ extern "C" int __start(int argc, char** argv) {
       do {
         idleTimer.start();
         task = queue->tryDequeue(ctok);
+
         if (!task.has_value()) {
+
           switch(failState) {
             case SchedulerFailState::YIELD:
 #ifdef PANDO_RT_USE_BACKEND_PREP
@@ -90,8 +91,10 @@ extern "C" int __start(int argc, char** argv) {
               break;
           }
         }
-        if(task.has_value()) { (*task)(); task = std::nullopt; }
-        else {
+        if(task.has_value()) {
+          (*task)();
+          task = std::nullopt;
+        } else {
           counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
         }
       } while (*coreActive == true);
@@ -107,15 +110,17 @@ extern "C" int __start(int argc, char** argv) {
 
       std::vector<pando::Queue<pando::Task>::ProducerToken> ptoks;
       for(std::uint8_t i = 0; i < coreDims.x; i++){
-        const pando::Place dstPlace(thisPlace.node, thisPlace.pod,
-                                    pando::CoreIndex(i, 0));
-        auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
+        const pando::Place dstPlace(thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0));
+        auto* otherQueue =  pando::Cores::getTaskQueue(dstPlace);
         ptoks.push_back(otherQueue->makeProducerToken());
       }
 
+
       do {
         // distribute tasks from the queue
-        if (auto task = queue->tryDequeue(ctok); task.has_value()) {
+        auto task = queue->tryDequeue(ctok);
+
+        if (task.has_value()) {
           // enqueue in a random core in this node and pod
           auto coreIdx = dist(rng);
           const pando::Place dstPlace(thisPlace.node, thisPlace.pod,

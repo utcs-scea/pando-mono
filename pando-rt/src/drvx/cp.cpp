@@ -9,6 +9,7 @@
 #include "index.hpp"
 #include "pando-rt/status.hpp"
 #include "status.hpp"
+#include "termination.hpp"
 
 namespace pando {
 
@@ -18,6 +19,7 @@ namespace {
 Drvx::StaticMainMem<std::int64_t> globalBarrierCounter;
 Drvx::StaticMainMem<std::int64_t> pxnBarrierDone;
 Drvx::StaticMainMem<std::int64_t> coresDone;
+Drvx::StaticMainMem<std::int64_t> numPxnsDone;
 
 } // namespace
 
@@ -74,28 +76,53 @@ void CommandProcessor::signalCoresDone() {
 #if defined(PANDO_RT_BYPASS)
   void *addr_native = nullptr;
   std::size_t size = 0;
-  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), &addr_native, &size);
+  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)), &addr_native, &size);
   std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
   __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
   // hartYield
   DrvAPI::nop(1u);
 #else
-  DrvAPI::atomic_add(toNativeDrvPointerOnDram(coresDone, NodeIndex(0)), 1u);
+  DrvAPI::atomic_add(toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)), 1u);
 #endif
 }
 
-/// Wait for all cores on all PXNs to be done.
-static void waitForCoresDone() {
-  while (*toNativeDrvPointerOnDram(coresDone, NodeIndex(0)) != Drvx::getNumSystemCores()) {
+void CommandProcessor::waitForCoresDone() {
+  while (*toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)) != Drvx::getCoreDims().x) {
+    hartYield();
+  }
+}
+
+void CommandProcessor::signalCommandProcessorDone() {
+#if defined(PANDO_RT_BYPASS)
+  void *addr_native = nullptr;
+  std::size_t size = 0;
+  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), &addr_native, &size);
+  std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
+  __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
+  // hartYield
+  DrvAPI::nop(1u);
+#else
+  DrvAPI::atomic_add(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), 1u);
+#endif
+}
+
+void CommandProcessor::waitForCommandProcessorDone() {
+  while (*toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)) != Drvx::getNodeDims().id) {
     hartYield();
   }
 }
 
 void CommandProcessor::finalize() {
-  Cores::finalize();
+  CommandProcessor::signalCommandProcessorDone();
 
-  // wait for all cores to complete their hart loop
-  waitForCoresDone();
+  // wait for all CP to finish
+  CommandProcessor::waitForCommandProcessorDone();
+
+  // set termination flag
+  setTerminateFlag();
+
+  // wait for all cores to complete finalization
+  CommandProcessor::waitForCoresDone();
   SPDLOG_INFO("CP finalized on PXN {}", Drvx::getCurrentNode());
 }
 
