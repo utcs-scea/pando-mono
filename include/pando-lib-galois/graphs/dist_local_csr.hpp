@@ -30,10 +30,10 @@ namespace internal {
 
 template <typename VertexType, typename EdgeType, typename ReadVertexType, typename ReadEdgeType>
 void fillCSR(DistLocalCSR<VertexType, EdgeType> dlcsr,
-            galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData,
-            galois::HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
-            galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
-            std::uint64_t i, galois::WaitGroup::HandleType wgh) {
+             galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData,
+             galois::HostLocalStorage<pando::Vector<pando::Vector<ReadEdgeType>>> edgeData,
+             galois::HostLocalStorage<galois::HashTable<std::uint64_t, std::uint64_t>> edgeMap,
+             std::uint64_t i, galois::WaitGroup::HandleType wgh) {
   using CSR = LCSR<VertexType, EdgeType>;
   using EdgeData = EdgeType;
   CSR currentCSR = fmap(dlcsr.arrayOfCSRs[i], operator[], i);
@@ -43,8 +43,7 @@ void fillCSR(DistLocalCSR<VertexType, EdgeType> dlcsr,
   std::uint64_t edgeCurr = 0;
   currentCSR.vertexEdgeOffsets[0] = Vertex{currentCSR.edgeDestinations.begin()};
   for (std::uint64_t vertexCurr = 0; vertexCurr < numVertices; vertexCurr++) {
-    std::uint64_t vertexTokenID =
-        currentCSR.getTokenID(&currentCSR.vertexEdgeOffsets[vertexCurr]);
+    std::uint64_t vertexTokenID = currentCSR.getTokenID(&currentCSR.vertexEdgeOffsets[vertexCurr]);
 
     std::uint64_t edgeMapID;
     if (currEdgeMap.get(vertexTokenID, edgeMapID)) {
@@ -54,14 +53,13 @@ void fillCSR(DistLocalCSR<VertexType, EdgeType> dlcsr,
       for (std::uint64_t j = 0; j < size; j++, edgeCurr++) {
         HalfEdge e;
         ReadEdgeType eData = edges[j];
-        e.dst = dlcsr.getTopologyID(eData.dst); // TODO: this needs to be improved
+        e.dst = dlcsr.getTopologyID(eData.dst); // TODO(jj): this needs to be improved
         currentCSR.edgeDestinations[edgeCurr] = e;
         pando::GlobalPtr<HalfEdge> eh = &currentCSR.edgeDestinations[edgeCurr];
         currentCSR.setEdgeData(eh, EdgeData(static_cast<ReadEdgeType>(edges[j])));
       }
     }
-    currentCSR.vertexEdgeOffsets[vertexCurr + 1] =
-        Vertex{&currentCSR.edgeDestinations[edgeCurr]};
+    currentCSR.vertexEdgeOffsets[vertexCurr + 1] = Vertex{&currentCSR.edgeDestinations[edgeCurr]};
   }
   fmap(dlcsr.arrayOfCSRs[i], operator[], i) = currentCSR;
   wgh.done();
@@ -580,7 +578,6 @@ public:
    * @brief This initializer is used to deal with the outputs of partitioning
    */
 
-
   template <typename ReadVertexType, typename ReadEdgeType>
   pando::Status initializeAfterGather(
       galois::HostLocalStorage<pando::Vector<ReadVertexType>> vertexData, std::uint64_t numVertices,
@@ -634,14 +631,13 @@ public:
     PANDO_CHECK_RETURN(generateCache());
     wgh.add(numHosts);
 
-  
     for (std::uint64_t i = 0; i < numHosts; i++) {
       pando::Place place = pando::Place{pando::NodeIndex{static_cast<std::int64_t>(i)},
                                         pando::anyPod, pando::anyCore};
-      PANDO_CHECK_RETURN(
-          pando::executeOn(place, &galois::internal::fillCSR<VertexType, EdgeType, ReadVertexType, ReadEdgeType>, *this, vertexData, edgeData, edgeMap, i, wgh));
+      PANDO_CHECK_RETURN(pando::executeOn(
+          place, &galois::internal::fillCSR<VertexType, EdgeType, ReadVertexType, ReadEdgeType>,
+          *this, vertexData, edgeData, edgeMap, i, wgh));
     }
-
 
     PANDO_CHECK_RETURN(wg.wait());
     wg.deinitialize();

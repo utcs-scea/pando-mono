@@ -136,7 +136,8 @@ private:
                                       pando::GlobalRef<B_Val> paste_loc, uint64_t wfl_id) {
     serial_pfxsum<A, B, A_Val, B_Val, transmute, scan_op, std::monostate, empty, empty>(
         src, dst, src_offset, dst_offset, ns, std::monostate());
-    paste_loc = dst[dst_offset + ns - 1]; // TODO: Based on profile, 8 times, total n=1880, average n=235.0
+    paste_loc = dst[dst_offset + ns -
+                    1]; // TODO(jj): Based on profile, 8 times, total n=1880, average n=235.0
     lock.template done<1>(wfl_id);
   }
 

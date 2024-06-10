@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2023. University of Texas at Austin. All rights reserved.
+
 import gdb
 from collections import Counter, defaultdict
 
@@ -46,7 +49,7 @@ class CollectFunctions(gdb.Command):
             gdb.write(f"Captured value of n: {n_value}\n")
         except gdb.error:
             gdb.write("Error: Could not capture value of 'n'.\n")
-        
+
         gdb.write("Collected functions, file names, line numbers, and values of 'n' from current stack frame.\n")
 
 class WriteResults(gdb.Command):
