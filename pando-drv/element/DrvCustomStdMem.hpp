@@ -77,6 +77,60 @@ public:
 
 
 /**
+ * @brief Custom data for the monitor commands
+ *
+ * this is meant to be used as a member of stdMem's CustomReq
+ * we create a CustomReq object and set the data to this object
+ * before sending it throught the standardInterface
+ */
+class MonitorReqData : public Interfaces::StandardMem::CustomData {
+public:
+  /* constructor */
+  MonitorReqData() {}
+
+  /* return address to use for routing this event to its destination */
+  Interfaces::StandardMem::Addr
+  getRoutingAddress() override { return pAddr; }
+
+  /* return size of to use when accounting for bandwidth used by this event */
+  uint64_t getSize() override { return size; }
+
+  /* return a CustomData* objected formatted as a response */
+  Interfaces::StandardMem::CustomData*
+  makeResponse() override { return this; }
+
+  /* return wheter a response is needed */
+  bool needsResponse() override { return true; }
+
+  /* string representation for debugging */
+  std::string getString() override {
+    std::stringstream ss;
+    ss << "{Type: MonitorReqData, pAddr: ";
+    ss << std::hex;
+    ss << pAddr << ", size: ";
+    ss << std::dec;
+    ss << size << "} ";
+    return ss.str();
+  }
+
+  /* serialize this data for parallel sims */
+  void serialize_order(SST::Core::Serialization::serializer &ser) override {
+    CustomData::serialize_order(ser);
+    ser & expected;
+    ser & size;
+    ser & pAddr;
+  }
+  ImplementSerializable(SST::Drv::MonitorReqData);
+
+public:
+  std::vector<uint8_t> expected;
+  int64_t size;
+  Interfaces::StandardMem::Addr pAddr;
+
+};
+
+
+/**
  * @brief a handler for drv custom memory operartions
  *
  * this is meant to be set as a subcomponent of memHierarchy's memoryController component

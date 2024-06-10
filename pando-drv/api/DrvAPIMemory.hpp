@@ -104,6 +104,16 @@ T atomic_cas(DrvAPIAddress address, T compare, T value)
 }
 
 /**
+ * @brief monitor a memory address until it reaches a certain value
+ */
+template <typename T>
+void monitor_until(DrvAPIAddress address, T value)
+{
+    DrvAPIThread::current()->setState(std::make_shared<DrvAPIMemMonitorUntil<T>>(address, value));
+    DrvAPIThread::current()->yield();
+}
+
+/**
  * @brief set the stage
  *
  */

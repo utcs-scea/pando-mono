@@ -299,6 +299,38 @@ private:
   T ext_value_;
 };
 
+/**
+ * @brief Base thread state for monitor
+ */
+class DrvAPIMemMonitor : public DrvAPIMem {
+public:
+  DrvAPIMemMonitor(DrvAPIAddress address)
+    : DrvAPIMem(address) {}
+  virtual void getExpected(void *p) = 0;
+  virtual size_t getSize() const { return 0; }
+};
+
+/**
+ * @brief Thread state for monitoring until a certain value
+ *
+ * @tparam T
+ */
+template <typename T>
+class DrvAPIMemMonitorUntil : public DrvAPIMemMonitor
+{
+public:
+  DrvAPIMonitorUntil(DrvAPIAddress address, T value)
+      : DrvAPIMemMonitor(address), expected_(value) {}
+
+  void getExpected(void *p) override {
+    *static_cast<T*>(p) = expected_;
+  }
+  size_t getSize() const override { return sizeof(T); }
+
+private:
+  T expected_;
+};
+
 
 /**
  * @brief Request to the simulator to convert a DrvAPIAddress to a native pointer

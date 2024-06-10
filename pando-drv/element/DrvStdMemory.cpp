@@ -325,8 +325,28 @@ DrvStdMemory::sendRequest(DrvCore *core
         return;
     }
 
+    auto monitor_req = std::dynamic_pointer_cast<DrvAPI::DrvAPIMemMonitor>(mem_req);
+    if (monitor_req) {
+        /* do monitor */
+        uint64_t size = monitor_req->getSize();
+        uint64_t addr = monitor_req->getAddress();
+        output_.verbose(CALL_INFO, 10, DrvMemory::VERBOSE_REQ,
+                                "Sending monitor until request addr=%" PRIx64 " size=%" PRIu64 "\n",
+                                addr, size);
+        MonitorReqData *data = new MonitorReqData();
+        data->pAddr = addr;
+        data->size = size;
+        data->expected.resize(size);
+        monitor_req->getExpected(&data->expected[0]);
+        // set monitor type
+        StandardMem::CustomReq *req = new StandardMem::CustomReq(data);
+        req->tid = core->getThreadID(thread);
+        mem_->send(req);
+        return;
+    }
+
     // fatally error if we don't know the request type
-    if (!(write_req || read_req || to_native_req || atomic_req)) {
+    if (!(write_req || read_req || to_native_req || atomic_req || monitor_req)) {
         core->output()->fatal(CALL_INFO, -1, "Unknown memory request type\n");
     }
 }
