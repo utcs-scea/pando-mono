@@ -49,7 +49,7 @@ private:
   /**
    * @brief Wait for all command processors on all PXNs to be done.
    */
-  static void waitForCommandProcessorDone();
+  static void waitForCommandProcessorsDone();
 };
 
 } // namespace pando
