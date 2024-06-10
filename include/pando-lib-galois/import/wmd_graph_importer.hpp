@@ -155,6 +155,36 @@ uint64_t combiner(B f, B s) {
   return f + s;
 }
 
+// Assuming decltype(PHState1) is a tuple containing the specific types as seen in lambda capture
+template <typename EdgeType, typename VertexType>
+using PHStateType = galois::Tuple3<galois::HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>>,
+                               galois::HostLocalStorage<galois::HashTable<uint64_t, uint64_t>>,
+                               galois::HostIndexedMap<pando::Vector<pando::Vector<EdgeType>>>>;
+
+template <typename EdgeType, typename VertexType>
+pando::Status ProcessEdges(const PHStateType<EdgeType,VertexType>& PHState1, uint64_t host_id,uint64_t ) {
+    // Unpack the tuple elements for easier access
+    auto [partEdges, renamePH, pHVEdge] = PHState1;
+
+    // The remaining code is as per the lambda
+    pando::Vector<pando::Vector<EdgeType>> exchangedVec = pHVEdge[host_id];
+    galois::HashTable<uint64_t, uint64_t> hashMap = renamePH[host_id];
+
+    for (uint64_t j = 0; j < lift(exchangedVec, size); j++) {
+        pando::GlobalRef<pando::Vector<EdgeType>> v = exchangedVec.get(j);
+        pando::Gvector<EdgeType> v1(&v);
+        EdgeType e = fmap(v1, at, 0);
+        uint64_t result;
+        bool ret = fmap(hashMap, get, e.src, result);
+        if (!ret) {
+            return pando::Status::Error;
+        }
+        pando::GlobalRef<pando::Vector<EdgeType>> edgeVec = fmap(partEdges[host_id], get, result);
+        PANDO_CHECK(fmap(edgeVec, append, &v));
+    }
+    return pando::Status::Success;
+}
+
 /**
  * @brief Consumes localReadEdges, and references a partitionMap to produced partitioned Edges
  * grouped by Vertex, along with a rename set of Vertices
@@ -300,25 +330,7 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
 
   auto PHState1 = galois::make_tpl(partEdges, renamePerHost, pHVEdge);
   PANDO_CHECK(galois::doAllEvenlyPartition(
-      PHState1, numHosts, +[](decltype(PHState1) PHState1, uint64_t host_id, uint64_t) {
-        auto [partEdges, renamePH, pHVEdge] = PHState1;
-        pando::Vector<pando::Vector<EdgeType>> vec;
-        pando::Vector<pando::Vector<EdgeType>> exchangedVec = pHVEdge[host_id];
-        galois::HashTable<std::uint64_t, std::uint64_t> hashMap = renamePH[host_id];
-        uint64_t result;
-        for (uint64_t j = 0; j < lift(exchangedVec, size); j++) {
-          pando::GlobalRef<pando::Vector<EdgeType>> v = exchangedVec.get(j);
-          pando::Gvector<EdgeType> v1(&v);
-          EdgeType e = fmap(v1, at, 0);
-          bool ret = fmap(hashMap, get, e.src, result);
-          if (!ret) {
-            return pando::Status::Error;
-          }
-          pando::GlobalRef<pando::Vector<EdgeType>> edgeVec = fmap(partEdges[host_id], get, result);
-          PANDO_CHECK(fmap(edgeVec, append, &v));
-        }
-        return pando::Status::Success;
-      }));
+      PHState1, numHosts, &ProcessEdges<EdgeType, VertexType>));
   return galois::make_tpl(partEdges, renamePerHost);
 }
 
