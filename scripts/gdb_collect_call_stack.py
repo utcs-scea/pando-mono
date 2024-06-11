@@ -78,4 +78,3 @@ class WriteResults(gdb.Command):
 
 CollectFunctions()
 WriteResults()
-
