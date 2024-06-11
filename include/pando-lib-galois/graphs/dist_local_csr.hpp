@@ -426,20 +426,19 @@ private:
     std::uint64_t virtualHostID = tid % this->numVHosts();
     std::int64_t physicalHost = fmap(virtualToPhysicalMap.getLocalRef(), get, virtualHostID);
 
+    auto f = +[](DistLocalCSR thisCSR, VertexTokenID tid) -> VertexTopologyID {
+      auto physicalHost = pando::getCurrentNode().id;
+      CSR localCSR = thisCSR.getCSR(physicalHost);
+      return localCSR.getTopologyID(tid);
+    };
+
+    DistLocalCSR thisCSR = *this;
+
     if (physicalHost != pando::getCurrentPlace().node.id) {
-      auto tpl = galois::make_tpl(&getCSR(physicalHost), tid);
-      auto funcptr = +[](decltype(tpl) assign) {
-        auto [remoteCSR, tid] = assign;
-        return fmap(*remoteCSR, getTopologyID, tid);
-      };
-      pando::Place place =
-          pando::Place{pando::NodeIndex{physicalHost}, pando::anyPod, pando::anyCore};
-      auto result = pando::executeOnWait(place, funcptr, tpl);
-      return result.value();
+      auto locality = pando::Place(pando::NodeIndex{physicalHost}, pando::anyPod, pando::anyCore);
+      return PANDO_EXPECT_CHECK(pando::executeOnWait(locality, f, thisCSR, tid));
     } else {
-      // if physicalHost <> current local id
-      // executeon to physicalHost using getCSR(physicalHost), getTopologyID
-      return fmap(getCSR(physicalHost), getTopologyID, tid);
+      return f(thisCSR, tid);
     }
   }
 
