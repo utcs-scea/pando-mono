@@ -358,10 +358,11 @@ MemController::MemController(ComponentId_t id, Params &params) : Component(id), 
     ////////////////////////////////////////////////////////////////////////////////////////////
     using std::placeholders::_3;
     using std::placeholders::_4;
+    using std::placeholders::_5;
     customCommandHandler_ = loadUserSubComponent<CustomCmdMemHandler>("customCmdHandler", ComponentInfo::SHARE_NONE,
             std::bind(static_cast<void(MemController::*)(Addr,size_t,std::vector<uint8_t>&)>(&MemController::readData), this, _1, _2, _3),
             std::bind(static_cast<MemEventBase*(MemController::*)(Addr,std::vector<uint8_t>*)>(&MemController::writeData), this, _1, _2),
-            std::bind(static_cast<bool(MemController::*)(Addr,size_t,std::vector<uint8_t>&,MemEventBase*)>(&MemController::monitorData), this, _1, _2, _3, _4),
+            std::bind(static_cast<bool(MemController::*)(Addr,size_t,std::vector<uint8_t>&,bool,MemEventBase*)>(&MemController::monitorData), this, _1, _2, _3, _4, _5),
             std::bind(static_cast<Addr(MemController::*)(Addr)>(&MemController::translateToLocal), this, _1));
     if (nullptr == customCommandHandler_) {
         std::string customHandlerName = params.find<std::string>("customCmdHandler", "");
@@ -372,7 +373,7 @@ MemController::MemController(ComponentId_t id, Params &params) : Component(id), 
             customCommandHandler_ = loadAnonymousSubComponent<CustomCmdMemHandler>(customHandlerName, "customCmdHandler", 0, ComponentInfo::INSERT_STATS, params,
                     std::bind(static_cast<void(MemController::*)(Addr,size_t,std::vector<uint8_t>&)>(&MemController::readData), this, _1, _2, _3),
                     std::bind(static_cast<MemEventBase*(MemController::*)(Addr,std::vector<uint8_t>*)>(&MemController::writeData), this, _1, _2),
-                    std::bind(static_cast<bool(MemController::*)(Addr,size_t,std::vector<uint8_t>&,MemEventBase*)>(&MemController::monitorData), this, _1, _2, _3, _4),
+                    std::bind(static_cast<bool(MemController::*)(Addr,size_t,std::vector<uint8_t>&,bool,MemEventBase*)>(&MemController::monitorData), this, _1, _2, _3, _4, _5),
                     std::bind(static_cast<Addr(MemController::*)(Addr)>(&MemController::translateToLocal), this, _1));
         }
     }
@@ -679,13 +680,26 @@ MemEventBase* MemController::writeData(MemEvent* event) {
                 size_t size = monitor_info.size;
                 std::vector<uint8_t>& expected = monitor_info.data;
                 std::vector<uint8_t>& data = event->getPayload();
-                bool monitor_hit = true;
-                for (size_t i = 0; i < size; i++) {
-                    if (data[i] != expected[i]) {
-                        monitor_hit = false;
-                        break;
+                bool equal = monitor_info.equal;
+                bool monitor_hit;
+                if (equal) {
+                    monitor_hit = true;
+                    for (size_t i = 0; i < size; i++) {
+                        if (data[i] != expected[i]) {
+                            monitor_hit = false;
+                            break;
+                        }
+                    }
+                } else {
+                    monitor_hit = false;
+                    for (size_t i = 0; i < size; i++) {
+                        if (data[i] != expected[i]) {
+                            monitor_hit = true;
+                            break;
+                        }
                     }
                 }
+
                 if (monitor_hit) {
                     MemEventBase* monitor_resp = monitor_info.event.makeResponse();
                     monitor_list.erase(it);
@@ -713,13 +727,26 @@ MemEventBase* MemController::writeData(MemEvent* event) {
                 size_t size = monitor_info.size;
                 std::vector<uint8_t>& expected = monitor_info.data;
                 std::vector<uint8_t>& data = event->getPayload();
-                bool monitor_hit = true;
-                for (size_t i = 0; i < size; i++) {
-                    if (data[i] != expected[i]) {
-                        monitor_hit = false;
-                        break;
+                bool equal = monitor_info.equal;
+                bool monitor_hit;
+                if (equal) {
+                    monitor_hit = true;
+                    for (size_t i = 0; i < size; i++) {
+                        if (data[i] != expected[i]) {
+                            monitor_hit = false;
+                            break;
+                        }
+                    }
+                } else {
+                    monitor_hit = false;
+                    for (size_t i = 0; i < size; i++) {
+                        if (data[i] != expected[i]) {
+                            monitor_hit = true;
+                            break;
+                        }
                     }
                 }
+
                 if (monitor_hit) {
                     MemEventBase* monitor_resp = monitor_info.event.makeResponse();
                     monitor_list.erase(it);
@@ -768,13 +795,26 @@ MemEventBase* MemController::writeData(Addr addr, std::vector<uint8_t> * data) {
                 monitorInfo monitor_info = it->second;
                 size_t size = monitor_info.size;
                 std::vector<uint8_t>& expected = monitor_info.data;
-                bool monitor_hit = true;
-                for (size_t i = 0; i < size; i++) {
-                    if (data->at(i) != expected[i]) {
-                        monitor_hit = false;
-                        break;
+                bool equal = monitor_info.equal;
+                bool monitor_hit;
+                if (equal) {
+                    monitor_hit = true;
+                    for (size_t i = 0; i < size; i++) {
+                        if (data->at(i) != expected[i]) {
+                            monitor_hit = false;
+                            break;
+                        }
+                    }
+                } else {
+                    monitor_hit = false;
+                    for (size_t i = 0; i < size; i++) {
+                        if (data->at(i) != expected[i]) {
+                            monitor_hit = true;
+                            break;
+                        }
                     }
                 }
+
                 if (monitor_hit) {
                     MemEventBase* monitor_resp = monitor_info.event.makeResponse();
                     monitor_list.erase(it);
@@ -800,17 +840,29 @@ void MemController::readData(Addr addr, size_t bytes, std::vector<uint8_t> &data
 }
 
 
-bool MemController::monitorData(Addr addr, size_t bytes, std::vector<uint8_t> &data, MemEventBase* ev) {
-    bool monitor_hit = true;
-    for (size_t i = 0; i < bytes; i++)  {
-        if (backing_->get(addr + i) != data[i]) {
-            monitor_hit = false;
-            break;
+bool MemController::monitorData(Addr addr, size_t bytes, std::vector<uint8_t> &data, bool equal, MemEventBase* ev) {
+    bool monitor_hit;
+    if (equal) {
+        monitor_hit = true;
+        for (size_t i = 0; i < bytes; i++)  {
+            if (backing_->get(addr + i) != data[i]) {
+                monitor_hit = false;
+                break;
+            }
+        }
+    } else {
+        monitor_hit = false;
+        for (size_t i = 0; i < bytes; i++)  {
+            if (backing_->get(addr + i) != data[i]) {
+                monitor_hit = true;
+                break;
+            }
         }
     }
+
     if (!monitor_hit) {
         CustomMemEvent* cme = static_cast<CustomMemEvent*>(ev);
-        monitorInfo monitor_info = {bytes, data, *cme};
+        monitorInfo monitor_info = {bytes, data, equal, *cme};
         monitor_list.insert({addr, monitor_info});
         return false;
     } else {

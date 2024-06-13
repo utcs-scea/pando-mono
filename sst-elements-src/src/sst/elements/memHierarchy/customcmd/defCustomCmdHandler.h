@@ -52,7 +52,7 @@ public:
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Code here is added by UW and subject to the copyright statement at the top of the file //
   ////////////////////////////////////////////////////////////////////////////////////////////
-  DefCustomCmdMemHandler(ComponentId_t id, Params &params, std::function<void(Addr,size_t,std::vector<uint8_t>&)> read, std::function<MemEventBase*(Addr,std::vector<uint8_t>*)> write, std::function<bool(Addr,size_t,std::vector<uint8_t>&,MemEventBase*)> monitor, std::function<Addr(Addr)> globalToLocal)
+  DefCustomCmdMemHandler(ComponentId_t id, Params &params, std::function<void(Addr,size_t,std::vector<uint8_t>&)> read, std::function<MemEventBase*(Addr,std::vector<uint8_t>*)> write, std::function<bool(Addr,size_t,std::vector<uint8_t>&,bool,MemEventBase*)> monitor, std::function<Addr(Addr)> globalToLocal)
     : CustomCmdMemHandler(id, params, read, write, monitor, globalToLocal) {}
 
   ~DefCustomCmdMemHandler() {}

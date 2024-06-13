@@ -330,12 +330,14 @@ DrvStdMemory::sendRequest(DrvCore *core
         /* do monitor */
         uint64_t size = monitor_req->getSize();
         uint64_t addr = monitor_req->getAddress();
+        bool equal = monitor_req->getEqual();
         output_.verbose(CALL_INFO, 10, DrvMemory::VERBOSE_REQ,
                                 "Sending monitor until request addr=%" PRIx64 " size=%" PRIu64 "\n",
                                 addr, size);
         MonitorReqData *data = new MonitorReqData();
         data->pAddr = addr;
         data->size = size;
+        data->equal = equal;
         data->expected.resize(size);
         monitor_req->getExpected(&data->expected[0]);
         // set monitor type

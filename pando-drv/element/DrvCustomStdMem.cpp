@@ -16,7 +16,7 @@ using namespace MemHierarchy;
 DrvCmdMemHandler::DrvCmdMemHandler(SST::ComponentId_t id, SST::Params& params,
                                    std::function<void(Addr,size_t,std::vector<uint8_t>&)> read,
                                    std::function<MemEventBase*(Addr,std::vector<uint8_t>*)> write,
-                                   std::function<bool(Addr,size_t,std::vector<uint8_t>&,MemEventBase*)> monitor,
+                                   std::function<bool(Addr,size_t,std::vector<uint8_t>&,bool,MemEventBase*)> monitor,
                                    std::function<Addr(MemHierarchy::Addr)> globalToLocal)
   : CustomCmdMemHandler(id, params, read, write, monitor, globalToLocal) {
   int verbose_level = params.find<int>("verbose_level", 0);
@@ -117,7 +117,7 @@ DrvCmdMemHandler::finish(MemEventBase *ev, uint32_t flags) {
   if (monitor_data) {
     output.verbose(CALL_INFO, 1, 0, "Formatting response to monitor memory op\n");
     MemHierarchy::Addr localAddr = translateGlobalToLocal(monitor_data->getRoutingAddress());
-    bool monitor_hit = monitorData(localAddr, monitor_data->getSize(), monitor_data->expected, ev);
+    bool monitor_hit = monitorData(localAddr, monitor_data->getSize(), monitor_data->expected, monitor_data->equal, ev);
     monitor_resp = nullptr;
     if (monitor_hit) {
       MemEventBase *MEB = ev->makeResponse();

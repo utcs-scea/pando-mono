@@ -179,10 +179,10 @@ public:
         return this->done();
       });
     } else {
-      DrvAPI::monitor_until<bool>(m_flag.address, true);
+      DrvAPI::monitor_until<bool>(m_flag.address, true, true);
     }
 #else
-    DrvAPI::monitor_until<bool>(m_flag.address, true);
+    DrvAPI::monitor_until<bool>(m_flag.address, true, true);
 #endif
 
 #endif
@@ -382,10 +382,10 @@ public:
         return this->done(pos);
       });
     } else {
-      DrvAPI::monitor_until<bool>((m_flags+pos).address, true);
+      DrvAPI::monitor_until<bool>((m_flags+pos).address, true, true);
     }
 #else
-    DrvAPI::monitor_until<bool>((m_flags+pos).address, true);
+    DrvAPI::monitor_until<bool>((m_flags+pos).address, true, true);
 #endif
 
 #endif
@@ -424,12 +424,12 @@ public:
       });
     } else {
       for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
-        DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true);
+        DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true, true);
       }
     }
 #else
     for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
-      DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true);
+      DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true, true);
     }
 #endif
 

@@ -109,7 +109,8 @@ public:
     ss << std::hex;
     ss << pAddr << ", size: ";
     ss << std::dec;
-    ss << size << "} ";
+    ss << size << ", equal: ";
+    ss << equal << "} ";
     return ss.str();
   }
 
@@ -117,6 +118,7 @@ public:
   void serialize_order(SST::Core::Serialization::serializer &ser) override {
     CustomData::serialize_order(ser);
     ser & expected;
+    ser & equal;
     ser & size;
     ser & pAddr;
   }
@@ -124,6 +126,7 @@ public:
 
 public:
   std::vector<uint8_t> expected;
+  bool equal;
   int64_t size;
   Interfaces::StandardMem::Addr pAddr;
 
@@ -149,7 +152,7 @@ public:
   DrvCmdMemHandler(SST::ComponentId_t id, SST::Params& params,
                    std::function<void(MemHierarchy::Addr,size_t,std::vector<uint8_t>&)> read, // read backing store
                    std::function<MemHierarchy::MemEventBase*(MemHierarchy::Addr,std::vector<uint8_t>*)> write, // write backing store
-                   std::function<bool(MemHierarchy::Addr,size_t,std::vector<uint8_t>&,MemHierarchy::MemEventBase*)> monitor, // monitor backing store
+                   std::function<bool(MemHierarchy::Addr,size_t,std::vector<uint8_t>&,bool,MemHierarchy::MemEventBase*)> monitor, // monitor backing store
                    std::function<MemHierarchy::Addr(MemHierarchy::Addr)> globalToLocal); // translate global to local address
 
   /* destructor */

@@ -308,6 +308,7 @@ public:
     : DrvAPIMem(address) {}
   virtual void getExpected(void *p) = 0;
   virtual size_t getSize() const { return 0; }
+  virtual bool getEqual() { return false; }
 };
 
 /**
@@ -319,16 +320,18 @@ template <typename T>
 class DrvAPIMemMonitorUntil : public DrvAPIMemMonitor
 {
 public:
-  DrvAPIMemMonitorUntil(DrvAPIAddress address, T value)
-      : DrvAPIMemMonitor(address), expected_(value) {}
+  DrvAPIMemMonitorUntil(DrvAPIAddress address, T value, bool equal)
+      : DrvAPIMemMonitor(address), expected_(value), equal_(equal) {}
 
   void getExpected(void *p) override {
     *static_cast<T*>(p) = expected_;
   }
   size_t getSize() const override { return sizeof(T); }
+  bool getEqual() override { return equal_; }
 
 private:
   T expected_;
+  bool equal_;
 };
 
 

@@ -209,12 +209,13 @@ private:
     void handleCustomEvent(MemEventBase* ev);
 
 protected:
-    bool monitorData(Addr addr, size_t size, std::vector<uint8_t>& data, MemEventBase* event);
+    bool monitorData(Addr addr, size_t size, std::vector<uint8_t>& data, bool equal, MemEventBase* event);
 
 private:
     struct monitorInfo {
         size_t size;
         std::vector<uint8_t> data;
+        bool equal;
         CustomMemEvent event;
     };
 
