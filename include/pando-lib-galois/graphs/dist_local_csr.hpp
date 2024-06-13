@@ -437,7 +437,8 @@ private:
     DistLocalCSR thisCSR = *this;
 
     if (physicalHost != pando::getCurrentPlace().node.id) {
-      auto locality = pando::Place(pando::NodeIndex{physicalHost}, pando::anyPod, pando::anyCore);
+      auto locality = pando::Place(pando::NodeIndex{physicalHost}, pando::anyPod,
+                                   pando::CoreIndex(102 % pando::getCoreDims().x, 0));
       return PANDO_EXPECT_CHECK(pando::executeOnWait(locality, f, thisCSR, tid));
     } else {
       return f(thisCSR, tid);
