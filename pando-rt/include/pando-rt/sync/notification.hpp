@@ -12,6 +12,10 @@
 #include "atomic.hpp"
 #include "wait.hpp"
 
+#ifdef PANDO_RT_USE_BACKEND_DRVX
+#include "DrvAPIMemory.hpp"
+#endif
+
 namespace pando {
 
 class Notification;
@@ -163,9 +167,25 @@ public:
    * @brief Waits until @ref HandleType::notify is called.
    */
   void wait() {
+#ifdef PANDO_RT_USE_BACKEND_PREP
     pando::waitUntil([this] {
       return this->done();
     });
+#else
+
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      pando::waitUntil([this] {
+        return this->done();
+      });
+    } else {
+      DrvAPI::monitor_until<bool>(m_flag.address, true);
+    }
+#else
+    DrvAPI::monitor_until<bool>(m_flag.address, true);
+#endif
+
+#endif
   }
 
   /**
@@ -177,10 +197,9 @@ public:
    */
   template <typename Rep, typename Period>
   [[nodiscard]] bool waitFor(std::chrono::duration<Rep, Period> timeout) {
-    using ClockType = std::chrono::steady_clock;
-
     bool completed = false;
-    const auto start = ClockType::now();
+#ifdef PANDO_RT_USE_BACKEND_PREP
+    const auto start = std::chrono::steady_clock::now();
     pando::waitUntil([this, &completed, start, timeout] {
       // check if event has occurred
       if (this->done()) {
@@ -190,6 +209,31 @@ public:
       // check if timeout expired
       return (std::chrono::steady_clock::now() - start) > timeout;
     });
+#else
+
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      const auto start = std::chrono::steady_clock::now();
+      pando::waitUntil([this, &completed, start, timeout] {
+        // check if event has occurred
+        if (this->done()) {
+          completed = true;
+          return true;
+        }
+        // check if timeout expired
+        return (std::chrono::steady_clock::now() - start) > timeout;
+      });
+    } else {
+      DrvAPI::monitor_until<bool>(m_flag.address, true);
+      completed = true;
+    }
+#else
+    (void) timeout;
+    DrvAPI::monitor_until<bool>(m_flag.address, true);
+    completed = true;
+#endif
+
+#endif
     return completed;
   }
 };
@@ -350,15 +394,32 @@ public:
    * @brief Waits until @ref HandleType::notify is called for @c pos.
    */
   void wait(SizeType pos) {
+#ifdef PANDO_RT_USE_BACKEND_PREP
     pando::waitUntil([this, pos]() {
       return this->done(pos);
     });
+#else
+
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      pando::waitUntil([this, pos]() {
+        return this->done(pos);
+      });
+    } else {
+      DrvAPI::monitor_until<bool>((m_flags+pos).address, true);
+    }
+#else
+    DrvAPI::monitor_until<bool>((m_flags+pos).address, true);
+#endif
+
+#endif
   }
 
   /**
    * @brief Waits until @ref HandleType::notify is called for the whole array.
    */
   void wait() {
+#ifdef PANDO_RT_USE_BACKEND_PREP
     SizeType doneIndex = 0;
     pando::waitUntil([this, &doneIndex]() mutable {
       // check all events that have not been checked yet
@@ -370,6 +431,33 @@ public:
       atomicThreadFence(std::memory_order_acquire);
       return true;
     });
+#else
+
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      SizeType doneIndex = 0;
+      pando::waitUntil([this, &doneIndex]() mutable {
+        // check all events that have not been checked yet
+        for (; doneIndex < this->size(); ++doneIndex) {
+          if (m_flags[doneIndex] == false) {
+            return false;
+          }
+        }
+        atomicThreadFence(std::memory_order_acquire);
+        return true;
+      });
+    } else {
+      for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
+        DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true);
+      }
+    }
+#else
+    for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
+      DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true);
+    }
+#endif
+
+#endif
   }
 
   /**
@@ -383,13 +471,12 @@ public:
    */
   template <typename Rep, typename Period>
   [[nodiscard]] bool waitFor(SizeType pos, std::chrono::duration<Rep, Period> timeout) {
-    using ClockType = std::chrono::steady_clock;
-
     bool completed = false;
-    const auto start = ClockType::now();
+#ifdef PANDO_RT_USE_BACKEND_PREP
+    const auto start = std::chrono::steady_clock::now();
     pando::waitUntil([this, pos, start, timeout, &completed]() mutable {
       // check if event occurred
-      if (this->done()) {
+      if (this->done(pos)) {
         completed = true;
         return true;
       }
@@ -397,6 +484,32 @@ public:
       // check if timeout has expired
       return (std::chrono::steady_clock::now() - start) > timeout;
     });
+#else
+
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      const auto start = std::chrono::steady_clock::now();
+      pando::waitUntil([this, pos, start, timeout, &completed]() mutable {
+        // check if event occurred
+        if (this->done(pos)) {
+          completed = true;
+          return true;
+        }
+
+        // check if timeout has expired
+        return (std::chrono::steady_clock::now() - start) > timeout;
+      });
+    } else {
+      DrvAPI::monitor_until<bool>((m_flags+pos).address, true);
+      completed = true;
+    }
+#else
+    (void) timeout;
+    DrvAPI::monitor_until<bool>((m_flags+pos).address, true);
+    completed = true;
+#endif
+
+#endif
     return completed;
   }
 
@@ -409,11 +522,10 @@ public:
    */
   template <typename Rep, typename Period>
   [[nodiscard]] bool waitFor(std::chrono::duration<Rep, Period> timeout) {
-    using ClockType = std::chrono::steady_clock;
-
-    SizeType doneIndex = 0;
     bool completed = false;
-    const auto start = ClockType::now();
+#ifdef PANDO_RT_USE_BACKEND_PREP
+    SizeType doneIndex = 0;
+    const auto start = std::chrono::steady_clock::now();
     pando::waitUntil([this, &doneIndex, start, timeout, &completed]() mutable {
       // check all events that have not been checked yet
       for (; doneIndex < this->size(); ++doneIndex) {
@@ -432,6 +544,45 @@ public:
       // check if timeout has expired
       return (std::chrono::steady_clock::now() - start) > timeout;
     });
+#else
+
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      SizeType doneIndex = 0;
+      const auto start = std::chrono::steady_clock::now();
+      pando::waitUntil([this, &doneIndex, start, timeout, &completed]() mutable {
+        // check all events that have not been checked yet
+        for (; doneIndex < this->size(); ++doneIndex) {
+          if (m_flags[doneIndex] == false) {
+            break;
+          }
+        }
+
+        // check if all events have occured
+        if (doneIndex == this->size()) {
+          completed = true;
+          atomicThreadFence(std::memory_order_acquire);
+          return true;
+        }
+
+        // check if timeout has expired
+        return (std::chrono::steady_clock::now() - start) > timeout;
+      });
+    } else {
+      for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
+        DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true);
+      }
+      completed = true;
+    }
+#else
+    (void) timeout;
+    for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
+      DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true);
+    }
+    completed = true;
+#endif
+
+#endif
     return completed;
   }
 };
