@@ -329,7 +329,9 @@ public:
 
 private:
   constexpr static pando::GlobalRef<CSR> getCachedCSR(CSRCache cache, std::uint64_t i) {
-    return fmap(cache.getLocalRef(), operator[], i);
+    return applyFunc(cache.getLocalRef(), [i](HostIndexedMap<CSR> map) {
+      return map[i];
+    });
   }
 
   template <typename T>
@@ -500,9 +502,18 @@ public:
   }
 
   VertexDataRange vertexDataRange() noexcept {
-    return VertexDataRange{arrayOfCSRs, lift(getCSR(0), vertexData.begin),
-                           lift(getCSR(arrayOfCSRs.size() - 1), vertexData.end), numVertices};
+    return VertexDataRange{arrayOfCSRs,
+                           applyFunc(getCSR(0),
+                                     [](CSR csr) {
+                                       return csr.vertexData.begin();
+                                     }),
+                           applyFunc(getCSR(arrayOfCSRs.size() - 1),
+                                     [](CSR csr) {
+                                       return csr.vertexData.end();
+                                     }),
+                           numVertices};
   }
+
   EdgeDataRange edgeDataRange(VertexTopologyID vertex) noexcept {
     return fmap(getCSR(vertex), edgeDataRange, vertex);
   }
