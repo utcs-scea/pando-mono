@@ -148,10 +148,10 @@ public:
         return *m_ptr != nullptr;
       });
     } else {
-      DrvAPI::monitor_until<GlobalPtr<T>>(m_ptr.address, nullptr, false);
+      DrvAPI::monitor_until_not<GlobalPtr<T>>(m_ptr.address, nullptr);
     }
 #else
-    DrvAPI::monitor_until<GlobalPtr<T>>(m_ptr.address, nullptr, false);
+    DrvAPI::monitor_until_not<GlobalPtr<T>>(m_ptr.address, nullptr);
 #endif
 
 #endif

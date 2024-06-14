@@ -136,10 +136,10 @@ public:
         return ready;
       });
     } else {
-      DrvAPI::monitor_until<int64_t>(m_count.address, static_cast<std::int64_t>(0), true);
+      DrvAPI::monitor_until<int64_t>(m_count.address, static_cast<std::int64_t>(0));
     }
 #else
-    DrvAPI::monitor_until<int64_t>(m_count.address, static_cast<std::int64_t>(0), true);
+    DrvAPI::monitor_until<int64_t>(m_count.address, static_cast<std::int64_t>(0));
 #endif
 
 #endif

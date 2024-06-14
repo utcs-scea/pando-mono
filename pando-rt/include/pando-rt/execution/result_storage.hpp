@@ -76,11 +76,11 @@ struct ResultStorage {
       });
     } else {
       GlobalPtr<std::int32_t> readyPtr{&ready};
-      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1), true);
+      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
     }
 #else
     GlobalPtr<std::int32_t> readyPtr{&ready};
-    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1), true);
+    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
 #endif
 
 #endif
@@ -134,11 +134,11 @@ struct ResultStorage<void> {
       });
     } else {
       GlobalPtr<std::int32_t> readyPtr{&ready};
-      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1), true);
+      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
     }
 #else
     GlobalPtr<std::int32_t> readyPtr{&ready};
-    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1), true);
+    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
 #endif
 
 #endif
@@ -217,11 +217,11 @@ public:
       });
     } else {
       auto readyPtr = memberPtrOf<std::int32_t>(m_storage, offsetof(StorageType, ready));
-      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1), true);
+      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
     }
 #else
     auto readyPtr = memberPtrOf<std::int32_t>(m_storage, offsetof(StorageType, ready));
-    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1), true);
+    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
 #endif
 
 #endif
