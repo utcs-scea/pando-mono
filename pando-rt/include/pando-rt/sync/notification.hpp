@@ -163,9 +163,7 @@ public:
    * @brief Waits until @ref HandleType::notify is called.
    */
   void wait() {
-    pando::waitUntil([this] {
-      return this->done();
-    });
+    pando::monitorUntil<bool>(m_flag, true);
   }
 
   /**
@@ -350,26 +348,16 @@ public:
    * @brief Waits until @ref HandleType::notify is called for @c pos.
    */
   void wait(SizeType pos) {
-    pando::waitUntil([this, pos]() {
-      return this->done(pos);
-    });
+    pando::monitorUntil<bool>(m_flags+pos, true);
   }
 
   /**
    * @brief Waits until @ref HandleType::notify is called for the whole array.
    */
   void wait() {
-    SizeType doneIndex = 0;
-    pando::waitUntil([this, &doneIndex]() mutable {
-      // check all events that have not been checked yet
-      for (; doneIndex < this->size(); ++doneIndex) {
-        if (m_flags[doneIndex] == false) {
-          return false;
-        }
-      }
-      atomicThreadFence(std::memory_order_acquire);
-      return true;
-    });
+    for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
+      pando::monitorUntil<bool>(m_flags+doneIndex, true);
+    }
   }
 
   /**
@@ -389,7 +377,7 @@ public:
     const auto start = ClockType::now();
     pando::waitUntil([this, pos, start, timeout, &completed]() mutable {
       // check if event occurred
-      if (this->done()) {
+      if (this->done(pos)) {
         completed = true;
         return true;
       }

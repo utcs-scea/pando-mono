@@ -136,9 +136,7 @@ public:
    * @return @c true if there was no error and @c false if there was an error.
    */
   bool wait() {
-    waitUntil([this] {
-      return *m_ptr != nullptr;
-    });
+    pando::monitorUntilNot<GlobalPtr<T>>(m_ptr, nullptr);
     return s_errorPtr != *m_ptr;
   }
 };

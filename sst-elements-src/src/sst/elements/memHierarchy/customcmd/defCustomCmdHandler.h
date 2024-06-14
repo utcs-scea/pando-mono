@@ -52,8 +52,8 @@ public:
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Code here is added by UW and subject to the copyright statement at the top of the file //
   ////////////////////////////////////////////////////////////////////////////////////////////
-  DefCustomCmdMemHandler(ComponentId_t id, Params &params, std::function<void(Addr,size_t,std::vector<uint8_t>&)> read, std::function<void(Addr,std::vector<uint8_t>*)> write, std::function<Addr(Addr)> globalToLocal)
-    : CustomCmdMemHandler(id, params, read, write, globalToLocal) {}
+  DefCustomCmdMemHandler(ComponentId_t id, Params &params, std::function<void(Addr,size_t,std::vector<uint8_t>&)> read, std::function<MemEventBase*(Addr,std::vector<uint8_t>*)> write, std::function<bool(Addr,size_t,std::vector<uint8_t>&,bool,MemEventBase*)> monitor, std::function<Addr(Addr)> globalToLocal)
+    : CustomCmdMemHandler(id, params, read, write, monitor, globalToLocal) {}
 
   ~DefCustomCmdMemHandler() {}
 
@@ -62,6 +62,8 @@ public:
   Interfaces::StandardMem::CustomData* ready(MemEventBase* ev) override;
 
   MemEventBase* finish(MemEventBase *ev, uint32_t flags) override;
+
+  MemEventBase* getMonitorResponse() override;
 
 protected:
 private:

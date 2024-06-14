@@ -83,9 +83,7 @@ template <typename ResultStorageType, typename F, typename... Args>
 #endif // PANDO_RT_USE_BACKEND_PREP
 
   // wait for the result
-  waitUntil([&resultStorage] {
-    return resultStorage.hasValue();
-  });
+  resultStorage.wait();
 
   if constexpr (std::is_same_v<typename ResultStorageType::ValueType, void>) {
     return {};

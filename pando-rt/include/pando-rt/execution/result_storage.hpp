@@ -57,6 +57,11 @@ struct ResultStorage {
   T moveOutValue() noexcept {
     return std::move(*reinterpret_cast<T*>(data));
   }
+
+  void wait() noexcept {
+    GlobalPtr<std::int32_t> readyPtr{&ready};
+    pando::monitorUntil<std::int32_t>(readyPtr, 1);
+  }
 };
 
 /**
@@ -90,6 +95,11 @@ struct ResultStorage<void> {
 
   bool hasValue() const noexcept {
     return atomicLoad(&ready, std::memory_order_acquire) == 1;
+  }
+
+  void wait() noexcept {
+    GlobalPtr<std::int32_t> readyPtr{&ready};
+    pando::monitorUntil<std::int32_t>(readyPtr, 1);
   }
 };
 
@@ -149,6 +159,11 @@ public:
   auto moveOutValue() noexcept {
     auto ptr = memberPtrOf<T>(m_storage, offsetof(StorageType, data));
     return *ptr;
+  }
+
+  void wait() noexcept {
+    auto readyPtr = memberPtrOf<std::int32_t>(m_storage, offsetof(StorageType, ready));
+    pando::monitorUntil<std::int32_t>(readyPtr, 1);
   }
 };
 

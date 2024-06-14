@@ -46,7 +46,7 @@ public:
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Code here is added by UW and subject to the copyright statement at the top of the file //
   ////////////////////////////////////////////////////////////////////////////////////////////
-    SST_ELI_REGISTER_SUBCOMPONENT_API(SST::MemHierarchy::CustomCmdMemHandler, std::function<void(Addr,size_t,std::vector<uint8_t>&)>, std::function<void(Addr,std::vector<uint8_t>*)>, std::function<Addr(Addr)>)
+    SST_ELI_REGISTER_SUBCOMPONENT_API(SST::MemHierarchy::CustomCmdMemHandler, std::function<void(Addr,size_t,std::vector<uint8_t>&)>, std::function<SST::MemHierarchy::MemEventBase*(Addr,std::vector<uint8_t>*)>, std::function<bool(Addr,size_t,std::vector<uint8_t>&,bool,SST::MemHierarchy::MemEventBase*)>, std::function<Addr(Addr)>)
 
     class MemEventInfo {
     public:
@@ -66,7 +66,7 @@ public:
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Code here is added by UW and subject to the copyright statement at the top of the file //
   ////////////////////////////////////////////////////////////////////////////////////////////
-    CustomCmdMemHandler(ComponentId_t id, Params &params, std::function<void(Addr,size_t,std::vector<uint8_t>&)> read, std::function<void(Addr,std::vector<uint8_t>*)> write, std::function<Addr(Addr)> globalToLocal) : SubComponent(id) {
+    CustomCmdMemHandler(ComponentId_t id, Params &params, std::function<void(Addr,size_t,std::vector<uint8_t>&)> read, std::function<MemEventBase*(Addr,std::vector<uint8_t>*)> write, std::function<bool(Addr,size_t,std::vector<uint8_t>&,bool,MemEventBase*)> monitor, std::function<Addr(Addr)> globalToLocal) : SubComponent(id) {
         /* Create debug output */
         int debugLevel = params.find<int>("debug_level", 0);
         int debugLoc = params.find<int>("debug", 0);
@@ -82,6 +82,7 @@ public:
         // Calls to read & write data
         readData = read;
         writeData = write;
+        monitorData = monitor;
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// Code here is added by UW and subject to the copyright statement at the top of the file //
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -118,6 +119,8 @@ public:
      */
     virtual MemEventBase* finish(MemEventBase *ev, uint32_t flags) =0;
 
+    virtual MemEventBase* getMonitorResponse() =0;
+
 protected:
 
     // Debug
@@ -125,7 +128,8 @@ protected:
     std::set<Addr> DEBUG_ADDR;
 
     std::function<void(Addr,size_t,std::vector<uint8_t>&)> readData;
-    std::function<void(Addr,std::vector<uint8_t>*)> writeData;
+    std::function<MemEventBase*(Addr,std::vector<uint8_t>*)> writeData;
+    std::function<bool(Addr,size_t,std::vector<uint8_t>&,bool,MemEventBase*)> monitorData;
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Code here is added by UW and subject to the copyright statement at the top of the file //
   ////////////////////////////////////////////////////////////////////////////////////////////

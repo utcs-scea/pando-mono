@@ -117,11 +117,7 @@ public:
    * @brief Waits until the number of items to wait on is zero.
    */
   [[nodiscard]] pando::Status wait() {
-    pando::waitUntil([this] {
-      const bool ready = *m_count <= static_cast<std::int64_t>(0);
-      PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
-      return ready;
-    });
+    pando::monitorUntil<std::int64_t>(m_count, 0);
     pando::atomicThreadFence(std::memory_order_acquire);
     PANDO_MEM_STAT_NEW_PHASE();
     if (*m_count < static_cast<std::int64_t>(0)) {
