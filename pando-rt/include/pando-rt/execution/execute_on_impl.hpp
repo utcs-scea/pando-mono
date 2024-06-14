@@ -8,6 +8,11 @@
 #include "../status.hpp"
 #include "export.h"
 #include "task.hpp"
+#include <pando-rt/benchmark/counters.hpp>
+#include <random>
+
+extern counter::Record<std::minstd_rand> perCoreRNG;
+extern counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
 
 namespace pando {
 

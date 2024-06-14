@@ -15,25 +15,25 @@
 
 namespace {
 
-pando::NodeSpecificStorage<std::int64_t> counter;
+pando::NodeSpecificStorage<std::int64_t> nodeCounter;
 
 struct IncrementCounter {
   void operator()(std::int64_t val) {
-    pando::atomicIncrement(counter.getPointer(), val, std::memory_order_relaxed);
+    pando::atomicIncrement(nodeCounter.getPointer(), val, std::memory_order_relaxed);
   }
 };
 
 struct IncrementCounters {
   void operator()(std::int64_t x, std::int64_t y) {
-    pando::atomicIncrement(&counter, x, std::memory_order_relaxed);
-    pando::atomicIncrement(&counter, y, std::memory_order_relaxed);
+    pando::atomicIncrement(&nodeCounter, x, std::memory_order_relaxed);
+    pando::atomicIncrement(&nodeCounter, y, std::memory_order_relaxed);
   }
 };
 
 } // namespace
 
 TEST(BulkExecuteOn, ThisNode) {
-  counter = 0;
+  nodeCounter = 0;
 
   const auto& thisPlace = pando::getCurrentPlace();
   const pando::Place place{thisPlace.node, pando::PodIndex{0, 0}, pando::CoreIndex{0, 0}};
@@ -43,42 +43,42 @@ TEST(BulkExecuteOn, ThisNode) {
             pando::Status::Success);
 
   pando::waitUntil([&] {
-    return pando::atomicLoad(&counter, std::memory_order_relaxed) == 10;
+    return pando::atomicLoad(&nodeCounter, std::memory_order_relaxed) == 10;
   });
 
-  EXPECT_EQ(pando::atomicLoad(&counter, std::memory_order_relaxed), 10);
+  EXPECT_EQ(pando::atomicLoad(&nodeCounter, std::memory_order_relaxed), 10);
 }
 
 TEST(BulkExecuteOn, ThisNodeAnyPod) {
-  counter = 0;
+  nodeCounter = 0;
 
   EXPECT_EQ(pando::bulkExecuteOn(pando::anyPod, IncrementCounter{}, std::make_tuple(1),
                                  std::make_tuple(2), std::make_tuple(3), std::make_tuple(4)),
             pando::Status::Success);
 
   pando::waitUntil([&] {
-    return pando::atomicLoad(&counter, std::memory_order_relaxed) == 10;
+    return pando::atomicLoad(&nodeCounter, std::memory_order_relaxed) == 10;
   });
 
-  EXPECT_EQ(pando::atomicLoad(&counter, std::memory_order_relaxed), 10);
+  EXPECT_EQ(pando::atomicLoad(&nodeCounter, std::memory_order_relaxed), 10);
 }
 
 TEST(BulkExecuteOn, ThisNodeAnyCore) {
-  counter = 0;
+  nodeCounter = 0;
 
   EXPECT_EQ(pando::bulkExecuteOn(pando::anyCore, IncrementCounter{}, std::make_tuple(1),
                                  std::make_tuple(2), std::make_tuple(3), std::make_tuple(4)),
             pando::Status::Success);
 
   pando::waitUntil([&] {
-    return pando::atomicLoad(&counter, std::memory_order_relaxed) == 10;
+    return pando::atomicLoad(&nodeCounter, std::memory_order_relaxed) == 10;
   });
 
-  EXPECT_EQ(pando::atomicLoad(&counter, std::memory_order_relaxed), 10);
+  EXPECT_EQ(pando::atomicLoad(&nodeCounter, std::memory_order_relaxed), 10);
 }
 
 TEST(BulkExecuteOn, ThisNodeMultipleArgs) {
-  counter = 0;
+  nodeCounter = 0;
 
   const auto& thisPlace = pando::getCurrentPlace();
   const pando::Place place{thisPlace.node, pando::PodIndex{0, 0}, pando::CoreIndex{0, 0}};
@@ -89,8 +89,8 @@ TEST(BulkExecuteOn, ThisNodeMultipleArgs) {
       pando::Status::Success);
 
   pando::waitUntil([&] {
-    return pando::atomicLoad(&counter, std::memory_order_relaxed) == 20;
+    return pando::atomicLoad(&nodeCounter, std::memory_order_relaxed) == 20;
   });
 
-  EXPECT_EQ(pando::atomicLoad(&counter, std::memory_order_relaxed), 20);
+  EXPECT_EQ(pando::atomicLoad(&nodeCounter, std::memory_order_relaxed), 20);
 }

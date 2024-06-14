@@ -22,7 +22,7 @@
 #include "drvx/drvx.hpp"
 #endif
 
-constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 32;
+constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 16;
 
 constexpr bool IDLE_TIMER_ENABLE = false;
 counter::Record<std::int64_t> idleCount = counter::Record<std::int64_t>();
@@ -80,7 +80,7 @@ extern "C" int __start(int argc, char** argv) {
               break;
 
             case SchedulerFailState::STEAL:
-              for(std::int8_t i = 0; i <= coreDims.x && !task.has_value(); i++) {
+              for(std::int8_t i = 0; i < coreDims.x && !task.has_value(); i++) {
                 auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
                 if(!otherQueue || otherQueue == queue) {continue;}
                 if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
