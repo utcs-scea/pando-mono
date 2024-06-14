@@ -30,8 +30,10 @@ Status detail::executeOn(Place place, Task task) {
 
   const auto& coreDims = getCoreDims();
   if (place.core == anyCore) {
+    auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
+    assert(coreIdx < pando::getCoreDims().x);
     // anyCore: get scheduler core queue
-    const CoreIndex schedulerCoreIndex(coreDims.x, 0);
+    const CoreIndex schedulerCoreIndex(coreIdx, 0);
     place.core = schedulerCoreIndex;
   } else {
     if ((place.core < CoreIndex{0, 0}) ||
