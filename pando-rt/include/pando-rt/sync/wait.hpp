@@ -8,7 +8,9 @@
 #include <tuple>
 
 #include "../utility/function.hpp"
+#include "../memory/global_ptr.hpp"
 #include "export.h"
+#include <pando-rt/tracing.hpp>
 
 namespace pando {
 
@@ -51,6 +53,68 @@ public:
  * @ingroup ROOT
  */
 PANDO_RT_EXPORT void waitUntil(const Function<bool()>& f);
+
+/**
+ * @brief Waits until the value of @p ptr becomes @p value.
+ *
+ * @ingroup ROOT
+ */
+template <typename T>
+void monitorUntil(GlobalPtr<T> ptr, T value) {
+#ifdef PANDO_RT_USE_BACKEND_PREP
+    waitUntil([ptr, value] {
+      const bool ready = *ptr == value;
+      PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
+      return ready;
+    });
+#else
+
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      waitUntil([ptr, value] {
+        const bool ready = *ptr == value;
+        return ready;
+      });
+    } else {
+      DrvAPI::monitor_until<T>(ptr.address, value);
+    }
+#else
+    DrvAPI::monitor_until<T>(ptr.address, value);
+#endif
+
+#endif
+}
+
+/**
+ * @brief Waits until the value of @p ptr is no longer @p value.
+ *
+ * @ingroup ROOT
+ */
+template <typename T>
+void monitorUntilNot(GlobalPtr<T> ptr, T value) {
+#ifdef PANDO_RT_USE_BACKEND_PREP
+    waitUntil([ptr, value] {
+      const bool ready = *ptr != value;
+      PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
+      return ready;
+    });
+#else
+
+#if defined(PANDO_RT_BYPASS)
+    if (getBypassFlag()) {
+      waitUntil([ptr, value] {
+        const bool ready = *ptr != value;
+        return ready;
+      });
+    } else {
+      DrvAPI::monitor_until_not<T>(ptr.address, value);
+    }
+#else
+    DrvAPI::monitor_until_not<T>(ptr.address, value);
+#endif
+
+#endif
+}
 
 /**
  * @brief Waits for all tasks to finish executing.

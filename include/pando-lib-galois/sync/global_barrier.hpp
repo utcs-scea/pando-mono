@@ -13,10 +13,6 @@
 #include <pando-rt/sync/notification.hpp>
 #include <pando-rt/tracing.hpp>
 
-#ifdef PANDO_RT_USE_BACKEND_DRVX
-#include "DrvAPIMemory.hpp"
-#endif
-
 namespace galois {
 class GlobalBarrier {
   ///@brief This is a pointer to the counter used by everyone
@@ -98,28 +94,7 @@ public:
    * @brief Waits until the number of items to wait on is zero.
    */
   [[nodiscard]] pando::Status wait() {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-    pando::waitUntil([this] {
-      const bool ready = *m_count <= static_cast<std::int64_t>(0);
-      PANDO_MEM_STAT_WAIT_GROUP_ACCESS();
-      return ready;
-    });
-#else
-
-#if defined(PANDO_RT_BYPASS)
-    if (getBypassFlag()) {
-      pando::waitUntil([this] {
-        const bool ready = *m_count <= static_cast<std::int64_t>(0);
-        return ready;
-      });
-    } else {
-      DrvAPI::monitor_until(m_count.address, static_cast<std::int64_t>(0));
-    }
-#else
-    DrvAPI::monitor_until(m_count.address, static_cast<std::int64_t>(0));
-#endif
-
-#endif
+    pando::monitorUntil<std::int64_t>(m_count, 0);
     pando::atomicThreadFence(std::memory_order_acquire);
     PANDO_MEM_STAT_NEW_PHASE();
     if (*m_count < static_cast<std::int64_t>(0)) {

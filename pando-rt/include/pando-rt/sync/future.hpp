@@ -136,25 +136,7 @@ public:
    * @return @c true if there was no error and @c false if there was an error.
    */
   bool wait() {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-    waitUntil([this] {
-      return *m_ptr != nullptr;
-    });
-#else
-
-#if defined(PANDO_RT_BYPASS)
-    if (getBypassFlag()) {
-      waitUntil([this] {
-        return *m_ptr != nullptr;
-      });
-    } else {
-      DrvAPI::monitor_until_not<GlobalPtr<T>>(m_ptr.address, nullptr);
-    }
-#else
-    DrvAPI::monitor_until_not<GlobalPtr<T>>(m_ptr.address, nullptr);
-#endif
-
-#endif
+    pando::monitorUntilNot<GlobalPtr<T>>(m_ptr, nullptr);
     return s_errorPtr != *m_ptr;
   }
 };

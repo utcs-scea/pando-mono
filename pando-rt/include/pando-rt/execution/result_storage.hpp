@@ -11,10 +11,6 @@
 #include "../memory_resource.hpp"
 #include "../sync/atomic.hpp"
 
-#ifdef PANDO_RT_USE_BACKEND_DRVX
-#include "DrvAPIMemory.hpp"
-#endif
-
 namespace pando {
 
 namespace detail {
@@ -63,27 +59,8 @@ struct ResultStorage {
   }
 
   void wait() noexcept {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-    waitUntil([this] {
-      return hasValue();
-    });
-#else
-
-#if defined(PANDO_RT_BYPASS)
-    if (getBypassFlag()) {
-        waitUntil([this] {
-        return hasValue();
-      });
-    } else {
-      GlobalPtr<std::int32_t> readyPtr{&ready};
-      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
-    }
-#else
     GlobalPtr<std::int32_t> readyPtr{&ready};
-    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
-#endif
-
-#endif
+    pando::monitorUntil<std::int32_t>(readyPtr, 1);
   }
 };
 
@@ -121,27 +98,8 @@ struct ResultStorage<void> {
   }
 
   void wait() noexcept {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-    waitUntil([this] {
-      return hasValue();
-    });
-#else
-
-#if defined(PANDO_RT_BYPASS)
-    if (getBypassFlag()) {
-        waitUntil([this] {
-        return hasValue();
-      });
-    } else {
-      GlobalPtr<std::int32_t> readyPtr{&ready};
-      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
-    }
-#else
     GlobalPtr<std::int32_t> readyPtr{&ready};
-    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
-#endif
-
-#endif
+    pando::monitorUntil<std::int32_t>(readyPtr, 1);
   }
 };
 
@@ -204,27 +162,8 @@ public:
   }
 
   void wait() noexcept {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-    waitUntil([this] {
-      return hasValue();
-    });
-#else
-
-#if defined(PANDO_RT_BYPASS)
-    if (getBypassFlag()) {
-        waitUntil([this] {
-        return hasValue();
-      });
-    } else {
-      auto readyPtr = memberPtrOf<std::int32_t>(m_storage, offsetof(StorageType, ready));
-      DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
-    }
-#else
     auto readyPtr = memberPtrOf<std::int32_t>(m_storage, offsetof(StorageType, ready));
-    DrvAPI::monitor_until<std::int32_t>(readyPtr.address, static_cast<std::int32_t>(1));
-#endif
-
-#endif
+    pando::monitorUntil<std::int32_t>(readyPtr, 1);
   }
 };
 

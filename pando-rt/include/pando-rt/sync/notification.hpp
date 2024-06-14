@@ -12,10 +12,6 @@
 #include "atomic.hpp"
 #include "wait.hpp"
 
-#ifdef PANDO_RT_USE_BACKEND_DRVX
-#include "DrvAPIMemory.hpp"
-#endif
-
 namespace pando {
 
 class Notification;
@@ -167,25 +163,7 @@ public:
    * @brief Waits until @ref HandleType::notify is called.
    */
   void wait() {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-    pando::waitUntil([this] {
-      return this->done();
-    });
-#else
-
-#if defined(PANDO_RT_BYPASS)
-    if (getBypassFlag()) {
-      pando::waitUntil([this] {
-        return this->done();
-      });
-    } else {
-      DrvAPI::monitor_until<bool>(m_flag.address, true);
-    }
-#else
-    DrvAPI::monitor_until<bool>(m_flag.address, true);
-#endif
-
-#endif
+    pando::monitorUntil<bool>(m_flag, true);
   }
 
   /**
@@ -370,70 +348,16 @@ public:
    * @brief Waits until @ref HandleType::notify is called for @c pos.
    */
   void wait(SizeType pos) {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-    pando::waitUntil([this, pos]() {
-      return this->done(pos);
-    });
-#else
-
-#if defined(PANDO_RT_BYPASS)
-    if (getBypassFlag()) {
-      pando::waitUntil([this, pos]() {
-        return this->done(pos);
-      });
-    } else {
-      DrvAPI::monitor_until<bool>((m_flags+pos).address, true);
-    }
-#else
-    DrvAPI::monitor_until<bool>((m_flags+pos).address, true);
-#endif
-
-#endif
+    pando::monitorUntil<bool>(m_flags+pos, true);
   }
 
   /**
    * @brief Waits until @ref HandleType::notify is called for the whole array.
    */
   void wait() {
-#ifdef PANDO_RT_USE_BACKEND_PREP
-    SizeType doneIndex = 0;
-    pando::waitUntil([this, &doneIndex]() mutable {
-      // check all events that have not been checked yet
-      for (; doneIndex < this->size(); ++doneIndex) {
-        if (m_flags[doneIndex] == false) {
-          return false;
-        }
-      }
-      atomicThreadFence(std::memory_order_acquire);
-      return true;
-    });
-#else
-
-#if defined(PANDO_RT_BYPASS)
-    if (getBypassFlag()) {
-      SizeType doneIndex = 0;
-      pando::waitUntil([this, &doneIndex]() mutable {
-        // check all events that have not been checked yet
-        for (; doneIndex < this->size(); ++doneIndex) {
-          if (m_flags[doneIndex] == false) {
-            return false;
-          }
-        }
-        atomicThreadFence(std::memory_order_acquire);
-        return true;
-      });
-    } else {
-      for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
-        DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true);
-      }
-    }
-#else
     for (SizeType doneIndex = 0; doneIndex < size(); ++doneIndex) {
-      DrvAPI::monitor_until<bool>((m_flags+doneIndex).address, true);
+      pando::monitorUntil<bool>(m_flags+doneIndex, true);
     }
-#endif
-
-#endif
   }
 
   /**
