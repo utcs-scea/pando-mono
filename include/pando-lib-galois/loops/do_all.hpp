@@ -19,11 +19,13 @@
 
 constexpr bool SCHEDULER_TIMER_ENABLE = false;
 constexpr bool DOALL_TIMER_ENABLE = false;
+constexpr bool NOTIFY_TIMER_ENABLE = false;
 
 extern counter::Record<std::minstd_rand> perCoreRNG;
 extern counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
 extern counter::Record<std::int64_t> schedulerCount;
 extern counter::Record<std::int64_t> doAllCount;
+extern counter::Record<std::int64_t> notifyCount;
 
 namespace galois {
 
@@ -121,8 +123,11 @@ private:
   template <typename F, typename State>
   static void notifyFuncOnEach(const F& func, State s, galois::IotaRange::iterator curr,
                                uint64_t totalThreads, WaitGroup::HandleType wgh) {
+    counter::HighResolutionCount<NOTIFY_TIMER_ENABLE> notifyTimer;
+    notifyTimer.start();
     func(s, *curr, totalThreads);
     wgh.done();
+    counter::recordHighResolutionEvent(notifyCount, notifyTimer);
   }
 
   /**
@@ -139,8 +144,11 @@ private:
    */
   template <typename F, typename State, typename It>
   static void notifyFunc(const F& func, State s, It curr, WaitGroup::HandleType wgh) {
+    counter::HighResolutionCount<NOTIFY_TIMER_ENABLE> notifyTimer;
+    notifyTimer.start();
     func(s, *curr);
     wgh.done();
+    counter::recordHighResolutionEvent(notifyCount, notifyTimer);
   }
 
   /**
@@ -155,8 +163,11 @@ private:
    */
   template <typename F, typename It>
   static void notifyFunc(const F& func, It curr, WaitGroup::HandleType wgh) {
+    counter::HighResolutionCount<NOTIFY_TIMER_ENABLE> notifyTimer;
+    notifyTimer.start();
     func(*curr);
     wgh.done();
+    counter::recordHighResolutionEvent(notifyCount, notifyTimer);
   }
 
 public:
