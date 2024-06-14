@@ -16,7 +16,7 @@ namespace counter {
 
   template<typename T>
   struct Record {
-    std::array<T,66> counts;
+    std::array<T,65> counts;
 
     constexpr Record() {
       for(auto& count : counts) {
@@ -39,7 +39,7 @@ namespace counter {
     void record(A val, F func, bool isOnCP,
         decltype(pando::getCurrentPlace().core.x) corex,
         decltype(pando::getCurrentPlace().core.x) coreDims) {
-      std::uint64_t idx = isOnCP ? coreDims + 1 : corex;
+      std::uint64_t idx = isOnCP ? coreDims : corex;
       counts[idx] += func(val);
     }
 
@@ -57,7 +57,7 @@ namespace counter {
     T& get(bool isOnCP,
         decltype(pando::getCurrentPlace().core.x) corex,
         decltype(pando::getCurrentPlace().core.x) coreDims) {
-      std::uint64_t idx = isOnCP ? coreDims + 1 : corex;
+      std::uint64_t idx = isOnCP ? coreDims : corex;
       return counts[idx];
     }
 

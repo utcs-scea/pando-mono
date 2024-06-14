@@ -110,7 +110,6 @@ CoreIndex getCoreDims() noexcept {
 
   // we use only one core / pod for scheduling, but the dimensions are 2D
   // reserve a column of cores for scheduling
-  coreDims.x -= 1;
   return coreDims;
 }
 
