@@ -53,86 +53,46 @@ extern "C" int __start(int argc, char** argv) {
     auto coreActive = pando::Cores::getCoreActiveFlag();
     auto ctok = queue->makeConsumerToken();
 
-    // PH hart
-    if (thisPlace.core.x < coreDims.x) {
-      // worker
-      // executes tasks from the core's queue
+    std::optional<pando::Task> task = std::nullopt;
 
-      std::optional<pando::Task> task = std::nullopt;
+    SchedulerFailState failState = SchedulerFailState::YIELD;
 
-      SchedulerFailState failState = SchedulerFailState::YIELD;
+    do {
+      idleTimer.start();
+      task = queue->tryDequeue(ctok);
 
-      do {
-        idleTimer.start();
-        task = queue->tryDequeue(ctok);
+      if (!task.has_value()) {
 
-        if (!task.has_value()) {
-
-          switch(failState) {
-            case SchedulerFailState::YIELD:
+        switch(failState) {
+          case SchedulerFailState::YIELD:
 #ifdef PANDO_RT_USE_BACKEND_PREP
-              counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
-              pando::hartYield();
-              //In Drvx hart yielding is a 1000 cycle wait which is too much
-              idleTimer.start();
+            counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
+            pando::hartYield();
+            //In Drvx hart yielding is a 1000 cycle wait which is too much
+            idleTimer.start();
 #endif
-              failState = SchedulerFailState::STEAL;
-              break;
+            failState = SchedulerFailState::STEAL;
+            break;
 
-            case SchedulerFailState::STEAL:
-              for(std::int8_t i = 0; i < coreDims.x && !task.has_value(); i++) {
-                auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0)});
-                if(!otherQueue || otherQueue == queue) {continue;}
-                if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
-                  task = otherQueue->tryDequeue();
-                }
+          case SchedulerFailState::STEAL:
+            for(std::int8_t i = thisPlace.core.x + 1; i < thisPlace.core.x + 2 && !task.has_value(); i++) {
+              auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i % coreDims.x, 0)});
+              if(!otherQueue || otherQueue == queue) {continue;}
+              if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
+                task = otherQueue->tryDequeue();
               }
-              failState = SchedulerFailState::YIELD;
-              break;
-          }
+            }
+            failState = SchedulerFailState::YIELD;
+            break;
         }
-        if(task.has_value()) {
-          (*task)();
-          task = std::nullopt;
-        } else {
-          counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
-        }
-      } while (*coreActive == true);
-    } else if (thisPlace.core.x == coreDims.x) {
-      // scheduler
-      // distributes tasks from the core's queue to other cores
-
-      // initialize RNG with a static seed to ensure repeatability
-      // we may want to introduce random seeds in future scheduler algorithms
-      std::minstd_rand rng(thisPlace.core.x);
-      // uniform distribution of potential target cores not including this scheduler core
-      std::uniform_int_distribution<std::int8_t> dist(0, coreDims.x - 1);
-
-      std::vector<pando::Queue<pando::Task>::ProducerToken> ptoks;
-      for(std::uint8_t i = 0; i < coreDims.x; i++){
-        const pando::Place dstPlace(thisPlace.node, thisPlace.pod, pando::CoreIndex(i, 0));
-        auto* otherQueue =  pando::Cores::getTaskQueue(dstPlace);
-        ptoks.push_back(otherQueue->makeProducerToken());
       }
-
-
-      do {
-        // distribute tasks from the queue
-        auto task = queue->tryDequeue(ctok);
-
-        if (task.has_value()) {
-          // enqueue in a random core in this node and pod
-          auto coreIdx = dist(rng);
-          const pando::Place dstPlace(thisPlace.node, thisPlace.pod,
-                                      pando::CoreIndex(coreIdx, 0));
-          auto* dstQueue = pando::Cores::getTaskQueue(dstPlace);
-          if (auto status = dstQueue->enqueue(ptoks[coreIdx], std::move(task.value()));
-              status != pando::Status::Success) {
-            PANDO_ABORT("Could not enqueue from scheduler to worker core");
-          }
-        }
-      } while (*coreActive == true);
-    }
+      if(task.has_value()) {
+        (*task)();
+        task = std::nullopt;
+      } else {
+        counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
+      }
+    } while (*coreActive == true);
   }
 
   pando::finalize();
