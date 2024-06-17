@@ -155,6 +155,8 @@ inline int32_t numPodL2SPBanks() {
 inline uint32_t podL2SPAddressInterleave() {
     return DrvAPISysConfig::Get()->podL2SPInterleaveSize();
 }
+
+
 //////////
 // Time //
 //////////
@@ -192,6 +194,79 @@ inline void outputStatistics() {
  */
 inline void outputStatistics(const std::string& tag) {
     DrvAPIThread::current()->getSystem()->outputStatistics(tag);
+}
+
+///////////////////////
+// Control Variables //
+///////////////////////
+inline void resetNumPxnsDone() {
+    return DrvAPISysConfig::Get()->resetNumPxnsDone();
+}
+inline int64_t atomicIncrementNumPxnsDone(int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementNumPxnsDone(value);
+}
+inline int64_t getNumPxnsDone() {
+    return DrvAPISysConfig::Get()->getNumPxnsDone();
+}
+
+inline void resetNumCoresInitialized(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->resetNumCoresInitialized(pxn_id);
+}
+inline int64_t atomicIncrementNumCoresInitialized(int64_t pxn_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementNumCoresInitialized(pxn_id, value);
+}
+inline int64_t getNumCoresInitialized(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->getNumCoresInitialized(pxn_id);
+}
+
+inline void resetNumCoresDone(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->resetNumCoresDone(pxn_id);
+}
+inline int64_t atomicIncrementNumCoresDone(int64_t pxn_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementNumCoresDone(pxn_id, value);
+}
+inline int64_t getNumCoresDone(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->getNumCoresDone(pxn_id);
+}
+
+inline void resetPxnBarrierReached(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->resetPxnBarrierReached(pxn_id);
+}
+inline void setPxnBarrierReached(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->setPxnBarrierReached(pxn_id);
+}
+inline bool testPxnBarrierReached(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->testPxnBarrierReached(pxn_id);
+}
+
+inline void resetNumCoresFinalized(int64_t pxn_id, int8_t pod_id) {
+    return DrvAPISysConfig::Get()->resetNumCoresFinalized(pxn_id, pod_id);
+}
+inline int64_t atomicIncrementNumCoresFinalized(int64_t pxn_id, int8_t pod_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementNumCoresFinalized(pxn_id, pod_id, value);
+}
+inline int64_t getNumCoresFinalized(int64_t pxn_id, int8_t pod_id) {
+    return DrvAPISysConfig::Get()->getNumCoresFinalized(pxn_id, pod_id);
+}
+
+inline int8_t getCoreState(int64_t pxn_id, int8_t pod_id, int8_t core_id) {
+    return DrvAPISysConfig::Get()->getCoreState(pxn_id, pod_id, core_id);
+}
+inline void setCoreState(int64_t pxn_id, int8_t pod_id, int8_t core_id, int8_t value) {
+    DrvAPISysConfig::Get()->setCoreState(pxn_id, pod_id, core_id, value);
+}
+inline int8_t atomicCompareExchangeCoreState(int64_t pxn_id, int8_t pod_id, int8_t core_id,  int8_t expected, int8_t desired) {
+    return DrvAPISysConfig::Get()->atomicCompareExchangeCoreState(pxn_id, pod_id, core_id, expected, desired);
+}
+
+inline void resetNumHartsDone(int64_t pxn_id, int8_t pod_id, int8_t core_id) {
+    return DrvAPISysConfig::Get()->resetNumHartsDone(pxn_id, pod_id, core_id);
+}
+inline int64_t atomicIncrementNumHartsDone(int64_t pxn_id, int8_t pod_id, int8_t core_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementNumHartsDone(pxn_id, pod_id, core_id, value);
+}
+inline int64_t getNumHartsDone(int64_t pxn_id, int8_t pod_id, int8_t core_id) {
+    return DrvAPISysConfig::Get()->getNumHartsDone(pxn_id, pod_id, core_id);
 }
 
 

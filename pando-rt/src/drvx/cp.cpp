@@ -15,12 +15,6 @@ namespace pando {
 
 namespace {
 
-// Per-PXN (main memory) variables
-Drvx::StaticMainMem<std::int64_t> globalBarrierCounter;
-Drvx::StaticMainMem<std::int64_t> pxnBarrierDone;
-Drvx::StaticMainMem<std::int64_t> coresDone;
-Drvx::StaticMainMem<std::int64_t> numPxnsDone;
-
 } // namespace
 
 // Initialize logger and memory resources
@@ -39,32 +33,22 @@ Drvx::StaticMainMem<std::int64_t> numPxnsDone;
 void CommandProcessor::barrier() {
   if (Drvx::isOnCP()) {
     // reset barrier on self PXN
-    *toNativeDrvPointerOnDram(pxnBarrierDone, Drvx::getCurrentNode()) = 0u;
+    DrvAPI::resetPxnBarrierReached(Drvx::getCurrentNode().id);
 
     // enter the global barrier by incrementing the global counter on PXN-0
-#if defined(PANDO_RT_BYPASS)
-    void *addr_native = nullptr;
-    std::size_t size = 0;
-    DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)), &addr_native, &size);
-    std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
-    std::int64_t curBarrierCount = __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
-    // hartYield
-    DrvAPI::nop(1u);
-#else
-    std::int64_t curBarrierCount = DrvAPI::atomic_add(toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)), 1u);
-#endif
+    std::int64_t curBarrierCount = DrvAPI::atomicIncrementNumPxnsDone(1);
 
     if (curBarrierCount == Drvx::getNodeDims().id - 1) {
       // last PXN to reach barrier; reset global barrier counter and signal to other PXNs that we
       // are done
-      *toNativeDrvPointerOnDram(globalBarrierCounter, NodeIndex(0)) = 0u;
+      DrvAPI::resetNumPxnsDone();
       for (std::int64_t i = 0; i < Drvx::getNodeDims().id; ++i) {
-        *toNativeDrvPointerOnDram(pxnBarrierDone, NodeIndex(i)) = 1;
+        DrvAPI::setPxnBarrierReached(i);
       }
     } else {
       // other PXNs are yet to reach the barrier; wait for the last PXN to reach the barrier to
       // notify this PXN.
-      while (*toNativeDrvPointerOnDram(pxnBarrierDone, Drvx::getCurrentNode()) != 1u) {
+      while (!DrvAPI::testPxnBarrierReached(Drvx::getCurrentNode().id)) {
         hartYield();
       }
     }
@@ -73,41 +57,21 @@ void CommandProcessor::barrier() {
 }
 
 void CommandProcessor::signalCoresDone() {
-#if defined(PANDO_RT_BYPASS)
-  void *addr_native = nullptr;
-  std::size_t size = 0;
-  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)), &addr_native, &size);
-  std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
-  __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
-  // hartYield
-  DrvAPI::nop(1u);
-#else
-  DrvAPI::atomic_add(toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)), 1u);
-#endif
+  DrvAPI::atomicIncrementNumCoresDone(Drvx::getCurrentNode().id, 1);
 }
 
 void CommandProcessor::waitForCoresDone() {
-  while (*toNativeDrvPointerOnDram(coresDone, NodeIndex(pando::getCurrentNode().id)) != Drvx::getCoreDims().x) {
+  while (DrvAPI::getNumCoresDone(Drvx::getCurrentNode().id) != Drvx::getNumPxnCores()) {
     hartYield();
   }
 }
 
 void CommandProcessor::signalCommandProcessorDone() {
-#if defined(PANDO_RT_BYPASS)
-  void *addr_native = nullptr;
-  std::size_t size = 0;
-  DrvAPI::DrvAPIAddressToNative(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), &addr_native, &size);
-  std::int64_t* as_native_pointer = reinterpret_cast<std::int64_t*>(addr_native);
-  __atomic_fetch_add(as_native_pointer, 1u, static_cast<int>(std::memory_order_relaxed));
-  // hartYield
-  DrvAPI::nop(1u);
-#else
-  DrvAPI::atomic_add(toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)), 1u);
-#endif
+  DrvAPI::atomicIncrementNumPxnsDone(1);
 }
 
 void CommandProcessor::waitForCommandProcessorsDone() {
-  while (*toNativeDrvPointerOnDram(numPxnsDone, NodeIndex(0)) != Drvx::getNodeDims().id) {
+  while (DrvAPI::getNumPxnsDone() != Drvx::getNodeDims().id) {
     hartYield();
   }
 }
