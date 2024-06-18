@@ -66,12 +66,21 @@ std::int64_t allreduce(std::int64_t partialValue) {
 
 } // namespace
 
-void TerminationDetection::increaseTasksCreated(std::int64_t n) noexcept {
+void TerminationDetection::increaseTasksCreated(Place place, std::int64_t n) noexcept {
+#if defined(PANDO_RT_USE_BACKEND_PREP)
+  (void) place;
   atomicIncrement(&taskCreatedCount, n, std::memory_order_relaxed);
+#elif defined(PANDO_RT_USE_BACKEND_DRVX)
+  DrvAPI::atomicIncrementPodTasksRemaining(place.node.id, place.pod.x, n);
+#endif
 }
 
 void TerminationDetection::increaseTasksFinished(std::int64_t n) noexcept {
+#if defined(PANDO_RT_USE_BACKEND_PREP)
   atomicIncrement(&taskFinishedCount, n, std::memory_order_relaxed);
+#elif defined(PANDO_RT_USE_BACKEND_DRVX)
+  DrvAPI::atomicIncrementPodTasksRemaining(pando::getCurrentNode().id, pando::getCurrentPod().x, n);
+#endif
 }
 
 TerminationDetection::TaskCounts TerminationDetection::getTaskCounts() noexcept {

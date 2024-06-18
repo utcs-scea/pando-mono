@@ -39,6 +39,7 @@ struct DrvAPISysControlVariable
     int64_t global_cps_reached_; //!< global number of cps that reached the barrier
     std::vector<int64_t> pxn_cores_initialized_; //!< number of cores initialized per pxn
     std::vector<int8_t> pxn_barrier_exit_; //!< permission to exit the barrier for each pxn
+    std::vector<std::vector<int64_t>> pod_tasks_remaining_; //!< number of tasks remaining per pod
     std::vector<std::vector<int64_t>> pod_cores_finalized_; //!< number of cores finalized per pod
     std::vector<std::vector<std::vector<int8_t>>> core_state_; //!< state for each core
     std::vector<std::vector<std::vector<int64_t>>> core_harts_done_; //!< number of harts done per core
@@ -57,16 +58,19 @@ public:
         variable_.global_cps_reached_ = 0;
         variable_.pxn_cores_initialized_.resize(data.num_pxn_);
         variable_.pxn_barrier_exit_.resize(data.num_pxn_);
+        variable_.pod_tasks_remaining_.resize(data.num_pxn_);
         variable_.pod_cores_finalized_.resize(data.num_pxn_);
         variable_.core_state_.resize(data.num_pxn_);
         variable_.core_harts_done_.resize(data.num_pxn_);
         for (int i = 0; i < data_.num_pxn_; i++) {
             variable_.pxn_cores_initialized_[i] = 0;
             variable_.pxn_barrier_exit_[i] = 0;
+            variable_.pod_tasks_remaining_[i].resize(data.pxn_pods_);
             variable_.pod_cores_finalized_[i].resize(data.pxn_pods_);
             variable_.core_state_[i].resize(data.pxn_pods_);
             variable_.core_harts_done_[i].resize(data.pxn_pods_);
             for (int j = 0; j < data_.pxn_pods_; j++) {
+                variable_.pod_tasks_remaining_[i][j] = 0;
                 variable_.pod_cores_finalized_[i][j] = 0;
                 variable_.core_state_[i][j].resize(data.pod_cores_);
                 variable_.core_harts_done_[i][j].resize(data.pod_cores_);
@@ -137,6 +141,16 @@ public:
     bool testPxnBarrierExit(int64_t pxn_id) {
         int8_t value = __atomic_load_n(&(variable_.pxn_barrier_exit_.at(pxn_id)), static_cast<int>(std::memory_order_relaxed));
         return value == 1;
+    }
+
+    void resetPodTasksRemaining(int64_t pxn_id, int8_t pod_id) {
+        __atomic_store_n(&(variable_.pod_tasks_remaining_.at(pxn_id).at(pod_id)), 0, static_cast<int>(std::memory_order_relaxed));
+    }
+    int64_t atomicIncrementPodTasksRemaining(int64_t pxn_id, int8_t pod_id, int64_t value) {
+        return __atomic_fetch_add(&(variable_.pod_tasks_remaining_.at(pxn_id).at(pod_id)), value, static_cast<int>(std::memory_order_relaxed));
+    }
+    int64_t getPodTasksRemaining(int64_t pxn_id, int8_t pod_id) {
+        return __atomic_load_n(&(variable_.pod_tasks_remaining_.at(pxn_id).at(pod_id)), static_cast<int>(std::memory_order_relaxed));
     }
 
     void resetPodCoresFinalized(int64_t pxn_id, int8_t pod_id) {

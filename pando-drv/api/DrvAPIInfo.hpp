@@ -239,6 +239,16 @@ inline bool testPxnBarrierExit(int64_t pxn_id) {
     return DrvAPISysConfig::Get()->testPxnBarrierExit(pxn_id);
 }
 
+inline void resetPodTasksRemaining(int64_t pxn_id, int8_t pod_id) {
+    return DrvAPISysConfig::Get()->resetPodTasksRemaining(pxn_id, pod_id);
+}
+inline int64_t atomicIncrementPodTasksRemaining(int64_t pxn_id, int8_t pod_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementPodTasksRemaining(pxn_id, pod_id, value);
+}
+inline int64_t getPodTasksRemaining(int64_t pxn_id, int8_t pod_id) {
+    return DrvAPISysConfig::Get()->getPodTasksRemaining(pxn_id, pod_id);
+}
+
 inline void resetPodCoresFinalized(int64_t pxn_id, int8_t pod_id) {
     return DrvAPISysConfig::Get()->resetPodCoresFinalized(pxn_id, pod_id);
 }

@@ -21,7 +21,6 @@
 #include "index.hpp"
 #include "log.hpp"
 #include "status.hpp"
-#include "termination.hpp"
 
 namespace pando {
 
@@ -91,8 +90,11 @@ Cores::CoreActiveFlag Cores::getCoreActiveFlag() noexcept {
 }
 
 bool Cores::CoreActiveFlag::operator*() const noexcept {
-  hartYield();
-  return !getTerminateFlag();
+  do {
+    hartYield();
+  } while (DrvAPI::getPodTasksRemaining(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x) == 0);
+
+  return DrvAPI::getGlobalCpsFinalized() != Drvx::getNodeDims().id;
 }
 
 Cores::TaskQueue* Cores::getTaskQueue(Place place) noexcept {

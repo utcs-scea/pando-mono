@@ -34,7 +34,7 @@ public:
   /**
    * @brief Increases the tasks created count by @p n.
    */
-  PANDO_RT_EXPORT static void increaseTasksCreated(std::int64_t n) noexcept;
+  PANDO_RT_EXPORT static void increaseTasksCreated(Place place, std::int64_t n) noexcept;
 
   /**
    * @brief Increases the tasks finished count by @p n.

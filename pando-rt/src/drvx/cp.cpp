@@ -9,7 +9,6 @@
 #include "index.hpp"
 #include "pando-rt/status.hpp"
 #include "status.hpp"
-#include "termination.hpp"
 
 namespace pando {
 
@@ -65,9 +64,6 @@ void CommandProcessor::finalize() {
   while (DrvAPI::getGlobalCpsFinalized() != Drvx::getNodeDims().id) {
     hartYield();
   }
-
-  // set termination flag
-  setTerminateFlag();
 
   // wait for all cores to complete finalization
   for (int8_t i = 0; i < Drvx::getPodDims().x; i++) {

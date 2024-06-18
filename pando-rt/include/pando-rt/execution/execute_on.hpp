@@ -47,8 +47,6 @@ inline constexpr TerminationDetectionPostamble terminationDetectionPostamble{};
  */
 template <typename F, typename... Args>
 [[nodiscard]] Status executeOn(Place place, F&& f, Args&&... args) {
-  TerminationDetection::increaseTasksCreated(1);
-
   // TODO(ashwin #37): until there is load balancing, map anyNode / anyPod to the current node / pod
   if (place.node == anyNode) {
     place.node = getCurrentNode();
@@ -56,6 +54,8 @@ template <typename F, typename... Args>
   if (place.pod == anyPod) {
     place.pod = (isOnCP() ? PodIndex{0, 0} : getCurrentPod());
   }
+
+  TerminationDetection::increaseTasksCreated(place, 1);
 
 #if defined(PANDO_RT_USE_BACKEND_PREP)
   if (place.node == getCurrentNode()) {
@@ -96,13 +96,12 @@ template <typename F, typename... Args>
  */
 template <typename F, typename... Args>
 [[nodiscard]] Status executeOn(PodIndex podIdx, F&& f, Args&&... args) {
-  TerminationDetection::increaseTasksCreated(1);
-
   // TODO(ashwin #37): until there is load balancing, map anyNode / anyPod to the current node / pod
   if (podIdx == anyPod) {
     podIdx = (isOnCP() ? PodIndex{0, 0} : getCurrentPod());
   }
   const Place place{getCurrentNode(), podIdx, anyCore};
+  TerminationDetection::increaseTasksCreated(place, 1);
   return detail::executeOn(place, Task(Task::withPostamble, detail::terminationDetectionPostamble,
                                        std::forward<F>(f), std::forward<Args>(args)...));
 }
@@ -120,12 +119,11 @@ template <typename F, typename... Args>
  */
 template <typename F, typename... Args>
 [[nodiscard]] Status executeOn(CoreIndex coreIdx, F&& f, Args&&... args) {
-  TerminationDetection::increaseTasksCreated(1);
-
   // TODO(ashwin #37): until there is load balancing, map anyNode / anyPod to the current node / pod
   const auto podIdx = (isOnCP() ? PodIndex{0, 0} : getCurrentPod());
 
   const Place place{getCurrentNode(), podIdx, coreIdx};
+  TerminationDetection::increaseTasksCreated(place, 1);
   return detail::executeOn(place, Task(Task::withPostamble, detail::terminationDetectionPostamble,
                                        std::forward<F>(f), std::forward<Args>(args)...));
 }
