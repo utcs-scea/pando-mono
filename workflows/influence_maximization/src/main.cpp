@@ -165,7 +165,7 @@ int pandoMain(int argc, char** argv) {
 #endif
 
     if (program_options.disable_kernel2) {
-      pando::waitAll();
+      pando::endExecution();
       return 0;
     }
 
@@ -174,7 +174,7 @@ int pandoMain(int argc, char** argv) {
     projection_timer.Stop();
 
     if (program_options.disable_kernel3) {
-      pando::waitAll();
+      pando::endExecution();
       return 0;
     }
 
@@ -191,6 +191,6 @@ int pandoMain(int argc, char** argv) {
 
     workflow_timer.Stop();
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

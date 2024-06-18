@@ -75,6 +75,6 @@ int pandoMain(int argc, char** argv) {
     wg.deinitialize();
     std::cout << "The makespan of one task per thread was " << time.count() << std::endl;
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

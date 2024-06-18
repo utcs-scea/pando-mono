@@ -145,7 +145,7 @@ int pandoMain(int, char**) {
     mmResource->deallocate(distHeteroArray, sizeof(pando::GlobalPtr<std::int64_t>) * numPXNs);
     mmResource->deallocate(dones, sizeof(bool) * numPXNs);
   }
-  pando::waitAll();
+  pando::endExecution();
 
   return 0;
 }

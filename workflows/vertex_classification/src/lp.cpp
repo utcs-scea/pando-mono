@@ -110,12 +110,12 @@ int pandoMain(int argc, char** argv) {
     wf::ImportGraph<VertexType, EdgeType>(isDone.getHandle(), dGraphPtr, fname, strlen(graphFile));
     isDone.wait();
     if (programOptions.disableKernel2) {
-      pando::waitAll();
+      pando::endExecution();
       return 0;
     }
     std::uint64_t numEpochs = programOptions.epochs;
     runGNN(dGraphPtr, numEpochs);
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

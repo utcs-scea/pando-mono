@@ -182,6 +182,6 @@ int pandoMain(int argc, char** argv) {
     }
     university_timer.Stop();
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

@@ -15,6 +15,6 @@ int pandoMain(int argc, char** argv) {
   if (pando::getCurrentPlace().node.id == 0) {
     result = RUN_ALL_TESTS();
   }
-  pando::waitAll();
+  pando::endExecution();
   return result;
 }

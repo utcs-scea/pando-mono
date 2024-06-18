@@ -35,6 +35,6 @@ int pandoMain(int argc, char** argv) {
 #endif
     filename.deinitialize();
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

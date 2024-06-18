@@ -216,6 +216,6 @@ int pandoMain(int argc, char** argv) {
       HBMainMDLCSR(srcVertices, numVertices, std::move(filename));
     }
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

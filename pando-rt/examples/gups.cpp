@@ -67,7 +67,7 @@ int pandoMain(int argc, char** argv) {
   if (thisPlace.node.id == 0) {
     memoryResource->deallocate(tablePtr, tableByteCount);
   }
-  pando::waitAll();
+  pando::endExecution();
 
   return 0;
 }
