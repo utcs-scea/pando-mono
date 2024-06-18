@@ -92,6 +92,9 @@ Cores::CoreActiveFlag Cores::getCoreActiveFlag() noexcept {
 bool Cores::CoreActiveFlag::operator*() const noexcept {
   do {
     hartYield();
+    if (DrvAPI::getGlobalCpsFinalized() == Drvx::getNodeDims().id) {
+      return false;
+    }
   } while (DrvAPI::getPodTasksRemaining(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x) == 0);
 
   return DrvAPI::getGlobalCpsFinalized() != Drvx::getNodeDims().id;
