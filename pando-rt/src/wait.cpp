@@ -26,43 +26,10 @@ namespace pando {
 namespace {
 
 // Per-PXN (main memory) variables
+#ifdef PANDO_RT_USE_BACKEND_PREP
 NodeSpecificStorage<std::int64_t> taskCreatedCount;
 NodeSpecificStorage<std::int64_t> taskFinishedCount;
-#ifdef PANDO_RT_USE_BACKEND_DRVX
-NodeSpecificStorage<std::int64_t> partialTasksCount;
-#endif // PANDO_RT_USE_BACKEND_DRVX
-
-// Performs an allreduce operation. This is a collective operation by CPs across all PXNs.
-std::int64_t allreduce(std::int64_t partialValue) {
-#if defined(PANDO_RT_USE_BACKEND_PREP)
-
-  return Nodes::allreduce(partialValue);
-
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
-
-  // set partial value to PXN-local static
-  partialTasksCount = partialValue;
-
-  // barrier
-  CommandProcessor::barrier();
-
-  // reduce in each PXN by adding up partial values across all PXNs
-  std::int64_t value = 0;
-  for (auto nodeIdx = 0; nodeIdx < getNodeDims().id; ++nodeIdx) {
-    value += *(partialTasksCount.getPointerAt(NodeIndex(nodeIdx)));
-  }
-
-  // barrier again to wait for all PXNs to complete reduction
-  CommandProcessor::barrier();
-
-  return value;
-
-#else
-
-#error "Not implemented"
-
 #endif // PANDO_RT_USE_BACKEND_PREP
-}
 
 } // namespace
 
@@ -83,11 +50,13 @@ void TerminationDetection::increaseTasksFinished(std::int64_t n) noexcept {
 #endif
 }
 
+#if defined(PANDO_RT_USE_BACKEND_PREP)
 TerminationDetection::TaskCounts TerminationDetection::getTaskCounts() noexcept {
   auto finished = atomicLoad(&taskFinishedCount, std::memory_order_seq_cst);
   auto created = atomicLoad(&taskCreatedCount, std::memory_order_seq_cst);
   return TaskCounts{created, finished};
 }
+#endif
 
 void waitUntil(const Function<bool()>& f) {
 #ifdef PANDO_RT_USE_BACKEND_PREP
@@ -115,6 +84,7 @@ void waitAll() {
     PANDO_ABORT("Can only be called from the CP");
   }
 
+#ifdef PANDO_RT_USE_BACKEND_PREP
   // Termination Detection: this algorithm exits iff all the created tasks in the system have been
   // executed.
   //
@@ -136,8 +106,8 @@ void waitAll() {
   auto partialPendingTasks = prevCreatedTasks; // don't count finished to fail the first time
   auto newTasksCreated = prevCreatedTasks;
   while (true) {
-    const auto globalNewTasksCreated = allreduce(newTasksCreated);
-    const auto globalPendingTasks = allreduce(partialPendingTasks);
+    const auto globalNewTasksCreated = Nodes::allreduce(newTasksCreated);
+    const auto globalPendingTasks = Nodes::allreduce(partialPendingTasks);
     if (globalPendingTasks == 0 && globalNewTasksCreated == 0) {
       break;
     }
@@ -150,6 +120,25 @@ void waitAll() {
 
 #ifdef PANDO_RT_ENABLE_MEM_STAT
   MemTraceStat::writePhase();
+#endif
+#elif defined(PANDO_RT_USE_BACKEND_DRVX)
+  for (std::int64_t i = 0; i < Drvx::getNodeDims().id; i++) {
+    for (std::int64_t j = 0; j < Drvx::getPodDims().x; j++) {
+      while (DrvAPI::getPodTasksRemaining(i, j) != 0) {
+        hartYield();
+      }
+    }
+  }
+#endif
+}
+
+void endExecution() {
+  if (!isOnCP()) {
+    PANDO_ABORT("Can only be called from the CP");
+  }
+
+#ifdef PANDO_RT_USE_BACKEND_PREP
+  waitAll();
 #endif
 }
 

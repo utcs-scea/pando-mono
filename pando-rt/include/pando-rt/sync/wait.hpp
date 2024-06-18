@@ -41,10 +41,12 @@ public:
    */
   PANDO_RT_EXPORT static void increaseTasksFinished(std::int64_t n) noexcept;
 
+#ifdef PANDO_RT_USE_BACKEND_PREP
   /**
    * @brief Returns the number of created and finished tasks.
    */
   PANDO_RT_EXPORT static TaskCounts getTaskCounts() noexcept;
+#endif
 };
 
 /**
@@ -124,6 +126,8 @@ void monitorUntilNot(GlobalPtr<T> ptr, T value) {
  * @ingroup ROOT
  */
 PANDO_RT_EXPORT void waitAll();
+
+PANDO_RT_EXPORT void endExecution();
 
 } // namespace pando
 
