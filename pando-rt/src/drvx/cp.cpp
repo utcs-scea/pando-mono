@@ -20,7 +20,9 @@ namespace {
 // Initialize logger and memory resources
 [[nodiscard]] Status CommandProcessor::initialize() {
   // wait until all cores have initialized
-  Cores::waitForCoresInitialized();
+  while (DrvAPI::getPxnCoresInitialized(Drvx::getCurrentNode().id) != Drvx::getNumPxnCores()) {
+    hartYield();
+  }
 
   // wait for all CP to finish initialization
   barrier();
@@ -33,22 +35,22 @@ namespace {
 void CommandProcessor::barrier() {
   if (Drvx::isOnCP()) {
     // reset barrier on self PXN
-    DrvAPI::resetPxnBarrierReached(Drvx::getCurrentNode().id);
+    DrvAPI::resetPxnBarrierExit(Drvx::getCurrentNode().id);
 
     // enter the global barrier by incrementing the global counter on PXN-0
-    std::int64_t curBarrierCount = DrvAPI::atomicIncrementNumPxnsDone(1);
+    std::int64_t curBarrierCount = DrvAPI::atomicIncrementGlobalCpsReached(1);
 
     if (curBarrierCount == Drvx::getNodeDims().id - 1) {
       // last PXN to reach barrier; reset global barrier counter and signal to other PXNs that we
       // are done
-      DrvAPI::resetNumPxnsDone();
+      DrvAPI::resetGlobalCpsReached();
       for (std::int64_t i = 0; i < Drvx::getNodeDims().id; ++i) {
-        DrvAPI::setPxnBarrierReached(i);
+        DrvAPI::setPxnBarrierExit(i);
       }
     } else {
       // other PXNs are yet to reach the barrier; wait for the last PXN to reach the barrier to
       // notify this PXN.
-      while (!DrvAPI::testPxnBarrierReached(Drvx::getCurrentNode().id)) {
+      while (!DrvAPI::testPxnBarrierExit(Drvx::getCurrentNode().id)) {
         hartYield();
       }
     }
@@ -56,37 +58,23 @@ void CommandProcessor::barrier() {
   }
 }
 
-void CommandProcessor::signalCoresDone() {
-  DrvAPI::atomicIncrementNumCoresDone(Drvx::getCurrentNode().id, 1);
-}
-
-void CommandProcessor::waitForCoresDone() {
-  while (DrvAPI::getNumCoresDone(Drvx::getCurrentNode().id) != Drvx::getNumPxnCores()) {
-    hartYield();
-  }
-}
-
-void CommandProcessor::signalCommandProcessorDone() {
-  DrvAPI::atomicIncrementNumPxnsDone(1);
-}
-
-void CommandProcessor::waitForCommandProcessorsDone() {
-  while (DrvAPI::getNumPxnsDone() != Drvx::getNodeDims().id) {
-    hartYield();
-  }
-}
-
 void CommandProcessor::finalize() {
-  CommandProcessor::signalCommandProcessorDone();
+  DrvAPI::atomicIncrementGlobalCpsFinalized(1);
 
   // wait for all CP to finish
-  CommandProcessor::waitForCommandProcessorsDone();
+  while (DrvAPI::getGlobalCpsFinalized() != Drvx::getNodeDims().id) {
+    hartYield();
+  }
 
   // set termination flag
   setTerminateFlag();
 
   // wait for all cores to complete finalization
-  CommandProcessor::waitForCoresDone();
+  for (int8_t i = 0; i < Drvx::getPodDims().x; i++) {
+    while (DrvAPI::getPodCoresFinalized(Drvx::getCurrentNode().id, i) != Drvx::getCoreDims().x) {
+      hartYield();
+    }
+  }
   SPDLOG_INFO("CP finalized on PXN {}", Drvx::getCurrentNode());
 }
 
