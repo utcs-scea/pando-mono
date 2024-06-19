@@ -23,8 +23,6 @@ namespace {
     hartYield();
   }
 
-  // wait for all CP to finish initialization
-  barrier();
 
   SPDLOG_INFO("CP started on PXN {} with {} cores", Drvx::getCurrentNode(), Drvx::getCoreDims());
 
@@ -60,17 +58,6 @@ void CommandProcessor::barrier() {
 void CommandProcessor::finalize() {
   DrvAPI::atomicIncrementGlobalCpsFinalized(1);
 
-  // wait for all CP to finish
-  while (DrvAPI::getGlobalCpsFinalized() != Drvx::getNodeDims().id) {
-    hartYield();
-  }
-
-  // wait for all cores to complete finalization
-  for (int8_t i = 0; i < Drvx::getPodDims().x; i++) {
-    while (DrvAPI::getPodCoresFinalized(Drvx::getCurrentNode().id, i) != Drvx::getCoreDims().x) {
-      hartYield();
-    }
-  }
   SPDLOG_INFO("CP finalized on PXN {}", Drvx::getCurrentNode());
 }
 

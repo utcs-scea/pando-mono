@@ -71,7 +71,7 @@ void Cores::finalizeQueues() {
 
     DrvAPI::atomicIncrementPodCoresFinalized(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x, 1);
 
-    // wait for all cores on this pod to be finalized
+    // wait for all cores on this pod to be finalized to ensure no work stealing before deleting the queue
     while (DrvAPI::getPodCoresFinalized(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x) != Drvx::getCoreDims().x) {
       hartYield();
     }
