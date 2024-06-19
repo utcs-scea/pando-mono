@@ -46,7 +46,7 @@ void TerminationDetection::increaseTasksFinished(std::int64_t n) noexcept {
 #if defined(PANDO_RT_USE_BACKEND_PREP)
   atomicIncrement(&taskFinishedCount, n, std::memory_order_relaxed);
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
-  DrvAPI::atomicIncrementPodTasksRemaining(pando::getCurrentNode().id, pando::getCurrentPod().x, n);
+  DrvAPI::atomicIncrementPodTasksRemaining(pando::getCurrentNode().id, pando::getCurrentPod().x, -1 * n);
 #endif
 }
 
@@ -122,6 +122,7 @@ void waitAll() {
   MemTraceStat::writePhase();
 #endif
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
+  CommandProcessor::barrier();
   for (std::int64_t i = 0; i < Drvx::getNodeDims().id; i++) {
     for (std::int64_t j = 0; j < Drvx::getPodDims().x; j++) {
       while (DrvAPI::getPodTasksRemaining(i, j) != 0) {
@@ -129,6 +130,7 @@ void waitAll() {
       }
     }
   }
+  CommandProcessor::barrier();
 #endif
 }
 
