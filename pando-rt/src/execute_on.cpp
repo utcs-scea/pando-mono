@@ -5,6 +5,8 @@
 
 #include "pando-rt/stdlib.hpp"
 
+#include "pando-rt/sync/wait.hpp"
+
 #if defined(PANDO_RT_USE_BACKEND_PREP)
 #include "prep/cores.hpp"
 #include "prep/hart_context_fwd.hpp"
@@ -44,6 +46,7 @@ Status detail::executeOn(Place place, Task task) {
 
 #if defined(PANDO_RT_USE_BACKEND_PREP) || defined(PANDO_RT_USE_BACKEND_DRVX)
 
+  TerminationDetection::increaseTasksCreated(place, 1);
   auto* queue = Cores::getTaskQueue(place);
   const auto result = queue->enqueue(std::move(task));
   //hartYield();

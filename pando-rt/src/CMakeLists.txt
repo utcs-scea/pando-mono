@@ -33,6 +33,7 @@ target_sources(pando-rt
         ${CMAKE_CURRENT_SOURCE_DIR}/specific_storage.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/start.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/stdlib.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/termination.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/wait.cpp
 )
 

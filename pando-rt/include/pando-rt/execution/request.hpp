@@ -105,7 +105,7 @@ public:
  *
  * @ingroup ROOT
  */
-template <typename Postamble, typename F, typename... Args>
+template <typename F, typename... Args>
 class AsyncTaskRequest final : public Request {
   /**
    * @brief Implementation for @ref RequestBase::operator()().
@@ -116,7 +116,7 @@ class AsyncTaskRequest final : public Request {
     InputArchive ar(p);
 
     Place place;
-    std::tuple<decltype(Task::withPostamble), std::decay_t<Postamble>, std::decay_t<F>,
+    std::tuple<std::decay_t<F>,
                std::decay_t<Args>...>
         t;
 
@@ -134,14 +134,13 @@ public:
    * @brief Returns the space required to create an @ref AsyncTaskRequest instance.
    *
    * @param[in] place     where to execute @p f
-   * @param[in] postamble function to execute after `f(args...)`
    * @param[in] f         target to invoke
    * @param[in] args      arguments to pass to @p f
    */
-  [[nodiscard]] static std::size_t size(Place place, const Postamble& postamble, const F& f,
+  [[nodiscard]] static std::size_t size(Place place, const F& f,
                                         const Args&... args) noexcept {
     SizeArchive ar;
-    ar(place, Task::withPostamble, postamble, f, args...);
+    ar(place, f, args...);
     return sizeof(AsyncTaskRequest) + ar.byteCount();
   }
 
@@ -152,15 +151,14 @@ public:
    *       store the @p args objects.
    *
    * @param[in] place     where to execute @p f
-   * @param[in] postamble function to execute after `f(args...)`
    * @param[in] f         target to invoke
    * @param[in] args      arguments to pass to @p f
    */
-  AsyncTaskRequest(Place place, const Postamble& postamble, const F& f, const Args&... args)
+  AsyncTaskRequest(Place place, const F& f, const Args&... args)
       : Request(&impl) {
     auto p = reinterpret_cast<std::byte*>(this) + sizeof(AsyncTaskRequest);
     OutputArchive ar(p);
-    ar(place, Task::withPostamble, postamble, f, args...);
+    ar(place, f, args...);
   }
 };
 

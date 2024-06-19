@@ -16,24 +16,6 @@
 
 namespace pando {
 
-namespace detail {
-
-/**
- * @brief Wrapper for increasing the finished task count.
- *
- * @ingroup ROOT
- */
-struct TerminationDetectionPostamble {
-  void operator()() noexcept {
-    TerminationDetection::increaseTasksFinished(1);
-  }
-};
-
-/// @brief Postamble for default termination detection.
-inline constexpr TerminationDetectionPostamble terminationDetectionPostamble{};
-
-} // namespace detail
-
 /**
  * @brief Executes @p f with arguments @p args on the core in @p place.
  *
@@ -55,31 +37,26 @@ template <typename F, typename... Args>
     place.pod = (isOnCP() ? PodIndex{0, 0} : getCurrentPod());
   }
 
-  TerminationDetection::increaseTasksCreated(place, 1);
-
 #if defined(PANDO_RT_USE_BACKEND_PREP)
   if (place.node == getCurrentNode()) {
     // schedule task on a core on this node
-    return detail::executeOn(place, Task(Task::withPostamble, detail::terminationDetectionPostamble,
-                                         std::forward<F>(f), std::forward<Args>(args)...));
+    return detail::executeOn(place, Task(std::forward<F>(f), std::forward<Args>(args)...));
   } else {
     // allocate space for a task in a remote node
-    using RequestType = detail::AsyncTaskRequest<detail::TerminationDetectionPostamble, F, Args...>;
-    const auto size = RequestType::size(place, detail::terminationDetectionPostamble,
-                                        std::forward<F>(f), std::forward<Args>(args)...);
+    using RequestType = detail::AsyncTaskRequest<F, Args...>;
+    const auto size = RequestType::size(place, std::forward<F>(f), std::forward<Args>(args)...);
     detail::RequestBuffer buffer;
     if (auto status = buffer.acquire(place.node, size); status != Status::Success) {
       return status;
     }
-    new (buffer.get()) RequestType(place, detail::terminationDetectionPostamble, std::forward<F>(f),
+    new (buffer.get()) RequestType(place, std::forward<F>(f),
                                    std::forward<Args>(args)...);
     buffer.release();
     return Status::Success;
   }
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
   // all PXNs are in the same process in Drv-X, so just execute as though the task was local.
-  return detail::executeOn(place, Task(Task::withPostamble, detail::terminationDetectionPostamble,
-                                       std::forward<F>(f), std::forward<Args>(args)...));
+  return detail::executeOn(place, Task(std::forward<F>(f), std::forward<Args>(args)...));
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
@@ -101,9 +78,7 @@ template <typename F, typename... Args>
     podIdx = (isOnCP() ? PodIndex{0, 0} : getCurrentPod());
   }
   const Place place{getCurrentNode(), podIdx, anyCore};
-  TerminationDetection::increaseTasksCreated(place, 1);
-  return detail::executeOn(place, Task(Task::withPostamble, detail::terminationDetectionPostamble,
-                                       std::forward<F>(f), std::forward<Args>(args)...));
+  return detail::executeOn(place, Task(std::forward<F>(f), std::forward<Args>(args)...));
 }
 
 /**
@@ -123,9 +98,7 @@ template <typename F, typename... Args>
   const auto podIdx = (isOnCP() ? PodIndex{0, 0} : getCurrentPod());
 
   const Place place{getCurrentNode(), podIdx, coreIdx};
-  TerminationDetection::increaseTasksCreated(place, 1);
-  return detail::executeOn(place, Task(Task::withPostamble, detail::terminationDetectionPostamble,
-                                       std::forward<F>(f), std::forward<Args>(args)...));
+  return detail::executeOn(place, Task(std::forward<F>(f), std::forward<Args>(args)...));
 }
 
 } // namespace pando
