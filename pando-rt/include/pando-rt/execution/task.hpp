@@ -113,7 +113,9 @@ private:
     constexpr void operator()() {
       std::apply(static_cast<FunctionStorageType&>(*this),
                  std::move(static_cast<ArgsStorageType&>(*this)));
-      TerminationDetection::increaseTasksFinished(1);
+      if (!isOnCP()) {
+        TerminationDetection::increaseTasksFinished(1);
+      }
     }
   };
 
@@ -202,7 +204,9 @@ private:
       // make sure that result is visible since it is consumed by another thread
       auto readyPtr = memberPtrOf<std::int32_t>(resultPtr, offsetof(ResultType, ready));
       atomicStore(readyPtr, 1, std::memory_order_release);
-      TerminationDetection::increaseTasksFinished(1);
+      if (!isOnCP()) {
+        TerminationDetection::increaseTasksFinished(1);
+      }
     }
   };
 
