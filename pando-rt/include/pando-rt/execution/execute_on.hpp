@@ -49,8 +49,7 @@ template <typename F, typename... Args>
     if (auto status = buffer.acquire(place.node, size); status != Status::Success) {
       return status;
     }
-    new (buffer.get()) RequestType(place, std::forward<F>(f),
-                                   std::forward<Args>(args)...);
+    new (buffer.get()) RequestType(place, std::forward<F>(f), std::forward<Args>(args)...);
     buffer.release();
     return Status::Success;
   }

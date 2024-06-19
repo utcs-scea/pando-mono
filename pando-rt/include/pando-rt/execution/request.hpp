@@ -116,9 +116,7 @@ class AsyncTaskRequest final : public Request {
     InputArchive ar(p);
 
     Place place;
-    std::tuple<std::decay_t<F>,
-               std::decay_t<Args>...>
-        t;
+    std::tuple<std::decay_t<F>, std::decay_t<Args>...> t;
 
     ar(place);
     std::apply(ar, t);
@@ -137,8 +135,7 @@ public:
    * @param[in] f         target to invoke
    * @param[in] args      arguments to pass to @p f
    */
-  [[nodiscard]] static std::size_t size(Place place, const F& f,
-                                        const Args&... args) noexcept {
+  [[nodiscard]] static std::size_t size(Place place, const F& f, const Args&... args) noexcept {
     SizeArchive ar;
     ar(place, f, args...);
     return sizeof(AsyncTaskRequest) + ar.byteCount();

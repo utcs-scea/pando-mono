@@ -62,14 +62,10 @@ using FunctionStorage =
  * @ingroup ROOT
  */
 class Task {
-  struct RegularVoid {};
   struct WithPostamble {};
   struct WithResultPtr {};
 
 public:
-  /// @brief Tag to indicate that the target does not have return value.
-  static constexpr RegularVoid regularVoid{};
-
   /// @brief Tag to indicate that the target will be followed by a postamble.
   static constexpr WithPostamble withPostamble{};
 
