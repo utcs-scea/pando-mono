@@ -172,8 +172,7 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
       DrvAPI::DrvAPIAddressToNative(blockSrc + bytesOffset, &addr_native, &size);
       BlockType* as_native_pointer = reinterpret_cast<BlockType*>(addr_native);
       *(blockDst + i) = *as_native_pointer;
-      // hartYield
-      DrvAPI::nop(1u);
+      hartYield(1);
     }
 
     for (std::size_t i = 0; i < remainderBytes; i++) {
@@ -182,8 +181,7 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
       DrvAPI::DrvAPIAddressToNative(byteSrc + i, &addr_native, &size);
       std::byte* as_native_pointer = reinterpret_cast<std::byte*>(addr_native);
       *(byteDst + i) = *as_native_pointer;
-      // hartYield
-      DrvAPI::nop(1u);
+      hartYield(1);
     }
   } else {
     for (std::size_t i = 0; i < numBlocks; i++) {
@@ -312,8 +310,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
       DrvAPI::DrvAPIAddressToNative(blockDst + offset, &addr_native, &size);
       BlockType* as_native_pointer = reinterpret_cast<BlockType*>(addr_native);
       *as_native_pointer = blockData;
-      // hartYield
-      DrvAPI::nop(1u);
+      hartYield(1);
     }
 
     for (std::size_t i = 0; i < remainderBytes; i++) {
@@ -324,8 +321,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
       DrvAPI::DrvAPIAddressToNative(byteDst + i, &addr_native, &size);
       std::byte* as_native_pointer = reinterpret_cast<std::byte*>(addr_native);
       *as_native_pointer = byteData;
-      // hartYield
-      DrvAPI::nop(1u);
+      hartYield(1);
     }
   } else {
     for (std::size_t i = 0; i < numBlocks; i++) {

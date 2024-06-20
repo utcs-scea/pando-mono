@@ -35,7 +35,7 @@ void waitUntil(const Function<bool()>& f) {
   // DrvX CP is not modeled as a separate thread, so all cores (CP and PH cores) yield while busy
   // waiting.
   do {
-    hartYield();
+    hartYield(1000);
   } while (f() == false);
 
 #else
@@ -92,7 +92,7 @@ void waitAll() {
   for (std::int64_t i = 0; i < Drvx::getNodeDims().id; i++) {
     for (std::int64_t j = 0; j < Drvx::getPodDims().x; j++) {
       while (DrvAPI::getPodTasksRemaining(i, j) != 0) {
-        hartYield();
+        hartYield(1000);
       }
     }
   }

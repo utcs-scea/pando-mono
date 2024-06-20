@@ -62,7 +62,7 @@ DrvAPI::DrvAPIPointer<T> toNativeDrvPointerOnDram(const U& globalDrvObj, NodeInd
  *
  * @ingroup DRVX
  */
-void hartYield() noexcept;
+void hartYield(int cycle = 1000) noexcept;
 
 /**
  * @brief DRVX utility class with helper types and functions to query the system configuration.
