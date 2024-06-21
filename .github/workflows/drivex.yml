@@ -66,7 +66,7 @@ jobs:
           PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=BUILD_WORKFLOWS=ON -e=WF4_TESTS=ON"
         fi
         if [ ${{ matrix.project }} == 'BFS' ]; then
-          PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=BUILD_MICROBENCH=ON -e=BFS_TESTS=ON"
+          PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=BUILD_MICROBENCH=ON  -e=PANDO_VALIDATION_PRINT=ON -e=BFS_TESTS=ON"
         fi
         if [ ${{ matrix.project }} == 'TC' ]; then
           PANDO_CONTAINER_ENV="${PANDO_CONTAINER_ENV} -e=BUILD_MICROBENCH=ON -e=TC_TESTS=ON"

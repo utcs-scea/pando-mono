@@ -111,7 +111,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   PANDO_CHECK(toRead.initialize());
   PANDO_CHECK(toWrite.initialize());
 
-#ifdef DPRINTS
+#ifdef PRINTS
   // print out number of mirrors
   PANDO_CHECK(galois::doAll(
       graph, toRead, +[](Graph graph, bfs::MDWorkList<Graph>) {
@@ -141,12 +141,15 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
     std::cout << "Source Vertex is " << srcVertex << std::endl;
 
     PANDO_CHECK(bfs::SSSPMDLCSR(graph, srcVertex, toRead, toWrite, active));
-
+#ifdef VALIDATION_PRINT
     // Print Result
     for (std::uint64_t i = 0; i < numVertices; i++) {
       std::uint64_t val = graph.getData(graph.getGlobalTopologyID(i));
       std::cout << val << std::endl;
     }
+#else
+    std::cout << "SSSP for source vertex " << srcVertex << " is done!" << std::endl;
+#endif
   }
 }
 
