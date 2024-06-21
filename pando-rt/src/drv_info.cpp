@@ -137,9 +137,11 @@ void incrementPhase() {
 
 bool bypass_flag = false;
 void setBypassFlag() {
+  pando::waitAllTasks();
   bypass_flag = true;
 }
 void clearBypassFlag() {
+  pando::waitAllTasks();
   bypass_flag = false;
 }
 bool getBypassFlag() {
