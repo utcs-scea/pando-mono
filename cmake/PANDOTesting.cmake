@@ -149,7 +149,7 @@ function(pando_add_bin_test TARGET ARGS INPUTFILE OKFILE)
     add_test(NAME ${TARGET}-${INPUTFILE}-${OKFILE}
       COMMAND bash -c "diff -Z <(LAUNCH_DIR=${CMAKE_SOURCE_DIR} ${DRIVER_SCRIPT} -p ${NUM_HTHREADS} -n ${NUM_PXNS} -c ${NUM_CORES} \
       ${CMAKE_CURRENT_BINARY_DIR}/lib${FNAME}.so ${ARGS} ${INPUTFILE} \
-      | grep -v 'memBackendConverter:' |grep -v 'PANDOHammerDrvX:' |grep -v 'Simulation is complete, simulated time:' | tail -n +3) \
+      |grep -v 'PANDOHammerDrvX:' |grep -v 'Simulation is complete, simulated time:' | tail -n +3) \
       ${OKFILE}")
 
   endif()
@@ -181,7 +181,7 @@ function(pando_add_bin_tag_test TAG TARGET ARGS INPUTFILE OKFILE)
     add_test(NAME ${TAG}-${TARGET}-${INPUTFILE}-${OKFILE}
       COMMAND bash -c "diff -Z <(LAUNCH_DIR=${CMAKE_SOURCE_DIR} ${DRIVER_SCRIPT} -p ${NUM_HTHREADS} -n ${NUM_PXNS} -c ${NUM_CORES} \
       $<TARGET_FILE:${TARGET}> ${ARGS} ${INPUTFILE} \
-      | grep -v 'memBackendConverter:' |grep -v 'PANDOHammerDrvX:' |grep -v 'Simulation is complete, simulated time:' | tail -n +3) \
+      |grep -v 'PANDOHammerDrvX:' |grep -v 'Simulation is complete, simulated time:' | tail -n +3) \
       ${OKFILE}")
 
   endif()
