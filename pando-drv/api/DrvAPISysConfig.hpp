@@ -43,6 +43,8 @@ struct DrvAPISysControl
     std::vector<std::vector<int64_t>> pod_cores_finalized_; //!< number of cores finalized per pod
     std::vector<std::vector<std::vector<int8_t>>> core_state_; //!< state for each core
     std::vector<std::vector<std::vector<int64_t>>> core_harts_done_; //!< number of harts done per core
+
+    int8_t global_bypass_flag_; //!< global flag to detemine whether to bypass or not
 };
 
 
@@ -62,6 +64,7 @@ public:
         control_.pod_cores_finalized_.resize(data.num_pxn_);
         control_.core_state_.resize(data.num_pxn_);
         control_.core_harts_done_.resize(data.num_pxn_);
+        control_.global_bypass_flag_ = 0;
         for (int i = 0; i < data_.num_pxn_; i++) {
             control_.pxn_cores_initialized_[i] = 0;
             control_.pxn_barrier_exit_[i] = 0;
@@ -183,6 +186,17 @@ public:
     }
     int64_t getCoreHartsDone(int64_t pxn_id, int8_t pod_id, int8_t core_id) {
         return __atomic_load_n(&(control_.core_harts_done_.at(pxn_id).at(pod_id).at(core_id)), static_cast<int>(std::memory_order_relaxed));
+    }
+
+    void clearGlobalBypassFlag() {
+        __atomic_store_n(&(control_.global_bypass_flag_), 0, static_cast<int>(std::memory_order_relaxed));
+    }
+    void setGlobalBypassFlag() {
+        __atomic_store_n(&(control_.global_bypass_flag_), 1, static_cast<int>(std::memory_order_relaxed));
+    }
+    bool getGlobalBypassFlag() {
+        int8_t value = __atomic_load_n(&(control_.global_bypass_flag_), static_cast<int>(std::memory_order_relaxed));
+        return value == 1;
     }
 
     static DrvAPISysConfig *Get() { return &sysconfig; }

@@ -5,8 +5,6 @@
 #define PANDO_RT_DRV_INFO_HPP_
 
 #ifdef PANDO_RT_USE_BACKEND_DRVX
-#include "DrvAPIMemory.hpp"
-#include "DrvAPIThread.hpp"
 
 namespace DrvAPI {
 void setStageInit();
@@ -23,7 +21,6 @@ bool isStageInit();
 #define PANDO_DRV_SET_STAGE_OTHER() {DrvAPI::setStageOther();}
 #define PANDO_DRV_INCREMENT_PHASE() {DrvAPI::incrementPhase();}
 
-extern bool bypass_flag;
 void setBypassFlag();
 void clearBypassFlag();
 bool getBypassFlag();
