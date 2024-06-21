@@ -120,12 +120,12 @@ MemBackendConvertor::MemBackendConvertor(ComponentId_t id, Params& params, MemBa
     3 - encryption+decryption latencies
     ********* */
     m_aesEncryptOrDecrypt = params.find<uint32_t>("aes_encrypt_or_decrypt", 3);
-    if (DEBUG_LEVEL > 0) {
-        std::cout << "memBackendConverter: AES encryption " << (m_secEnabled ? "ENABLED":"DISABLED") <<
-            ", decryption latency: " << m_aesDecryptionLat << " cycles" << "encrypt/decrypt/both: " <<
-            m_aesEncryptOrDecrypt << ", ACM check latency: " << m_acmCheckComputationLat <<
-            ", ACM row hit: " << m_acmRowHit << std::endl;
-    }
+/*
+    std::cout << "memBackendConverter: AES encryption " << (m_secEnabled ? "ENABLED":"DISABLED") <<
+        ", decryption latency: " << m_aesDecryptionLat << " cycles" << "encrypt/decrypt/both: " <<
+        m_aesEncryptOrDecrypt << ", ACM check latency: " << m_acmCheckComputationLat <<
+        ", ACM row hit: " << m_acmRowHit << std::endl;
+*/
     m_acmDependentReqs.clear();
 }
 
