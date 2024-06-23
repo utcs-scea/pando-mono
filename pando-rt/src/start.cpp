@@ -22,15 +22,7 @@
 #include "drvx/drvx.hpp"
 #endif
 
-constexpr std::uint64_t STEAL_THRESH_HOLD_SIZE = 16;
-
-constexpr bool IDLE_TIMER_ENABLE = false;
 counter::Record<std::int64_t> idleCount = counter::Record<std::int64_t>();
-
-enum SchedulerFailState{
-  YIELD,
-  STEAL,
-};
 
 extern "C" int __start(int argc, char** argv) {
   const auto thisPlace = pando::getCurrentPlace();
@@ -54,38 +46,24 @@ extern "C" int __start(int argc, char** argv) {
     auto ctok = queue->makeConsumerToken();
 
     std::optional<pando::Task> task = std::nullopt;
-
+    
+#ifdef PANDO_RT_USE_BACKEND_PREP
     SchedulerFailState failState = SchedulerFailState::YIELD;
+#endif
 
     do {
       idleTimer.start();
       task = queue->tryDequeue(ctok);
 
       if (!task.has_value()) {
-
-        switch(failState) {
-          case SchedulerFailState::YIELD:
 #ifdef PANDO_RT_USE_BACKEND_PREP
-            counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
-            pando::hartYield();
-            //In Drvx hart yielding is a 1000 cycle wait which is too much
-            idleTimer.start();
+        pando::Cores::workStealing(task, failState, idleCount, idleTimer);
+#elif defined(PANDO_RT_USE_BACKEND_DRVX)
+        pando::Cores::workStealing(task);
 #endif
-            failState = SchedulerFailState::STEAL;
-            break;
-
-          case SchedulerFailState::STEAL:
-            for(std::int8_t i = thisPlace.core.x + 1; i < thisPlace.core.x + 2 && !task.has_value(); i++) {
-              auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i % coreDims.x, 0)});
-              if(!otherQueue || otherQueue == queue) {continue;}
-              if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
-                task = otherQueue->tryDequeue();
-              }
-            }
-            failState = SchedulerFailState::YIELD;
-            break;
-        }
       }
+
+      // After work stealing
       if(task.has_value()) {
         (*task)();
         task = std::nullopt;

@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <tuple>
 
+#include "../start.hpp"
 #include "../queue.hpp"
 #include "pando-rt/execution/task.hpp"
 #include "pando-rt/index.hpp"
@@ -54,6 +55,11 @@ public:
    * @brief Returns a flag to check if the core is active.
    */
   static CoreActiveFlag getCoreActiveFlag() noexcept;
+
+  /**
+   * @brief Steals work from other cores.
+   */
+  static void workStealing(std::optional<pando::Task>& task);
 };
 
 } // namespace pando

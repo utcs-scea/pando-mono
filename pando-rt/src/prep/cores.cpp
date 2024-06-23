@@ -23,6 +23,8 @@
 #include "log.hpp"
 #include "status.hpp"
 
+#include <pando-rt/benchmark/counters.hpp>
+
 namespace pando {
 
 namespace {
@@ -449,6 +451,32 @@ Cores::TaskQueue* Cores::getTaskQueue(Place place) noexcept {
 
 Cores::CoreActiveFlag Cores::getCoreActiveFlag() noexcept {
   return CoreActiveFlag{hartContextGet()};
+}
+
+void Cores::workStealing(std::optional<pando::Task>& task, SchedulerFailState& failState, counter::Record<std::int64_t>& idleCount, counter::HighResolutionCount<IDLE_TIMER_ENABLE>& idleTimer) {
+  const auto thisPlace = getCurrentPlace();
+  const auto coreDims = getCoreDims();
+
+  switch(failState) {
+    case SchedulerFailState::YIELD:
+      counter::recordHighResolutionEvent(idleCount, idleTimer, false, thisPlace.core.x, coreDims.x);
+      pando::hartYield();
+      //In Drvx hart yielding is a 1000 cycle wait which is too much
+      idleTimer.start();
+      failState = SchedulerFailState::STEAL;
+      break;
+
+    case SchedulerFailState::STEAL:
+      // only steal work from the neighbor core
+      for(std::int8_t i = thisPlace.core.x + 1; i < thisPlace.core.x + 2; i++) {
+        auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i % coreDims.x, 0)});
+        if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
+          task = otherQueue->tryDequeue();
+        }
+      }
+      failState = SchedulerFailState::YIELD;
+      break;
+  }
 }
 
 } // namespace pando
