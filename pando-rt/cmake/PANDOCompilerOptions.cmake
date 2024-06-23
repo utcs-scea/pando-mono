@@ -9,6 +9,7 @@ set_property(CACHE PANDO_RT_ENABLE_MEM_TRACE PROPERTY STRINGS "OFF" "INTER-PXN" 
 option(PANDO_RT_ENABLE_MEM_STAT "Enable reporting memory access count statistics." OFF)
 option(PANDO_RT_DRVX_ENABLE_DMA "Enable reporting memory access count statistics." ON)
 option(PANDO_RT_DRVX_ENABLE_BYPASS "Enable bypassing SST simulation in DrvX." ON)
+option(PANDO_RT_ENABLE_WORK_STEALING "Enable work stealing for cores." ON)
 
 
 # Default compiler options for targets

@@ -46,8 +46,8 @@ extern "C" int __start(int argc, char** argv) {
     auto ctok = queue->makeConsumerToken();
 
     std::optional<pando::Task> task = std::nullopt;
-    
-#ifdef PANDO_RT_USE_BACKEND_PREP
+
+#if defined(PANDO_RT_USE_BACKEND_PREP)
     SchedulerFailState failState = SchedulerFailState::YIELD;
 #endif
 
@@ -58,7 +58,7 @@ extern "C" int __start(int argc, char** argv) {
       if (!task.has_value()) {
 #ifdef PANDO_RT_USE_BACKEND_PREP
         pando::Cores::workStealing(task, failState, idleCount, idleTimer);
-#elif defined(PANDO_RT_USE_BACKEND_DRVX)
+#elif defined(PANDO_RT_USE_BACKEND_DRVX) && defined(PANDO_RT_WORK_STEALING)
         pando::Cores::workStealing(task);
 #endif
       }
