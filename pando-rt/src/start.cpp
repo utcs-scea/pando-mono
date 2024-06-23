@@ -53,6 +53,9 @@ extern "C" int __start(int argc, char** argv) {
 
     do {
       idleTimer.start();
+      // for simulation accuracy purposes
+      // getTaskQueue() records the memory access associated with dequeue
+      queue = pando::Cores::getTaskQueue(thisPlace);
       task = queue->tryDequeue(ctok);
 
       if (!task.has_value()) {
