@@ -29,6 +29,8 @@
 #include <pando-lib-galois/utility/pair.hpp>
 #include <pando-lib-galois/utility/string_view.hpp>
 #include <pando-lib-galois/utility/tuple.hpp>
+#include <pando-rt/containers/Garray.hpp>
+#include <pando-rt/containers/Gvector.hpp>
 #include <pando-rt/pando-rt.hpp>
 #include <pando-rt/sync/notification.hpp>
 
@@ -74,16 +76,17 @@ buildEdgeCountToSend(std::uint64_t numVirtualHosts,
       sumArray, localEdges,
       +[](pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts,
           pando::Vector<pando::Vector<EdgeType>> localEdges) {
-        for (pando::Vector<EdgeType> v : localEdges) {
-          assert(v.size() != 0);
-          EdgeType e = v[0];
+        for (pando::GlobalRef<pando::Vector<EdgeType>> v : localEdges) {
+          pando::Gvector<EdgeType> vec(&v);
+          assert(vec.size() != 0);
+          EdgeType e = fmap(vec, at, 0);
           pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
               static_cast<pando::GlobalPtr<void>>(&counts[e.src % counts.size()]));
           using UPair = galois::Pair<std::uint64_t, std::uint64_t>;
           toAdd += offsetof(UPair, first);
           pando::GlobalPtr<std::uint64_t> p = static_cast<pando::GlobalPtr<std::uint64_t>>(
               static_cast<pando::GlobalPtr<void>>(toAdd));
-          pando::atomicFetchAdd(p, v.size(), std::memory_order_relaxed);
+          pando::atomicFetchAdd(p, vec.size(), std::memory_order_relaxed);
         }
       }));
   return sumArray;
@@ -305,8 +308,8 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
         uint64_t result;
         for (uint64_t j = 0; j < lift(exchangedVec, size); j++) {
           pando::GlobalRef<pando::Vector<EdgeType>> v = exchangedVec.get(j);
-          pando::Vector<EdgeType> v1 = v;
-          EdgeType e = v1[0];
+          pando::Gvector<EdgeType> v1(&v);
+          EdgeType e = fmap(v1, at, 0);
           bool ret = fmap(hashMap, get, e.src, result);
           if (!ret) {
             return pando::Status::Error;
