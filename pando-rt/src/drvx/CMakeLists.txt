@@ -42,6 +42,7 @@ target_sources(pando-rt-drvx
         ${CMAKE_CURRENT_SOURCE_DIR}/index.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/log.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/status.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/termination.cpp
 )
 
 pando_compiler_warnings(pando-rt-drvx)
