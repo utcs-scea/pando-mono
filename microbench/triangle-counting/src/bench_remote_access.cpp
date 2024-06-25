@@ -119,6 +119,6 @@ int pandoMain(int argc, char** argv) {
                                  allowRemoteAccess));
     necessary.wait();
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

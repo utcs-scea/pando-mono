@@ -27,7 +27,7 @@ int pandoMain(int, char**) {
     PANDO_CHECK(pando::executeOn(pando::Place{}, &allocate));
   }
 
-  pando::waitAll();
+  pando::endExecution();
 
   return 0;
 }

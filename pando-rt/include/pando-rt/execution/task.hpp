@@ -15,6 +15,7 @@
 #include "../memory/global_ptr.hpp"
 #include "../stddef.hpp"
 #include "../sync/atomic.hpp"
+#include "../execution/termination.hpp"
 
 namespace pando {
 
@@ -112,6 +113,9 @@ private:
     constexpr void operator()() {
       std::apply(static_cast<FunctionStorageType&>(*this),
                  std::move(static_cast<ArgsStorageType&>(*this)));
+      if (!isOnCP()) {
+        TerminationDetection::increaseTasksFinished(1);
+      }
     }
   };
 
@@ -200,6 +204,9 @@ private:
       // make sure that result is visible since it is consumed by another thread
       auto readyPtr = memberPtrOf<std::int32_t>(resultPtr, offsetof(ResultType, ready));
       atomicStore(readyPtr, 1, std::memory_order_release);
+      if (!isOnCP()) {
+        TerminationDetection::increaseTasksFinished(1);
+      }
     }
   };
 

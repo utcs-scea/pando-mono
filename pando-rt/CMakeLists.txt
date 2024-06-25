@@ -74,6 +74,7 @@ set(PUBLIC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/execution/request.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/execution/result_storage.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/execution/task.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/execution/termination.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/memory/address_map.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/memory/address_translation.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/pando-rt/memory/allocate_memory.hpp

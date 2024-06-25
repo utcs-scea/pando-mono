@@ -186,6 +186,6 @@ int pandoMain(int argc, char** argv) {
     }
     std::cout << std::flush;
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

@@ -15,7 +15,7 @@ void greetings(int level) {
     PANDO_CHECK(pando::executeOn(otherPlace, &greetings, level + 1));
   }
 
-  std::printf("%s/%i: Hello from node %li, pod x=%i,y=%i, core x=%i,y=%i\n", __func__, level,
+  std::printf("%s/%i: Hello from node %li, pod x=%i,y=%i, core x=%i,y=%i\n", "greetings", level,
               thisPlace.node.id, thisPlace.pod.x, thisPlace.pod.y, thisPlace.core.x,
               thisPlace.core.y);
 }
@@ -30,7 +30,7 @@ void nodeGreetings(int level) {
     PANDO_CHECK(
         pando::executeOn(pando::Place{rightNode, {}, pando::anyCore}, &nodeGreetings, level + 1));
   }
-  std::printf("%s/%i: Hello from node %li, pod x=%i,y=%i, core x=%i,y=%i\n", __func__, level,
+  std::printf("%s/%i: Hello from node %li, pod x=%i,y=%i, core x=%i,y=%i\n", "nodeGreetings", level,
               thisPlace.node.id, thisPlace.pod.x, thisPlace.pod.y, thisPlace.core.x,
               thisPlace.core.y);
 }
@@ -55,7 +55,7 @@ int pandoMain(int, char**) {
     PANDO_CHECK(pando::executeOn(pando::Place{rightNode, {}, pando::anyCore}, &nodeGreetings, 0));
   }
 
-  pando::waitAll();
+  pando::endExecution();
 
   return 0;
 }

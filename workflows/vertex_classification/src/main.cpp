@@ -112,12 +112,12 @@ int pandoMain(int argc, char** argv) {
     *dGraphPtr = galois::initializeWMDDLCSR<VertexType, EdgeType>(filename);
     std::cout << "[Completes graph construction]\n";
     if (programOptions.disableKernel2) {
-      pando::waitAll();
+      pando::endExecution();
       return 0;
     }
     std::uint64_t numEpochs = programOptions.epochs;
     runGNN(dGraphPtr, numEpochs);
   }
-  pando::waitAll();
+  pando::endExecution();
   return 0;
 }

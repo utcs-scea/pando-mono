@@ -15,6 +15,10 @@ std::int64_t Drvx::getNumSystemCores() noexcept {
   return DrvAPI::numPXNs() * DrvAPI::numPXNPods() * DrvAPI::numPodCores();
 }
 
+std::int64_t Drvx::getNumPxnCores() noexcept {
+  return DrvAPI::numPXNPods() * DrvAPI::numPodCores();
+}
+
 NodeIndex Drvx::getCurrentNode() noexcept {
   return NodeIndex(DrvAPI::myPXNId());
 }

@@ -64,6 +64,7 @@ target_sources(pando-rt-prep
         ${CMAKE_CURRENT_SOURCE_DIR}/memory.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/nodes.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/status.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/termination.cpp
 )
 
 if(NOT PANDO_RT_ENABLE_MEM_TRACE STREQUAL "OFF")

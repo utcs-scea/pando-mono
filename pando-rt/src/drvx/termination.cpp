@@ -1,14 +1,18 @@
-#include "termination.hpp"
+// SPDX-License-Identifier: MIT
+/* Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. */
 
-std::mutex global_mutex;
-bool terminateFlag = false;
+#include "pando-rt/execution/termination.hpp"
+#include "pando-rt/sync/atomic.hpp"
 
-void setTerminateFlag() {
-  std::lock_guard lock{global_mutex};
-  terminateFlag = true;
+#include "drvx.hpp"
+
+namespace pando {
+void TerminationDetection::increaseTasksCreated(Place place, std::int64_t n) noexcept {
+  DrvAPI::atomicIncrementPodTasksRemaining(place.node.id, place.pod.x, n);
 }
 
-bool getTerminateFlag() {
-  std::lock_guard lock{global_mutex};
-  return terminateFlag;
+void TerminationDetection::increaseTasksFinished(std::int64_t n) noexcept {
+  DrvAPI::atomicIncrementPodTasksRemaining(pando::getCurrentNode().id, pando::getCurrentPod().x, -1 * n);
 }
+
+} // namespace

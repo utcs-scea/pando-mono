@@ -36,7 +36,7 @@ int pandoMain(int argc, char** argv) {
     galois::PodLocalStorageHeap::HeapInit();
     result = RUN_ALL_TESTS();
   }
-  pando::waitAll();
+  pando::endExecution();
 
 #ifdef ENABLE_GCOV
   __gcov_exit();

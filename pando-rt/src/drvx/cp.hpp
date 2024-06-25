@@ -21,11 +21,6 @@ public:
   [[nodiscard]] static Status initialize();
 
   /**
-   * @brief Signal that this core is done.
-   */
-  static void signalCoresDone();
-
-  /**
    * @brief Barrier for all CPs.
    */
   static void barrier();
@@ -34,22 +29,6 @@ public:
    * @brief Finalizes the CP.
    */
   static void finalize();
-
-private:
-  /**
-   * @brief Wait for all cores on all PXNs to be done.
-   */
-  static void waitForCoresDone();
-
-  /**
-   * @brief Signal that this command processor is done.
-   */
-  static void signalCommandProcessorDone();
-
-  /**
-   * @brief Wait for all command processors on all PXNs to be done.
-   */
-  static void waitForCommandProcessorsDone();
 };
 
 } // namespace pando

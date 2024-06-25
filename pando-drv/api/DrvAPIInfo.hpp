@@ -155,6 +155,8 @@ inline int32_t numPodL2SPBanks() {
 inline uint32_t podL2SPAddressInterleave() {
     return DrvAPISysConfig::Get()->podL2SPInterleaveSize();
 }
+
+
 //////////
 // Time //
 //////////
@@ -192,6 +194,89 @@ inline void outputStatistics() {
  */
 inline void outputStatistics(const std::string& tag) {
     DrvAPIThread::current()->getSystem()->outputStatistics(tag);
+}
+
+///////////////////////
+// Control Variables //
+///////////////////////
+inline void resetGlobalCpsFinalized() {
+    return DrvAPISysConfig::Get()->resetGlobalCpsFinalized();
+}
+inline int64_t atomicIncrementGlobalCpsFinalized(int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementGlobalCpsFinalized(value);
+}
+inline int64_t getGlobalCpsFinalized() {
+    return DrvAPISysConfig::Get()->getGlobalCpsFinalized();
+}
+
+inline void resetGlobalCpsReached() {
+    return DrvAPISysConfig::Get()->resetGlobalCpsReached();
+}
+inline int64_t atomicIncrementGlobalCpsReached(int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementGlobalCpsReached(value);
+}
+inline int64_t getGlobalCpsReached() {
+    return DrvAPISysConfig::Get()->getGlobalCpsReached();
+}
+
+inline void resetPxnCoresInitialized(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->resetPxnCoresInitialized(pxn_id);
+}
+inline int64_t atomicIncrementPxnCoresInitialized(int64_t pxn_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementPxnCoresInitialized(pxn_id, value);
+}
+inline int64_t getPxnCoresInitialized(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->getPxnCoresInitialized(pxn_id);
+}
+
+inline void resetPxnBarrierExit(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->resetPxnBarrierExit(pxn_id);
+}
+inline void setPxnBarrierExit(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->setPxnBarrierExit(pxn_id);
+}
+inline bool testPxnBarrierExit(int64_t pxn_id) {
+    return DrvAPISysConfig::Get()->testPxnBarrierExit(pxn_id);
+}
+
+inline void resetPodTasksRemaining(int64_t pxn_id, int8_t pod_id) {
+    return DrvAPISysConfig::Get()->resetPodTasksRemaining(pxn_id, pod_id);
+}
+inline int64_t atomicIncrementPodTasksRemaining(int64_t pxn_id, int8_t pod_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementPodTasksRemaining(pxn_id, pod_id, value);
+}
+inline int64_t getPodTasksRemaining(int64_t pxn_id, int8_t pod_id) {
+    return DrvAPISysConfig::Get()->getPodTasksRemaining(pxn_id, pod_id);
+}
+
+inline void resetPodCoresFinalized(int64_t pxn_id, int8_t pod_id) {
+    return DrvAPISysConfig::Get()->resetPodCoresFinalized(pxn_id, pod_id);
+}
+inline int64_t atomicIncrementPodCoresFinalized(int64_t pxn_id, int8_t pod_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementPodCoresFinalized(pxn_id, pod_id, value);
+}
+inline int64_t getPodCoresFinalized(int64_t pxn_id, int8_t pod_id) {
+    return DrvAPISysConfig::Get()->getPodCoresFinalized(pxn_id, pod_id);
+}
+
+inline int8_t getCoreState(int64_t pxn_id, int8_t pod_id, int8_t core_id) {
+    return DrvAPISysConfig::Get()->getCoreState(pxn_id, pod_id, core_id);
+}
+inline void setCoreState(int64_t pxn_id, int8_t pod_id, int8_t core_id, int8_t value) {
+    DrvAPISysConfig::Get()->setCoreState(pxn_id, pod_id, core_id, value);
+}
+inline int8_t atomicCompareExchangeCoreState(int64_t pxn_id, int8_t pod_id, int8_t core_id,  int8_t expected, int8_t desired) {
+    return DrvAPISysConfig::Get()->atomicCompareExchangeCoreState(pxn_id, pod_id, core_id, expected, desired);
+}
+
+inline void resetCoreHartsDone(int64_t pxn_id, int8_t pod_id, int8_t core_id) {
+    return DrvAPISysConfig::Get()->resetCoreHartsDone(pxn_id, pod_id, core_id);
+}
+inline int64_t atomicIncrementCoreHartsDone(int64_t pxn_id, int8_t pod_id, int8_t core_id, int64_t value) {
+    return DrvAPISysConfig::Get()->atomicIncrementCoreHartsDone(pxn_id, pod_id, core_id, value);
+}
+inline int64_t getCoreHartsDone(int64_t pxn_id, int8_t pod_id, int8_t core_id) {
+    return DrvAPISysConfig::Get()->getCoreHartsDone(pxn_id, pod_id, core_id);
 }
 
 

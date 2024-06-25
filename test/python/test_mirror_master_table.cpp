@@ -115,5 +115,5 @@ void runTest(const char* elFile, std::uint64_t numVertices) {
     }
     graph.deinitialize();
   }
-  pando::waitAll();
+  pando::endExecution();
 }

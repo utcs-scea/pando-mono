@@ -78,7 +78,7 @@ int pandoMain(int, char**) {
     pando::waitUntil([&] {
       return result.hasValue();
     });
-    pando::waitAll();
+    pando::endExecution();
   }
 
   return 0;

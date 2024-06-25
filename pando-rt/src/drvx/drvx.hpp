@@ -89,6 +89,11 @@ public:
   static std::int64_t getNumSystemCores() noexcept;
 
   /**
+   * @brief Returns the total number of PH cores on a single PXN
+   */
+  static std::int64_t getNumPxnCores() noexcept;
+
+  /**
    * @brief Returns the current node index.
    */
   static NodeIndex getCurrentNode() noexcept;
