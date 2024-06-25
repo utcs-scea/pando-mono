@@ -118,7 +118,6 @@ void* asNativePtr(GlobalAddress globalAddr) noexcept {
 
 void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 #if defined(PANDO_RT_USE_BACKEND_PREP)
-
   const auto nodeIdx = extractNodeIndex(srcGlobalAddr);
   if (nodeIdx == Nodes::getCurrentNode()) {
     counter::HighResolutionCount<POINTER_TIMER_ENABLE> pointerTimer;
@@ -164,34 +163,12 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 
 #if defined(PANDO_RT_BYPASS)
   if (getBypassFlag()) {
-    for (std::size_t i = 0; i < numBlocks; i++) {
-      const auto bytesOffset = i * blockSize;
-
-      void *addr_native = nullptr;
-      std::size_t size = 0;
-      DrvAPI::DrvAPIAddressToNative(blockSrc + bytesOffset, &addr_native, &size);
-      BlockType* as_native_pointer = reinterpret_cast<BlockType*>(addr_native);
-      *(blockDst + i) = *as_native_pointer;
-      hartYield(1);
-    }
-
-    for (std::size_t i = 0; i < remainderBytes; i++) {
-      void *addr_native = nullptr;
-      std::size_t size = 0;
-      DrvAPI::DrvAPIAddressToNative(byteSrc + i, &addr_native, &size);
-      std::byte* as_native_pointer = reinterpret_cast<std::byte*>(addr_native);
-      *(byteDst + i) = *as_native_pointer;
-      hartYield(1);
-    }
-  } else {
-    for (std::size_t i = 0; i < numBlocks; i++) {
-      const auto bytesOffset = i * blockSize;
-      *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset);
-    }
-
-    for (std::size_t i = 0; i < remainderBytes; i++) {
-      *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
-    }
+    void *srcNativePtr = nullptr;
+    size_t blah = 0;
+    //Unsafe ignoring of blah but we have already captured the size
+    DrvAPI::DrvAPIAddressToNative(srcGlobalAddr, &srcNativePtr, &blah);
+    std::memcpy(dstNativePtr, srcNativePtr, n);
+    DrvAPI::nop(1u);
   }
 #else
   for (std::size_t i = 0; i < numBlocks; i++) {
@@ -394,6 +371,72 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
 */
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
+
+void dmaTransfer(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGlobalAddr) {
+#if defined(PANDO_RT_USE_BACKEND_PREP)
+  const auto nodeIdxDst = extractNodeIndex(dstGlobalAddr);
+  const auto nodeIdxSrc = extractNodeIndex(srcGlobalAddr);
+  if (nodeIdxDst == Nodes::getCurrentNode() &&
+      nodeIdxSrc == Nodes::getCurrentNode()) {
+    counter::HighResolutionCount<POINTER_TIMER_ENABLE> pointerTimer;
+    pointerTimer.start();
+    // yield to other hart and then issue the operation
+    //hartYield();
+
+    void* dstNativePtr = Memory::getNativeAddress(dstGlobalAddr);
+    void* srcNativePtr = Memory::getNativeAddress(srcGlobalAddr);
+    std::memcpy(dstNativePtr, srcNativePtr, n);
+    // we write to shared memory
+
+#if PANDO_MEM_TRACE_OR_STAT
+    // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
+    MemTraceLogger::log("DMA", nodeIdxSrc, nodeIdxDst, n, srcNativePtr, srcGlobalAddr);
+#endif
+    counter::recordHighResolutionEvent(pointerCount, pointerTimer);
+  } else if(nodeIdxSrc == Nodes::getCurrentNode()) {
+    // remote store; send remote store request and wait for it to finish
+#if PANDO_MEM_TRACE_OR_STAT
+    MemTraceLogger::log("DMA", nodeIdxSrc, nodeIdxDst, n, srcNativePtr, srcGlobalAddr);
+#endif
+    Nodes::AckHandle handle;
+    void* srcNativePtr = Memory::getNativeAddress(srcGlobalAddr);
+    if (auto status = Nodes::store(nodeIdxDst, dstGlobalAddr, n, srcNativePtr, handle);
+        status != Status::Success) {
+      SPDLOG_ERROR("Store error: {}", status);
+      PANDO_ABORT("Store error");
+    }
+
+    hartYieldUntil([&handle] {
+      return handle.ready();
+    });
+  } else if(nodeIdxDst == Nodes::getCurrentNode()) {
+    // remote load; send remote load request and wait for it to finish
+    void* dstNativePtr = Memory::getNativeAddress(dstGlobalAddr);
+    Nodes::LoadHandle handle(dstNativePtr);
+    if (auto status = Nodes::load(nodeIdxSrc, srcGlobalAddr, n, handle); status != Status::Success) {
+      SPDLOG_ERROR("Load error: {}", status);
+      PANDO_ABORT("Load error");
+    }
+#if PANDO_MEM_TRACE_OR_STAT
+    MemTraceLogger::log("STORE", nodeIdxSrc, nodeIdxSrc, n, srcNativePtr, srcGlobalAddr);
+#endif
+
+    hartYieldUntil([&handle] {
+      return handle.ready();
+    });
+  } else {
+    PANDO_ABORT("This case should not occur");
+  }
+#elif defined(PANDO_RT_USE_BACKEND_DRVX)
+  std::byte* temp = new std::byte[n];
+  load(srcGlobalAddr, n, temp);
+  store(dstGlobalAddr, n, temp);
+  delete[] temp;
+#else
+  PANDO_ABORT("NOT IMPLEMENTED");
+#endif
+}
+
 
 } // namespace detail
 

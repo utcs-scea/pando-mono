@@ -12,6 +12,7 @@
 #include "../memory/allocate_memory.hpp"
 #include "../memory/global_ptr.hpp"
 #include "../utility/math.hpp"
+#include "../utility/check.hpp"
 #include "array.hpp"
 
 namespace pando {
@@ -128,6 +129,23 @@ public:
   }
 
   /**
+   * @brief this function resizes the array
+   *
+   * @note the implementation is simple because T must be trivially copyable.
+   *
+   * @param[in] newSize the new desired size
+   **/
+  [[nodiscard]] Status resize(std::uint64_t newSize) {
+    if(capacity() >= newSize){
+      m_size = newSize;
+      return Status::Success;
+    }
+    PANDO_CHECK_RETURN(reserve(newSize));
+    m_size = newSize;
+    return Status::Success;
+  }
+
+  /**
    * @brief Reserves the next power of 2 higher than the current size.
    */
   [[nodiscard]] Status growPow2() {
@@ -228,13 +246,12 @@ public:
    */
   [[nodiscard]] Status assign(GlobalPtr<Vector<T>> from) {
     Vector<T> tfrom = *from;
-    auto err = initialize(tfrom.size());
+    const auto size = tfrom.size();
+    auto err = initialize(size);
     if (err != Status::Success) {
       return err;
     }
-    for (std::uint64_t i = 0; i < tfrom.size(); i++) {
-      get(i) = tfrom[i];
-    }
+    detail::dmaTransfer(tfrom.data().address, sizeof(T) * size, data().address);
     return Status::Success;
   }
 
@@ -249,14 +266,10 @@ public:
    */
   [[nodiscard]] Status append(GlobalPtr<Vector<T>> from) {
     Vector<T> tfrom = *from;
-    if (auto status = reserve(size() + tfrom.size()); status != Status::Success) {
-      return status;
-    }
-    for (std::uint64_t i = 0; i < tfrom.size(); i++) {
-      if (auto status = pushBack(tfrom[i]); status != Status::Success) {
-        return status;
-      }
-    }
+    const auto originalSize = size();
+    const auto appendSize = tfrom.size();
+    PANDO_CHECK_RETURN(resize(originalSize + appendSize));
+    detail::dmaTransfer(tfrom.data().address, sizeof(T) * appendSize, (&get(originalSize)).address);
     return Status::Success;
   }
 

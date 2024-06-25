@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "pando-rt/containers/vector.hpp"
+#include "pando-rt/memory/memory_guard.hpp"
 
 #include "pando-rt/execution/execute_on.hpp"
 #include "pando-rt/sync/notification.hpp"
@@ -313,6 +314,30 @@ TEST(Vector, Append) {
                              notification.getHandle()),
             pando::Status::Success);
   notification.wait();
+}
+
+TEST(Vector, AssignRemote) {
+  constexpr std::uint64_t SIZE = 1000;
+  auto createVector = +[](uint64_t size) -> pando::Vector<std::uint64_t> {
+    pando::Vector<std::uint64_t> vec;
+    PANDO_CHECK(vec.initialize(size));
+    for(std::uint64_t i = 0; i < size; i++) {
+      vec[i] = i;
+    }
+    return vec;
+  };
+  pando::GlobalPtr<pando::Vector<std::uint64_t>> gvec;
+  pando::LocalStorageGuard gvecGuard(gvec, 1);
+  const auto place = pando::Place(pando::NodeIndex(1), pando::anyPod, pando::anyCore);
+  *gvec = PANDO_EXPECT_CHECK(pando::executeOnWait(place, createVector, SIZE));
+  pando::Vector<std::uint64_t> localVec {};
+  EXPECT_EQ(localVec.assign(gvec), pando::Status::Success);
+  for(std::uint64_t i = 0; i < localVec.size(); i++) {
+    EXPECT_EQ(localVec[i], i);
+  }
+  localVec.deinitialize();
+  localVec = *gvec;
+  localVec.deinitialize();
 }
 
 TEST(Vector, RangeLoop) {
