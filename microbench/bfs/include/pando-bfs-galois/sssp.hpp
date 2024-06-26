@@ -109,7 +109,7 @@ template <typename G>
 pando::Status SSSP_DLCSR(
     G& graph, std::uint64_t src, ThreadLocalVector<typename G::VertexTopologyID>& active,
     galois::HostLocalStorage<pando::Vector<typename G::VertexTopologyID>>& phbfs) {
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
   std::cerr << "Got into SSSP" << std::endl;
 #endif
 
@@ -144,7 +144,7 @@ pando::Status SSSP_DLCSR(
   PANDO_DRV_CLEAR_BYPASS_FLAG();
 
   while (!IsactiveIterationEmpty(phbfs)) {
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
 #endif
 
@@ -162,7 +162,7 @@ pando::Status SSSP_DLCSR(
 
     PANDO_DRV_INCREMENT_PHASE();
 
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
     std::cerr << "Iteration loop end:\t" << state.dist - 1 << std::endl;
 #endif
   }
@@ -277,7 +277,7 @@ bool updateActive(G& graph, MDWorkList<G> toRead, const pando::Array<bool>& mast
 template <typename G>
 pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkList<G>>& toRead,
                          HostLocalStorage<MDWorkList<G>>& toWrite, P<bool> active) {
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
   std::cerr << "Got into SSSP" << std::endl;
 #endif
   galois::WaitGroup wg{};
@@ -305,7 +305,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
       }));
   PANDO_CHECK_RETURN(wg.wait());
 
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
   std::uint64_t srcHost = graph.getPhysicalHostID(src);
   std::cerr << "Source is on host " << srcHost << std::endl;
 #endif
@@ -322,7 +322,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 
   *active = true;
   while (*active) {
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
     std::cerr << "Iteration loop start:\t" << state.dist << std::endl;
 #endif
     *active = false;
@@ -354,7 +354,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
     PANDO_DRV_SET_STAGE_EXEC_COMP();
     PANDO_DRV_INCREMENT_PHASE();
 
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
     std::cerr << "Iteration loop end:\t" << state.dist - 1 << std::endl;
 #endif
   }

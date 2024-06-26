@@ -29,7 +29,7 @@ void printUsageExit(char* argv0) {
 
 void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVertices,
                  pando::Array<char>&& filename) {
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
   std::cerr << "Construct Graph Begin" << std::endl;
 #endif
 
@@ -43,7 +43,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
   for (std::uint64_t i = 0; i < numVertices; i++) {
     std::uint64_t host = graph.getPhysicalHostID(i);
     std::cerr << "token ID = " << i << ", host = " << host << std::endl;
@@ -80,7 +80,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
 
 void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVertices,
                   pando::Array<char>&& filename) {
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
   std::cerr << "Construct Graph Begin" << std::endl;
 #endif
 
@@ -94,7 +94,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
 
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
   for (std::uint64_t i = 0; i < numVertices; i++) {
     std::uint64_t host = graph.getPhysicalHostID(i);
     std::cerr << "token ID = " << i << ", host = " << host << std::endl;
@@ -111,7 +111,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   PANDO_CHECK(toRead.initialize());
   PANDO_CHECK(toWrite.initialize());
 
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
   // print out number of mirrors
   PANDO_CHECK(galois::doAll(
       graph, toRead, +[](Graph graph, bfs::MDWorkList<Graph>) {

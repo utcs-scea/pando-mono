@@ -31,13 +31,13 @@ public:
     this->useDropout_ = useDropout;
     this->useReLU_ = useReLU;
 
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
     std::cerr << "[FCN Layer " << layerNumber << "] Starts initialization\n" << std::flush;
     std::cerr << "[FCN Layer " << layerNumber << "] Dropout setting:" << this->useDropout_ << "\n"
               << std::flush;
     std::cerr << "[FCN Layer " << layerNumber << "] Activation setting:" << this->useReLU_ << "\n"
               << std::flush;
-#endif // PRINTS
+#endif // DEBUG_PRINTS
 
     // Call and initialize operand matrices
     GNNLayer<InnerGraph>::initialize(layerNumber, backwardOutputMatrix, dimensions, true);

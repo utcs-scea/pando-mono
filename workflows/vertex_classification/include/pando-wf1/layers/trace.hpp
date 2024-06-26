@@ -34,7 +34,7 @@ public:
   void initialize(std::uint32_t layerNumber,
                   galois::HostLocalStorage<pando::Array<GNNFloat>>& backwardOutputMatrix,
                   galois::HostLocalStorage<GNNLayerDimensions>& dimensions) {
-#if PRINTS
+#if DEBUG_PRINTS
     std::cerr << "[Trace Layer " << layerNumber << "] Starts initialization\n" << std::flush;
 #endif
     // Call and initialize operand matrices
@@ -47,7 +47,7 @@ public:
     }
 #endif
 
-#if PRINTS
+#if DEBUG_PRINTS
     std::cerr << "[Trace Layer " << layerNumber << "] Starts initialization [DONE]\n" << std::flush;
 #endif
   }
