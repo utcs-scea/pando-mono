@@ -51,9 +51,9 @@ public:
    * @note This method should be called once.
    */
   void InitializeMatrices() {
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
     std::cerr << "[GNNLayer] Initializes matrices\n" << std::flush;
-#endif // PRINTS
+#endif // DEBUG_PRINTS
 
     // Initialize per-host objects
     PANDO_CHECK(this->forwardOutputMatrix_.initialize());
@@ -106,7 +106,7 @@ public:
     if (this->needWeight_) {
       this->GlorotBengioWeightInit();
     }
-#ifdef PRINTS
+#ifdef DEBUG_PRINTS
     std::cerr << "[GNNLayer] Initializes matrices [DONE]\n" << std::flush;
 #endif
   }

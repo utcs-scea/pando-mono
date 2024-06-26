@@ -5,6 +5,8 @@
 
 include(${pando-lib-galois_SOURCE_DIR}/cmake/PANDOCompilerOptions.cmake)
 
+option(PANDO_VALIDATION_PRINT "Enable printouts for validation purpose." OFF)
+
 #
 # pando-bfs-galois target
 #
@@ -13,6 +15,13 @@ target_sources(pando-bfs
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/sssp.cpp
 )
+
+if(PANDO_VALIDATION_PRINT STREQUAL "ON")
+    target_compile_definitions(pando-bfs
+            PUBLIC
+                "-DVALIDATION_PRINT=1"
+    )
+endif()
 
 # link pando-lib-galois
 target_include_directories(pando-bfs
