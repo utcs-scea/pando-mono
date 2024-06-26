@@ -108,4 +108,17 @@ Cores::TaskQueue* Cores::getTaskQueue(Place place) noexcept {
 void Cores::finalize() {
 }
 
+void Cores::workStealing(std::optional<pando::Task>& task) {
+  const auto thisPlace = getCurrentPlace();
+  const auto coreDims = getCoreDims();
+
+  // onyl steal from the neighbor core
+  for(std::int8_t i = thisPlace.core.x + 1; i < thisPlace.core.x + 2; i++) {
+    auto* otherQueue =  pando::Cores::getTaskQueue(pando::Place{thisPlace.node, thisPlace.pod, pando::CoreIndex(i % coreDims.x, 0)});
+    if(otherQueue->getApproxSize() > STEAL_THRESH_HOLD_SIZE) {
+      task = otherQueue->tryDequeue();
+    }
+  }
+}
+
 } // namespace pando
