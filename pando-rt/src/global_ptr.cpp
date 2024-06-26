@@ -149,18 +149,6 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 
-  using BlockType = std::uint64_t;
-  const auto blockSize = sizeof(BlockType);
-  const auto numBlocks = n / blockSize;
-  const auto remainderBytes = n % blockSize;
-
-  auto blockDst = static_cast<BlockType*>(dstNativePtr);
-  auto blockSrc = srcGlobalAddr;
-
-  const auto bytesRead = numBlocks * blockSize;
-  auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
-  auto byteSrc = srcGlobalAddr + bytesRead;
-
 #if defined(PANDO_RT_BYPASS)
   if (getBypassFlag()) {
     void *srcNativePtr = nullptr;
@@ -169,59 +157,32 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
     DrvAPI::DrvAPIAddressToNative(srcGlobalAddr, &srcNativePtr, &blah);
     std::memcpy(dstNativePtr, srcNativePtr, n);
     DrvAPI::nop(1u);
-  }
+  } else {
 #else
-  for (std::size_t i = 0; i < numBlocks; i++) {
-    const auto bytesOffset = i * blockSize;
-    *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset);
-  }
+  {
+#endif // PANDO_RT_BYPASS
+    using BlockType = std::uint64_t;
+    const auto blockSize = sizeof(BlockType);
+    const auto numBlocks = n / blockSize;
+    const auto remainderBytes = n % blockSize;
 
-  for (std::size_t i = 0; i < remainderBytes; i++) {
-    *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
-  }
-#endif
+    const auto blockDst = static_cast<BlockType*>(dstNativePtr);
+    const auto blockSrc = srcGlobalAddr;
+    const auto bytesRead = numBlocks * blockSize;
 
-// Adding an extra layer for message payload granularity
-// Currently does not work for types more than 64 bits
-// Kept for future usage
-/*
-  using ChunkType = std::uint64_t;
-  using BlockType = std::uint16_t;
-  const auto chunkSize = sizeof(ChunkType);
-  const auto blockSize = sizeof(BlockType);
-  const auto numChunks = n / chunkSize;
-  const auto remainderBlocks = n % chunkSize;
-  const auto numBlocks = remainderBlocks / blockSize;
-  const auto remainderBytes = remainderBlocks % blockSize;
+    const auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
+    const auto byteSrc = srcGlobalAddr + bytesRead;
 
-  if (numChunks > 0) {
-    auto chunkDst = static_cast<ChunkType*>(dstNativePtr);
-    auto chunkSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr);
-    for (std::size_t i = 0; i < numChunks; i++) {
-      const auto offset = i * chunkSize;
-      *(chunkDst + i) = DrvAPI::read<ChunkType>(chunkSrc + offset);
-    }
-  }
-
-  const auto blocksRead = numChunks * chunkSize;
-  if (numBlocks > 0) {
-    auto blockDst = static_cast<BlockType*>(dstNativePtr) + blocksRead;
-    auto blockSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr) + blocksRead;
     for (std::size_t i = 0; i < numBlocks; i++) {
-      const auto offset = i * blockSize;
-      *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + offset);
+      const auto bytesOffset = i * blockSize;
+      *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset);
     }
-  }
 
-  const auto bytesRead = blocksRead + numBlocks * blockSize;
-  if (remainderBytes > 0) {
-    auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
-    auto byteSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr) + bytesRead;
     for (std::size_t i = 0; i < remainderBytes; i++) {
       *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
     }
   }
-*/
+
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
@@ -301,74 +262,22 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
       hartYield(1);
     }
   } else {
-    for (std::size_t i = 0; i < numBlocks; i++) {
-      auto blockData = *(blockSrc + i);
-      const auto offset = i * blockSize;
-      DrvAPI::write<BlockType>(blockDst + offset, blockData);
-    }
-
-    for (std::size_t i = 0; i < remainderBytes; i++) {
-      auto byteData = *(byteSrc + i);
-      DrvAPI::write<std::byte>(byteDst + i, byteData);
-    }
-  }
 #else
-  for (std::size_t i = 0; i < numBlocks; i++) {
-    auto blockData = *(blockSrc + i);
-    const auto offset = i * blockSize;
-    DrvAPI::write<BlockType>(blockDst + offset, blockData);
-  }
-
-  for (std::size_t i = 0; i < remainderBytes; i++) {
-    auto byteData = *(byteSrc + i);
-    DrvAPI::write<std::byte>(byteDst + i, byteData);
-  }
-#endif
-
-// Adding an extra layer for message payload granularity
-// Currently does not work for types more than 64 bits
-// Kept for future usage
-/*
-  using ChunkType = std::uint64_t;
-  using BlockType = std::uint16_t;
-  const auto chunkSize = sizeof(ChunkType);
-  const auto blockSize = sizeof(BlockType);
-  const auto numChunks = n / chunkSize;
-  const auto remainderBlocks = n % chunkSize;
-  const auto numBlocks = remainderBlocks / blockSize;
-  const auto remainderBytes = remainderBlocks % blockSize;
-
-  if (numChunks > 0) {
-    auto chunkSrc = static_cast<const ChunkType*>(srcNativePtr);
-    auto chunkDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr);
-    for (std::size_t i = 0; i < numChunks; i++) {
-      auto chunkData = *(chunkSrc + i);
-      const auto offset = i * chunkSize;
-      DrvAPI::write<ChunkType>(chunkDst + offset, chunkData);
-    }
-  }
-
-  const auto blocksWritten = numChunks * chunkSize;
-  if (numBlocks > 0) {
-    auto blockSrc = static_cast<const BlockType*>(srcNativePtr) + blocksWritten;
-    auto blockDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + blocksWritten;
+  {
+#endif // PANDO_RT_BYPASS
     for (std::size_t i = 0; i < numBlocks; i++) {
       auto blockData = *(blockSrc + i);
       const auto offset = i * blockSize;
       DrvAPI::write<BlockType>(blockDst + offset, blockData);
     }
-  }
 
-  const auto bytesWritten = blocksWritten + numBlocks * blockSize;
-  if (remainderBytes > 0) {
-    auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
-    auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
     for (std::size_t i = 0; i < remainderBytes; i++) {
       auto byteData = *(byteSrc + i);
       DrvAPI::write<std::byte>(byteDst + i, byteData);
     }
   }
-*/
+
+
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
@@ -429,6 +338,7 @@ void dmaTransfer(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGl
   }
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
   std::byte* temp = new std::byte[n];
+  if(temp == nullptr) PANDO_ABORT("CATASTROPHIC DATA MOVEMENT FAILURE");
   load(srcGlobalAddr, n, temp);
   store(dstGlobalAddr, n, temp);
   delete[] temp;
