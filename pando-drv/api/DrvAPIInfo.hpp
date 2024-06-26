@@ -279,6 +279,16 @@ inline int64_t getCoreHartsDone(int64_t pxn_id, int8_t pod_id, int8_t core_id) {
     return DrvAPISysConfig::Get()->getCoreHartsDone(pxn_id, pod_id, core_id);
 }
 
+inline void clearGlobalBypassFlag() {
+    return DrvAPISysConfig::Get()->clearGlobalBypassFlag();
+}
+inline void setGlobalBypassFlag() {
+    return DrvAPISysConfig::Get()->setGlobalBypassFlag();
+}
+inline bool getGlobalBypassFlag() {
+    return DrvAPISysConfig::Get()->getGlobalBypassFlag();
+}
+
 
 } // namespace DrvAPI
 #endif

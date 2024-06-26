@@ -4,6 +4,7 @@
 #ifdef PANDO_RT_USE_BACKEND_DRVX
 #include "pando-rt/drv_info.hpp"
 #include <pando-rt/pando-rt.hpp>
+#include "drvx/drvx.hpp"
 
 namespace DrvAPI {
 
@@ -137,12 +138,14 @@ void incrementPhase() {
 
 bool bypass_flag = false;
 void setBypassFlag() {
-  bypass_flag = true;
+  pando::waitAllTasks();
+  DrvAPI::setGlobalBypassFlag();
 }
 void clearBypassFlag() {
-  bypass_flag = false;
+  pando::waitAllTasks();
+  DrvAPI::clearGlobalBypassFlag();
 }
 bool getBypassFlag() {
-  return bypass_flag;
+  return DrvAPI::getGlobalBypassFlag();
 }
 #endif // PANDO_RT_USE_BACKEND_DRVX

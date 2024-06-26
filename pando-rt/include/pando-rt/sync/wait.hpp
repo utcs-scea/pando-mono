@@ -83,8 +83,17 @@ void monitorUntilNot(GlobalPtr<T> ptr, T value) {
 #endif
 }
 
+#ifdef PANDO_RT_USE_BACKEND_DRVX
 /**
- * @brief Waits for all tasks to finish executing.
+ * @brief A specific node waits for all tasks to finish executing.
+ *
+ * @ingroup ROOT
+ */
+PANDO_RT_EXPORT void waitAllTasks();
+#endif
+
+/**
+ * @brief All nodes wait for all tasks to finish executing.
  *
  * @note This is a collective operation and needs to be called by all nodes.
  *

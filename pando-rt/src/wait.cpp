@@ -45,6 +45,22 @@ void waitUntil(const Function<bool()>& f) {
 #endif
 }
 
+#ifdef PANDO_RT_USE_BACKEND_DRVX
+void waitAllTasks() {
+  if (!isOnCP()) {
+    PANDO_ABORT("Can only be called from the CP");
+  }
+
+  for (std::int64_t i = 0; i < Drvx::getNodeDims().id; i++) {
+    for (std::int64_t j = 0; j < Drvx::getPodDims().x; j++) {
+      while (DrvAPI::getPodTasksRemaining(i, j) != 0) {
+        hartYield(1000);
+      }
+    }
+  }
+}
+#endif
+
 void waitAll() {
   if (!isOnCP()) {
     PANDO_ABORT("Can only be called from the CP");
@@ -89,13 +105,7 @@ void waitAll() {
 #endif
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
   CommandProcessor::barrier();
-  for (std::int64_t i = 0; i < Drvx::getNodeDims().id; i++) {
-    for (std::int64_t j = 0; j < Drvx::getPodDims().x; j++) {
-      while (DrvAPI::getPodTasksRemaining(i, j) != 0) {
-        hartYield(1000);
-      }
-    }
-  }
+  waitAllTasks();
   CommandProcessor::barrier();
 #endif
 }
