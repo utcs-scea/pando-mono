@@ -259,8 +259,7 @@ bool atomicCompareExchangeImpl(GlobalPtr<T> ptr, T& expected, const T desired,
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
     T* as_native_pointer = reinterpret_cast<T*>(addr_native);
     auto result = __atomic_compare_exchange_n(as_native_pointer, &expected, desired, false, static_cast<int>(std::memory_order_relaxed), static_cast<int>(std::memory_order_relaxed));
-    // hartYield
-    DrvAPI::nop(1u);
+    hartYield(1);
 
     return result;
   } else {
@@ -356,8 +355,7 @@ void atomicIncrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
     T* as_native_pointer = reinterpret_cast<T*>(addr_native);
     __atomic_fetch_add(as_native_pointer, value, static_cast<int>(std::memory_order_relaxed));
-    // hartYield
-    DrvAPI::nop(1u);
+    hartYield(1);
   } else {
     DrvAPI::atomic_add(ptr.address, value);
   }
@@ -427,8 +425,7 @@ void atomicDecrementImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
     T* as_native_pointer = reinterpret_cast<T*>(addr_native);
     __atomic_fetch_add(as_native_pointer, static_cast<T>(-1) * value, static_cast<int>(std::memory_order_relaxed));
-    // hartYield
-    DrvAPI::nop(1u);
+    hartYield(1);
   } else {
     DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);
   }
@@ -501,8 +498,7 @@ T atomicFetchAddImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
     T* as_native_pointer = reinterpret_cast<T*>(addr_native);
     auto result = __atomic_fetch_add(as_native_pointer, value, static_cast<int>(std::memory_order_relaxed));
-    // hartYield
-    DrvAPI::nop(1u);
+    hartYield(1);
     return result;
   } else {
     return DrvAPI::atomic_add(ptr.address, value);
@@ -577,8 +573,7 @@ T atomicFetchSubImpl(GlobalPtr<T> ptr, T value, [[maybe_unused]] std::memory_ord
     DrvAPI::DrvAPIAddressToNative(ptr.address, &addr_native, &size);
     T* as_native_pointer = reinterpret_cast<T*>(addr_native);
     auto result = __atomic_fetch_add(as_native_pointer, static_cast<T>(-1) * value, static_cast<int>(std::memory_order_relaxed));
-    // hartYield
-    DrvAPI::nop(1u);
+    hartYield(1);
     return result;
   } else {
     return DrvAPI::atomic_add(ptr.address, static_cast<T>(-1) * value);

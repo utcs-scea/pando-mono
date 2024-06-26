@@ -20,7 +20,7 @@ namespace {
 [[nodiscard]] Status CommandProcessor::initialize() {
   // wait until all cores have initialized
   while (DrvAPI::getPxnCoresInitialized(Drvx::getCurrentNode().id) != Drvx::getNumPxnCores()) {
-    hartYield();
+    hartYield(1000);
   }
 
 
@@ -48,7 +48,7 @@ void CommandProcessor::barrier() {
       // other PXNs are yet to reach the barrier; wait for the last PXN to reach the barrier to
       // notify this PXN.
       while (!DrvAPI::testPxnBarrierExit(Drvx::getCurrentNode().id)) {
-        hartYield();
+        hartYield(1000);
       }
     }
     SPDLOG_INFO("Barrier completed on PXN {}", Drvx::getCurrentNode());

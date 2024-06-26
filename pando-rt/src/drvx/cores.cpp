@@ -54,7 +54,7 @@ void Cores::initializeQueues() {
 
   // Other harts just wait until state is ready
   while (DrvAPI::getCoreState(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x, Drvx::getCurrentCore().x) != +CoreState::Ready) {
-    hartYield();
+    hartYield(1000);
   }
 }
 
@@ -66,14 +66,14 @@ void Cores::finalizeQueues() {
   if (DrvAPI::atomicCompareExchangeCoreState(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x, Drvx::getCurrentCore().x, +CoreState::Ready, +CoreState::Idle) == +CoreState::Ready) {
     // wait for all harts on this core to be done
     while (DrvAPI::getCoreHartsDone(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x, Drvx::getCurrentCore().x) != Drvx::getThreadDims().id) {
-      hartYield();
+      hartYield(1000);
     }
 
     DrvAPI::atomicIncrementPodCoresFinalized(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x, 1);
 
     // wait for all cores on this pod to be finalized to ensure no work stealing before deleting the queue
     while (DrvAPI::getPodCoresFinalized(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x) != Drvx::getCoreDims().x) {
-      hartYield();
+      hartYield(1000);
     }
 
     DrvAPI::setCoreState(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x, Drvx::getCurrentCore().x, +CoreState::Stopped);
@@ -91,7 +91,7 @@ Cores::CoreActiveFlag Cores::getCoreActiveFlag() noexcept {
 
 bool Cores::CoreActiveFlag::operator*() const noexcept {
   do {
-    hartYield();
+    hartYield(1000);
   } while ((DrvAPI::getGlobalCpsFinalized() != Drvx::getNodeDims().id) && (DrvAPI::getPodTasksRemaining(Drvx::getCurrentNode().id, Drvx::getCurrentPod().x) == 0));
 
   if (DrvAPI::getGlobalCpsFinalized() != Drvx::getNodeDims().id) {

@@ -7,8 +7,8 @@
 namespace pando {
 
 // Yields to the next hart
-void hartYield() noexcept {
-  DrvAPI::nop(1000u);
+void hartYield(int cycle) noexcept {
+  DrvAPI::nop(cycle);
 }
 
 std::int64_t Drvx::getNumSystemCores() noexcept {
