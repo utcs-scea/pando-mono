@@ -69,10 +69,10 @@ if(PANDO_RT_DRVX_ENABLE_BYPASS STREQUAL "ON")
     )
 endif()
 
-if(PANDO_RT_ENABLE_WORK_STEALING STREQUAL "ON")
+if(PANDO_RT_DRVX_ENABLE_WORK_STEALING STREQUAL "ON")
     target_compile_definitions(pando-rt-drvx
             PUBLIC
-                "-DPANDO_RT_WORK_STEALING=1"
+                "-DPANDO_RT_DRVX_WORK_STEALING=1"
     )
 endif()
 
