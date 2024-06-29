@@ -154,7 +154,7 @@ public:
     if (m_buf.data() == nullptr && biggerThan == 0) {
       return reserve(1);
     }
-    if (log2floor(m_buf.size()) >= (sizeof(std::uint64_t) * 8 - 1)) {
+    if (m_buf.size() != 0 && log2floor(m_buf.size()) >= (sizeof(std::uint64_t) * 8 - 1)) {
       return Status::OutOfBounds;
     }
     const auto nextCapacity = up2(biggerThan);
