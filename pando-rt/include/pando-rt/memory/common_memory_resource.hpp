@@ -34,6 +34,11 @@ public:
    * @param mutexStatePtr A pointer to the mutex object state to initialize
    */
   static void initialize(GlobalPtr<MutexValueType> mutexStatePtr) {
+#ifndef NDEBUG
+    if(mutexStatePtr.address % 8 != 0) {
+      PANDO_ABORT("mutex corrupted");
+    }
+#endif // NDEBUG
     atomicStore(mutexStatePtr, +MutexState::isUnlocked, std::memory_order_release);
   }
   /**
@@ -42,6 +47,11 @@ public:
    * @param mutexStatePtr A pointer to the mutex object state to lock
    */
   static void lock(GlobalPtr<MutexValueType> mutexStatePtr) {
+#ifndef NDEBUG
+    if(mutexStatePtr.address % 8 != 0) {
+      PANDO_ABORT("mutex corrupted");
+    }
+#endif // NDEBUG
     bool resourceLocked{false};
     do {
       resourceLocked = tryLock(mutexStatePtr);
@@ -55,6 +65,11 @@ public:
    * @return @c true if successfully locked the resource and @c false otherwise.
    */
   static bool tryLock(GlobalPtr<MutexValueType> mutexStatePtr) {
+#ifndef NDEBUG
+    if(mutexStatePtr.address % 8 != 0) {
+      PANDO_ABORT("mutex corrupted");
+    }
+#endif // NDEBUG
     auto expected = +MutexState::isUnlocked;
     auto desired = +MutexState::isLocked;
     return atomicCompareExchange(mutexStatePtr, expected, desired);
@@ -66,6 +81,11 @@ public:
    * @param mutexStatePtr A pointer to the mutex object state to unlock
    */
   static void unlock(GlobalPtr<MutexValueType> mutexStatePtr) {
+#ifndef NDEBUG
+    if(mutexStatePtr.address % 8 != 0) {
+      PANDO_ABORT("mutex corrupted");
+    }
+#endif // NDEBUG
     atomicStore(mutexStatePtr, +MutexState::isUnlocked, std::memory_order_release);
   }
 };

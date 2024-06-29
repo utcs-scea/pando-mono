@@ -47,7 +47,7 @@ GlobalAddress createGlobalAddress(void* nativePtr) noexcept {
   const auto& memoryInformation = Memory::findInformation(nativePtr);
   switch (memoryInformation.type) {
     case MemoryType::L2SP: {
-      const auto offset = reinterpret_cast<std::byte*>(nativePtr) - memoryInformation.baseAddress;
+      const auto offset = static_cast<std::byte*>(nativePtr) - memoryInformation.baseAddress;
       return encodeL2SPAddress(thisPlace.node, thisPlace.pod, offset);
     }
     case MemoryType::Main: {
@@ -116,9 +116,13 @@ void* asNativePtr(GlobalAddress globalAddr) noexcept {
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
+template<std::uint64_t size>
+struct Data {
+  std::byte bytes[size];
+};
+
 void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 #if defined(PANDO_RT_USE_BACKEND_PREP)
-
   const auto nodeIdx = extractNodeIndex(srcGlobalAddr);
   if (nodeIdx == Nodes::getCurrentNode()) {
     counter::HighResolutionCount<POINTER_TIMER_ENABLE> pointerTimer;
@@ -150,101 +154,38 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
 
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 
-  using BlockType = std::uint64_t;
-  const auto blockSize = sizeof(BlockType);
-  const auto numBlocks = n / blockSize;
-  const auto remainderBytes = n % blockSize;
-
-  auto blockDst = static_cast<BlockType*>(dstNativePtr);
-  auto blockSrc = srcGlobalAddr;
-
-  const auto bytesRead = numBlocks * blockSize;
-  auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
-  auto byteSrc = srcGlobalAddr + bytesRead;
-
 #if defined(PANDO_RT_BYPASS)
   if (getBypassFlag()) {
-    for (std::size_t i = 0; i < numBlocks; i++) {
-      const auto bytesOffset = i * blockSize;
-
-      void *addr_native = nullptr;
-      std::size_t size = 0;
-      DrvAPI::DrvAPIAddressToNative(blockSrc + bytesOffset, &addr_native, &size);
-      BlockType* as_native_pointer = reinterpret_cast<BlockType*>(addr_native);
-      *(blockDst + i) = *as_native_pointer;
-      hartYield(1);
-    }
-
-    for (std::size_t i = 0; i < remainderBytes; i++) {
-      void *addr_native = nullptr;
-      std::size_t size = 0;
-      DrvAPI::DrvAPIAddressToNative(byteSrc + i, &addr_native, &size);
-      std::byte* as_native_pointer = reinterpret_cast<std::byte*>(addr_native);
-      *(byteDst + i) = *as_native_pointer;
-      hartYield(1);
-    }
+    auto srcNativePtr = pando::DrvAPIAddressToNative(srcGlobalAddr);
+    std::memcpy(dstNativePtr, srcNativePtr, n);
+    DrvAPI::nop(1u);
   } else {
-    for (std::size_t i = 0; i < numBlocks; i++) {
-      const auto bytesOffset = i * blockSize;
-      *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset);
-    }
-
-    for (std::size_t i = 0; i < remainderBytes; i++) {
-      *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
-    }
-  }
 #else
-  for (std::size_t i = 0; i < numBlocks; i++) {
-    const auto bytesOffset = i * blockSize;
-    *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + bytesOffset);
+  {
+#endif // PANDO_RT_BYPASS
+    auto byteDst = static_cast<std::byte*>(dstNativePtr);
+    auto byteSrc = srcGlobalAddr;
+
+    auto transfer = [&]<typename T>() {
+      constexpr auto blockSize = sizeof(T);
+      static_assert(blockSize > 0);
+      for(; blockSize <= n ; n -= blockSize, byteDst += blockSize, byteSrc += blockSize){
+        T* const blockDst = reinterpret_cast<T*>(byteDst);
+        *blockDst = DrvAPI::read<T>(byteSrc);
+      }
+    };
+
+    transfer.template operator()<Data<128>>();
+    transfer.template operator()<Data<64>>();
+    transfer.template operator()<Data<32>>();
+    transfer.template operator()<Data<16>>();
+    transfer.template operator()<std::uint64_t>();
+    transfer.template operator()<Data<4>>();
+    transfer.template operator()<Data<2>>();
+    transfer.template operator()<std::byte>();
   }
 
-  for (std::size_t i = 0; i < remainderBytes; i++) {
-    *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
-  }
-#endif
 
-// Adding an extra layer for message payload granularity
-// Currently does not work for types more than 64 bits
-// Kept for future usage
-/*
-  using ChunkType = std::uint64_t;
-  using BlockType = std::uint16_t;
-  const auto chunkSize = sizeof(ChunkType);
-  const auto blockSize = sizeof(BlockType);
-  const auto numChunks = n / chunkSize;
-  const auto remainderBlocks = n % chunkSize;
-  const auto numBlocks = remainderBlocks / blockSize;
-  const auto remainderBytes = remainderBlocks % blockSize;
-
-  if (numChunks > 0) {
-    auto chunkDst = static_cast<ChunkType*>(dstNativePtr);
-    auto chunkSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr);
-    for (std::size_t i = 0; i < numChunks; i++) {
-      const auto offset = i * chunkSize;
-      *(chunkDst + i) = DrvAPI::read<ChunkType>(chunkSrc + offset);
-    }
-  }
-
-  const auto blocksRead = numChunks * chunkSize;
-  if (numBlocks > 0) {
-    auto blockDst = static_cast<BlockType*>(dstNativePtr) + blocksRead;
-    auto blockSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr) + blocksRead;
-    for (std::size_t i = 0; i < numBlocks; i++) {
-      const auto offset = i * blockSize;
-      *(blockDst + i) = DrvAPI::read<BlockType>(blockSrc + offset);
-    }
-  }
-
-  const auto bytesRead = blocksRead + numBlocks * blockSize;
-  if (remainderBytes > 0) {
-    auto byteDst = static_cast<std::byte*>(dstNativePtr) + bytesRead;
-    auto byteSrc = reinterpret_cast<std::uint64_t>(srcGlobalAddr) + bytesRead;
-    for (std::size_t i = 0; i < remainderBytes; i++) {
-      *(byteDst + i) = DrvAPI::read<std::byte>(byteSrc + i);
-    }
-  }
-*/
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
@@ -287,6 +228,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
 
 #elif defined(PANDO_RT_USE_BACKEND_DRVX)
 
+#if defined(PANDO_RT_BYPASS)
   using BlockType = std::uint64_t;
   const auto blockSize = sizeof(BlockType);
   const auto numBlocks = n / blockSize;
@@ -298,8 +240,6 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
   const auto bytesWritten = numBlocks * blockSize;
   auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
   auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
-
-#if defined(PANDO_RT_BYPASS)
   if (getBypassFlag()) {
     for (std::size_t i = 0; i < numBlocks; i++) {
       auto blockData = *(blockSrc + i);
@@ -324,76 +264,102 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
       hartYield(1);
     }
   } else {
-    for (std::size_t i = 0; i < numBlocks; i++) {
-      auto blockData = *(blockSrc + i);
-      const auto offset = i * blockSize;
-      DrvAPI::write<BlockType>(blockDst + offset, blockData);
-    }
-
-    for (std::size_t i = 0; i < remainderBytes; i++) {
-      auto byteData = *(byteSrc + i);
-      DrvAPI::write<std::byte>(byteDst + i, byteData);
-    }
-  }
 #else
-  for (std::size_t i = 0; i < numBlocks; i++) {
-    auto blockData = *(blockSrc + i);
-    const auto offset = i * blockSize;
-    DrvAPI::write<BlockType>(blockDst + offset, blockData);
+  {
+#endif // PANDO_RT_BYPASS
+    auto byteSrc = static_cast<const std::byte*>(srcNativePtr);
+    auto byteDst = dstGlobalAddr;
+
+    auto transfer = [&]<typename T>() {
+      constexpr auto blockSize = sizeof(T);
+      static_assert(blockSize > 0);
+      for(; blockSize <= n ; n -= blockSize, byteDst += blockSize, byteSrc += blockSize){
+        const T* const blockSrc = reinterpret_cast<const T*>(byteSrc);
+        DrvAPI::write<T>(byteDst, *blockSrc);
+      }
+    };
+
+    transfer.template operator()<Data<128>>();
+    transfer.template operator()<Data<64>>();
+    transfer.template operator()<Data<32>>();
+    transfer.template operator()<Data<16>>();
+    transfer.template operator()<std::uint64_t>();
+    transfer.template operator()<Data<4>>();
+    transfer.template operator()<Data<2>>();
+    transfer.template operator()<std::byte>();
   }
 
-  for (std::size_t i = 0; i < remainderBytes; i++) {
-    auto byteData = *(byteSrc + i);
-    DrvAPI::write<std::byte>(byteDst + i, byteData);
-  }
-#endif
 
-// Adding an extra layer for message payload granularity
-// Currently does not work for types more than 64 bits
-// Kept for future usage
-/*
-  using ChunkType = std::uint64_t;
-  using BlockType = std::uint16_t;
-  const auto chunkSize = sizeof(ChunkType);
-  const auto blockSize = sizeof(BlockType);
-  const auto numChunks = n / chunkSize;
-  const auto remainderBlocks = n % chunkSize;
-  const auto numBlocks = remainderBlocks / blockSize;
-  const auto remainderBytes = remainderBlocks % blockSize;
 
-  if (numChunks > 0) {
-    auto chunkSrc = static_cast<const ChunkType*>(srcNativePtr);
-    auto chunkDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr);
-    for (std::size_t i = 0; i < numChunks; i++) {
-      auto chunkData = *(chunkSrc + i);
-      const auto offset = i * chunkSize;
-      DrvAPI::write<ChunkType>(chunkDst + offset, chunkData);
-    }
-  }
-
-  const auto blocksWritten = numChunks * chunkSize;
-  if (numBlocks > 0) {
-    auto blockSrc = static_cast<const BlockType*>(srcNativePtr) + blocksWritten;
-    auto blockDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + blocksWritten;
-    for (std::size_t i = 0; i < numBlocks; i++) {
-      auto blockData = *(blockSrc + i);
-      const auto offset = i * blockSize;
-      DrvAPI::write<BlockType>(blockDst + offset, blockData);
-    }
-  }
-
-  const auto bytesWritten = blocksWritten + numBlocks * blockSize;
-  if (remainderBytes > 0) {
-    auto byteSrc = static_cast<const std::byte*>(srcNativePtr) + bytesWritten;
-    auto byteDst = reinterpret_cast<std::uint64_t>(dstGlobalAddr) + bytesWritten;
-    for (std::size_t i = 0; i < remainderBytes; i++) {
-      auto byteData = *(byteSrc + i);
-      DrvAPI::write<std::byte>(byteDst + i, byteData);
-    }
-  }
-*/
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
+
+void bulkMemcpy(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGlobalAddr) {
+#if defined(PANDO_RT_USE_BACKEND_PREP)
+  const auto nodeIdxDst = extractNodeIndex(dstGlobalAddr);
+  const auto nodeIdxSrc = extractNodeIndex(srcGlobalAddr);
+  if (nodeIdxDst == Nodes::getCurrentNode() &&
+      nodeIdxSrc == Nodes::getCurrentNode()) {
+    counter::HighResolutionCount<POINTER_TIMER_ENABLE> pointerTimer;
+    pointerTimer.start();
+    // yield to other hart and then issue the operation
+    //hartYield();
+
+    void* dstNativePtr = Memory::getNativeAddress(dstGlobalAddr);
+    void* srcNativePtr = Memory::getNativeAddress(srcGlobalAddr);
+    std::memcpy(dstNativePtr, srcNativePtr, n);
+    // we write to shared memory
+
+#if PANDO_MEM_TRACE_OR_STAT
+    // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
+    MemTraceLogger::log("DMA", nodeIdxSrc, nodeIdxDst, n, srcNativePtr, srcGlobalAddr);
+#endif
+    counter::recordHighResolutionEvent(pointerCount, pointerTimer);
+  } else if(nodeIdxSrc == Nodes::getCurrentNode()) {
+    // remote store; send remote store request and wait for it to finish
+#if PANDO_MEM_TRACE_OR_STAT
+    MemTraceLogger::log("DMA", nodeIdxSrc, nodeIdxDst, n, srcNativePtr, srcGlobalAddr);
+#endif
+    Nodes::AckHandle handle;
+    void* srcNativePtr = Memory::getNativeAddress(srcGlobalAddr);
+    if (auto status = Nodes::store(nodeIdxDst, dstGlobalAddr, n, srcNativePtr, handle);
+        status != Status::Success) {
+      SPDLOG_ERROR("Store error: {}", status);
+      PANDO_ABORT("Store error");
+    }
+
+    hartYieldUntil([&handle] {
+      return handle.ready();
+    });
+  } else if(nodeIdxDst == Nodes::getCurrentNode()) {
+    // remote load; send remote load request and wait for it to finish
+    void* dstNativePtr = Memory::getNativeAddress(dstGlobalAddr);
+    Nodes::LoadHandle handle(dstNativePtr);
+    if (auto status = Nodes::load(nodeIdxSrc, srcGlobalAddr, n, handle); status != Status::Success) {
+      SPDLOG_ERROR("Load error: {}", status);
+      PANDO_ABORT("Load error");
+    }
+#if PANDO_MEM_TRACE_OR_STAT
+    MemTraceLogger::log("STORE", nodeIdxSrc, nodeIdxSrc, n, srcNativePtr, srcGlobalAddr);
+#endif
+
+    hartYieldUntil([&handle] {
+      return handle.ready();
+    });
+  } else {
+    PANDO_ABORT("This case should not occur");
+  }
+#elif defined(PANDO_RT_USE_BACKEND_DRVX)
+  std::byte* temp = new std::byte[n];
+  if(temp == nullptr) PANDO_ABORT("CATASTROPHIC DATA MOVEMENT FAILURE");
+  load(srcGlobalAddr, n, temp);
+  store(dstGlobalAddr, n, temp);
+  delete[] temp;
+#else
+  PANDO_ABORT("NOT IMPLEMENTED");
+#endif
+}
+
 
 } // namespace detail
 

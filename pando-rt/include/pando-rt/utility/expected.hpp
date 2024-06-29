@@ -124,4 +124,28 @@ public:
 
 } // namespace pando
 
+/**
+ * @brief Breaks down an expected type and gives back the inner type or returns a status error
+ */
+#define PANDO_EXPECT_RETURN(e)          \
+  __extension__({                       \
+    const auto expect##__LINE__ = e;    \
+    if (!expect##__LINE__.hasValue()) { \
+      return expect##__LINE__.error();  \
+    }                                   \
+    expect##__LINE__.value();           \
+  })
+
+/**
+ * @brief Breaks down an expected type and gives back the inner type or errors out like PANDO_CHECK
+ */
+#define PANDO_EXPECT_CHECK(e)          \
+  __extension__({                       \
+    const auto expect##__LINE__ = e;    \
+    if (!expect##__LINE__.hasValue()) { \
+      PANDO_CHECK(expect##__LINE__.error());  \
+    }                                   \
+    expect##__LINE__.value();           \
+  })
+
 #endif // PANDO_RT_UTILITY_EXPECTED_HPP_

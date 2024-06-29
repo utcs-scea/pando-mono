@@ -55,6 +55,8 @@ DrvAPI::DrvAPIPointer<T> toNativeDrvPointerOnDram(const U& globalDrvObj, NodeInd
   return vaddr.encode();
 }
 
+void* DrvAPIAddressToNative(DrvAPI::DrvAPIAddress addr);
+
 /**
  * @brief Yields to the next hart.
  *

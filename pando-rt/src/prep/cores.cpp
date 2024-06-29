@@ -303,7 +303,8 @@ Status Cores::initialize(int (*entry)(int, char**), int argc, char* argv[]) {
 
     cpu_set_t mask;
     if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
-      PANDO_ABORT("FAILED TO GET SCHEDULER AFFINITY");
+      SPDLOG_ERROR("FAILED TO GET SCHEDULER AFFINITY");
+      return Status::InitError;
     }
 
     long nproc = sysconf(_SC_NPROCESSORS_ONLN);
