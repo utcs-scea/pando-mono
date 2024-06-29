@@ -140,7 +140,9 @@ public:
       m_size = newSize;
       return Status::Success;
     }
-    PANDO_CHECK_RETURN(reserve(newSize));
+    PANDO_CHECK_RETURN(growPow2(newSize - 1));
+    //Subtract one here because we want to be at size or larger
+    assert(capacity() >= newSize);
     m_size = newSize;
     return Status::Success;
   }
@@ -148,14 +150,14 @@ public:
   /**
    * @brief Reserves the next power of 2 higher than the current size.
    */
-  [[nodiscard]] Status growPow2() {
-    if (m_buf.data() == nullptr) {
+  [[nodiscard]] Status growPow2(std::uint64_t biggerThan) {
+    if (m_buf.data() == nullptr && biggerThan == 0) {
       return reserve(1);
     }
     if (log2floor(m_buf.size()) >= (sizeof(std::uint64_t) * 8 - 1)) {
       return Status::OutOfBounds;
     }
-    const auto nextCapacity = up2(m_buf.size());
+    const auto nextCapacity = up2(biggerThan);
     return reserve(nextCapacity);
   }
 
@@ -208,7 +210,7 @@ public:
    */
   [[nodiscard]] Status pushBack(const T& value) {
     if (m_size == capacity()) {
-      auto status = growPow2();
+      auto status = growPow2(m_size);
       if (Status::Success != status) {
         return status;
       }
@@ -223,7 +225,7 @@ public:
    */
   [[nodiscard]] Status pushBack(T&& value) {
     if (m_size == capacity()) {
-      auto status = growPow2();
+      auto status = growPow2(m_size);
       if (Status::Success != status) {
         return status;
       }

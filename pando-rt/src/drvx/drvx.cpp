@@ -6,6 +6,14 @@
 
 namespace pando {
 
+void* DrvAPIAddressToNative(DrvAPI::DrvAPIAddress addr) {
+  size_t _blah = 0;
+  //ignored
+  void* ret = nullptr;
+  DrvAPI::DrvAPIAddressToNative(addr, &ret, &_blah);
+  return ret;
+}
+
 // Yields to the next hart
 void hartYield(int cycle) noexcept {
   DrvAPI::nop(cycle);

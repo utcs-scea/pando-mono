@@ -151,7 +151,7 @@ DrvStdMemory::toNativePointerDRAM(DrvAPI::DrvAPIAddress addr, void **ptr, size_t
     auto *backing = dynamic_cast<SST::MemHierarchy::Backend::BackingMMAP*>
         (mc->backing_);
     if (!backing) {
-        output_.fatal(CALL_INFO, -1, "L2SP backing is not a MMAP\n");
+        output_.fatal(CALL_INFO, -1, "MainMemory backing is not a MMAP\n");
     }
     uint8_t *bptr = &backing->m_buffer[laddr];
     *ptr = bptr;
