@@ -253,7 +253,7 @@ public:
     if (err != Status::Success) {
       return err;
     }
-    detail::dmaTransfer(tfrom.data().address, sizeof(T) * size, data().address);
+    detail::bulkMemcpy(tfrom.data().address, sizeof(T) * size, data().address);
     return Status::Success;
   }
 
@@ -271,7 +271,7 @@ public:
     const auto originalSize = size();
     const auto appendSize = tfrom.size();
     PANDO_CHECK_RETURN(resize(originalSize + appendSize));
-    detail::dmaTransfer(tfrom.data().address, sizeof(T) * appendSize, (&get(originalSize)).address);
+    detail::bulkMemcpy(tfrom.data().address, sizeof(T) * appendSize, (&get(originalSize)).address);
     return Status::Success;
   }
 

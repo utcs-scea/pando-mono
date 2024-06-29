@@ -48,7 +48,7 @@ PANDO_RT_EXPORT void load(GlobalAddress globalAddr, std::size_t n, void* nativeP
  */
 PANDO_RT_EXPORT void store(GlobalAddress globalAddr, std::size_t n, const void* nativePtr);
 
-PANDO_RT_EXPORT void dmaTransfer(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGlobalAddr);
+PANDO_RT_EXPORT void bulkMemcpy(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGlobalAddr);
 
 #if defined(PANDO_RT_USE_BACKEND_DRVX)
 

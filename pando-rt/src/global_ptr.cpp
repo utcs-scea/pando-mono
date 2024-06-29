@@ -294,7 +294,7 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
 #endif // PANDO_RT_USE_BACKEND_PREP
 }
 
-void dmaTransfer(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGlobalAddr) {
+void bulkMemcpy(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGlobalAddr) {
 #if defined(PANDO_RT_USE_BACKEND_PREP)
   const auto nodeIdxDst = extractNodeIndex(dstGlobalAddr);
   const auto nodeIdxSrc = extractNodeIndex(srcGlobalAddr);
