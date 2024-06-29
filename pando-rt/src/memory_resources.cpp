@@ -342,8 +342,7 @@ void finalizeMemoryResources() {
   if (getCurrentCore() == CoreIndex(0, 0) && getCurrentThread() == ThreadIndex(0)) {
     // destroy L2SP memory resource for the PXN by its Core-0 Hart-0
     delete static_cast<L2SPResource*>(l2SPResource);
-  } else if (isOnCP()) {
-    // destroy main memory resource for the PXN by its CP
+    // destroy main memory resource for the PXN by its Core-0 Hart-0
     delete static_cast<MainMemoryResource*>(mainMemoryResource);
   }
 }

@@ -175,13 +175,13 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
       }
     };
 
-    //transfer.template operator()<Data<128>>();
-    //transfer.template operator()<Data<64>>();
-    //transfer.template operator()<Data<32>>();
-    //transfer.template operator()<Data<16>>();
-    //transfer.template operator()<std::uint64_t>();
-    //transfer.template operator()<Data<4>>();
-    //transfer.template operator()<Data<2>>();
+    transfer.template operator()<Data<128>>();
+    transfer.template operator()<Data<64>>();
+    transfer.template operator()<Data<32>>();
+    transfer.template operator()<Data<16>>();
+    transfer.template operator()<std::uint64_t>();
+    transfer.template operator()<Data<4>>();
+    transfer.template operator()<Data<2>>();
     transfer.template operator()<std::byte>();
   }
 
@@ -279,13 +279,13 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
       }
     };
 
-    //transfer.template operator()<Data<128>>();
-    //transfer.template operator()<Data<64>>();
-    //transfer.template operator()<Data<32>>();
-    //transfer.template operator()<Data<16>>();
-    //transfer.template operator()<std::uint64_t>();
-    //transfer.template operator()<Data<4>>();
-    //transfer.template operator()<Data<2>>();
+    transfer.template operator()<Data<128>>();
+    transfer.template operator()<Data<64>>();
+    transfer.template operator()<Data<32>>();
+    transfer.template operator()<Data<16>>();
+    transfer.template operator()<std::uint64_t>();
+    transfer.template operator()<Data<4>>();
+    transfer.template operator()<Data<2>>();
     transfer.template operator()<std::byte>();
   }
 
