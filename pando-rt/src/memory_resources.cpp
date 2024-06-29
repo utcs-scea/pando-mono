@@ -343,6 +343,9 @@ void finalizeMemoryResources() {
     // destroy L2SP memory resource for the PXN by its Core-0 Hart-0
     delete static_cast<L2SPResource*>(l2SPResource);
     // destroy main memory resource for the PXN by its Core-0 Hart-0
+#ifdef PANDO_RT_USE_BACKEND_PREP
+  } else if(isOnCP()) {
+#endif
     delete static_cast<MainMemoryResource*>(mainMemoryResource);
   }
 }

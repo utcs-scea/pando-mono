@@ -12,7 +12,7 @@ namespace pando {
 /**
  * @brief Get the floor of the log2 of @p i.
  *
- * @warning @c 0 is not a valid input.
+ * @warning @i 0 is not a valid input.
  *
  * @param[in] i input number
  *
