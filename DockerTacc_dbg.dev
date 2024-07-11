@@ -1,0 +1,14 @@
+ARG GASNET_IMAGE=gasnet
+ARG DRIVEX_IMAGE=drivex
+ARG BUILD_IMAGE=ubuntu:18.04
+
+# Build Gasnet
+# FROM ubuntu:22.04 AS gasnet
+FROM tacc/tacc-ubuntu18-impi19.0.7-common:latest AS gasnet
+
+
+ARG COMPILER=g++-12
+ARG GCC_VERSION=12.3.0
+ARG QTHEADS_VERSION=1.16
+ARG GASNET_VERSION=2023.3.0
+ARG OMPI_VERSION=4.1.5

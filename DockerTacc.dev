@@ -2,10 +2,12 @@
 # Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 ARG GASNET_IMAGE=gasnet
 ARG DRIVEX_IMAGE=drivex
-ARG BUILD_IMAGE=ubuntu:22.04
+ARG BUILD_IMAGE=ubuntu:18.04
 
 # Build Gasnet
-FROM ubuntu:22.04 AS gasnet
+# FROM ubuntu:22.04 AS gasnet
+FROM tacc/tacc-ubuntu18-impi19.0.7-common:latest AS gasnet
+
 
 ARG COMPILER=g++-12
 ARG GCC_VERSION=12.3.0
@@ -32,7 +34,7 @@ RUN git clone --depth 1 --branch v0.20.1 https://github.com/spack/spack.git
 RUN . /dependencies/spack/share/spack/setup-env.sh \
       &&  spack compiler find \
       &&  spack install -j`nproc` qthreads@${QTHEADS_VERSION}%gcc@${GCC_VERSION} target=x86_64 \
-      openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 +pmi schedulers=slurm \
+      openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} target=x86_64 schedulers=slurm \
       &&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} \
       &&  spack install -j`nproc` gasnet@${GASNET_VERSION}%gcc@${GCC_VERSION} conduits=smp,mpi target=x86_64
 
@@ -68,7 +70,6 @@ RUN . /tmp/load_drvx.sh \
 &&  mkdir -p $DRV_ROOT \
 &&  python3 --version \
 &&  . /dependencies/spack/share/spack/setup-env.sh \
-&&  spack load python@${PYTHON_VERSION}%gcc@${GCC_VERSION} \
 &&  spack load openmpi@${OMPI_VERSION}%gcc@${GCC_VERSION} \
 &&  cd /dependencies && bash /tmp/build_drvx_deps.sh && ls -al /dependencies
 
