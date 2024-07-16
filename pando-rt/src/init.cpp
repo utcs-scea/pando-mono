@@ -204,22 +204,22 @@ int main(int argc, char* argv[]) {
       (start.ru_utime.tv_sec * 1000000000 + start.ru_utime.tv_usec * 1000) +
       end.ru_stime.tv_sec * 1000000000 + end.ru_stime.tv_usec * 1000 -
       (start.ru_stime.tv_sec * 1000000000 + start.ru_stime.tv_usec * 1000));
-  for(std::uint64_t i = 0; i < std::uint64_t(dims.core.x + 2); i++) {
+  for(std::uint64_t i = 0; i < std::uint64_t(dims.core.x + 1); i++) {
     SPDLOG_WARN("Idle time on node: {}, core: {} was {}",
         thisPlace.node.id,
-        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
+        std::int8_t((i == std::uint64_t(dims.core.x)) ? -1 : i),
         idleCount.get(i));
     SPDLOG_WARN("Pointer time on node: {}, core: {} was {}",
         thisPlace.node.id,
-        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
+        std::int8_t((i == std::uint64_t(dims.core.x)) ? -1 : i),
         pointerCount.get(i));
     SPDLOG_WARN("Scheduler time on node: {}, core: {} was {}",
         thisPlace.node.id,
-        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
+        std::int8_t((i == std::uint64_t(dims.core.x)) ? -1 : i),
         schedulerCount.get(i));
     SPDLOG_WARN("DoAll time on node: {}, core: {} was {}",
         thisPlace.node.id,
-        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
+        std::int8_t((i == std::uint64_t(dims.core.x)) ? -1 : i),
         doAllCount.get(i));
   }
 
