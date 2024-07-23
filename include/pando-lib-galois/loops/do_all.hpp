@@ -53,9 +53,15 @@ enum SchedulerPolicy {
   UNSAFE_STRIPE,
   CORE_STRIPE,
   NODE_ONLY,
+  NAIVE,
 };
 
+#ifndef PANDO_SCHED
 constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = SchedulerPolicy::RANDOM;
+#else
+constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = PANDO_SCHED;
+#endif
+
 constexpr SchedulerPolicy EVENLY_PARITION_SCHEDULER_POLICY = SchedulerPolicy::CORE_STRIPE;
 
 template <enum SchedulerPolicy>
@@ -92,6 +98,10 @@ pando::Place schedulerImpl(pando::Place preferredLocality,
         pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
   } else if constexpr (Policy == NODE_ONLY) {
     preferredLocality = pando::Place(preferredLocality.node, pando::anyPod, pando::anyCore);
+  } else if constexpr (Policy == NAIVE) {
+    auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
+    assert(coreIdx < pando::getCoreDims().x);
+    preferredLocality = pando::Place(pando::getCurrentNode(), pando::anyPod, pando::CoreIndex(coreIdx, 0));
   } else {
     PANDO_ABORT("SCHEDULER POLICY NOT IMPLEMENTED");
   }
