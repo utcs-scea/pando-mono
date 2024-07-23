@@ -597,9 +597,17 @@ template <typename State, typename R, typename F>
 pando::Status doAll(WaitGroup::HandleType wgh, State s, R range, const F& func) {
   return DoAll::doAll<State, R, F>(wgh, s, range, func);
 }
+template <SchedulerPolicy POLICY, typename State, typename R, typename F>
+pando::Status doAllExplicitPolicy(WaitGroup::HandleType wgh, State s, R range, const F& func) {
+  return DoAll::doAllExplicitPolicy<POLICY, State, R, F>(wgh, s, range, func);
+}
 template <typename R, typename F>
 pando::Status doAll(WaitGroup::HandleType wgh, R range, const F& func) {
   return DoAll::doAll<R, F>(wgh, range, func);
+}
+template <SchedulerPolicy POLICY, typename R, typename F>
+pando::Status doAllExplicitPolicy(WaitGroup::HandleType wgh, R range, const F& func) {
+  return DoAll::doAllExplicitPolicy<POLICY, R, F>(wgh, range, func);
 }
 template <typename State, typename R, typename F, typename L>
 pando::Status doAll(State s, R range, const F& func, const L& localityFunc) {

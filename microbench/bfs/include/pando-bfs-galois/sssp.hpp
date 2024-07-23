@@ -134,7 +134,7 @@ pando::Status SSSP_DLCSR(
   state.dist = 0;
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
       wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
         PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
       }));
@@ -168,7 +168,7 @@ pando::Status SSSP_DLCSR(
   }
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
       wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
         PANDO_MEM_STAT_NEW_KERNEL("BFS END");
       }));
@@ -311,7 +311,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 #endif
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
       wgh, toRead, +[](MDWorkList<G>) {
         PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
       }));
@@ -360,7 +360,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
   }
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAll(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
       wgh, toRead, +[](MDWorkList<G>) {
         PANDO_MEM_STAT_NEW_KERNEL("BFS END");
       }));
