@@ -48,3 +48,4 @@ deps/
 
 #Stats Files
 *stats.csv
+*.txt
