@@ -317,11 +317,11 @@ void bulkMemcpy(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGlo
     counter::recordHighResolutionEvent(pointerCount, pointerTimer);
   } else if(nodeIdxSrc == Nodes::getCurrentNode()) {
     // remote store; send remote store request and wait for it to finish
+    Nodes::AckHandle handle;
+    void* srcNativePtr = Memory::getNativeAddress(srcGlobalAddr);
 #if PANDO_MEM_TRACE_OR_STAT
     MemTraceLogger::log("DMA", nodeIdxSrc, nodeIdxDst, n, srcNativePtr, srcGlobalAddr);
 #endif
-    Nodes::AckHandle handle;
-    void* srcNativePtr = Memory::getNativeAddress(srcGlobalAddr);
     if (auto status = Nodes::store(nodeIdxDst, dstGlobalAddr, n, srcNativePtr, handle);
         status != Status::Success) {
       SPDLOG_ERROR("Store error: {}", status);
@@ -340,6 +340,7 @@ void bulkMemcpy(GlobalAddress srcGlobalAddr, std::size_t n, GlobalAddress dstGlo
       PANDO_ABORT("Load error");
     }
 #if PANDO_MEM_TRACE_OR_STAT
+    void *srcNativePtr = Memory::getNativeAddress(srcGlobalAddr);
     MemTraceLogger::log("STORE", nodeIdxSrc, nodeIdxSrc, n, srcNativePtr, srcGlobalAddr);
 #endif
 
