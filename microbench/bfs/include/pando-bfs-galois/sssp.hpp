@@ -16,6 +16,7 @@
 #include <pando-lib-galois/containers/dist_array.hpp>
 #include <pando-lib-galois/containers/host_local_storage.hpp>
 #include <pando-lib-galois/containers/thread_local_vector.hpp>
+#include <pando-lib-galois/graphs/dist_local_csr.hpp>
 #include <pando-lib-galois/loops/do_all.hpp>
 #include <pando-rt/containers/vector.hpp>
 #include <pando-rt/drv_info.hpp>
@@ -105,6 +106,11 @@ void BFSPerHostLoop_DLCSR(BFSState<G> state,
   PANDO_CHECK(err);
 }
 
+using DLCSR = galois::DistLocalCSR<std::uint64_t, std::uint64_t>;
+template <>
+void BFSPerHostLoop_DLCSR<DLCSR>(
+    BFSState<DLCSR> state,
+    pando::GlobalRef<pando::Vector<typename DLCSR::VertexTopologyID>> vecRef);
 template <typename G>
 pando::Status SSSP_DLCSR(
     G& graph, std::uint64_t src, ThreadLocalVector<typename G::VertexTopologyID>& active,
