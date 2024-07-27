@@ -92,7 +92,7 @@ ReturnType initializeELDACSR(pando::Array<char> filename, std::uint64_t numVerti
   galois::WaitGroup freeWaiter;
   PANDO_CHECK(freeWaiter.initialize(0));
   auto freeWGH = freeWaiter.getHandle();
-  galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       freeWGH, perThreadRename, +[](galois::HashTable<std::uint64_t, std::uint64_t> hash) {
         hash.deinitialize();
       });
@@ -158,7 +158,7 @@ ReturnType initializeELDLCSR(pando::Array<char> filename, std::uint64_t numVerti
   galois::WaitGroup freeWaiter;
   PANDO_CHECK(freeWaiter.initialize(0));
   auto freeWGH = freeWaiter.getHandle();
-  galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       freeWGH, perThreadRename, +[](galois::HashTable<std::uint64_t, std::uint64_t> hash) {
         hash.deinitialize();
       });
@@ -204,16 +204,16 @@ ReturnType initializeELDLCSR(pando::Array<char> filename, std::uint64_t numVerti
     }
   };
 
-  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(generateVerticesState, pHV,
-                                                                   generateVerticesPerHost));
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
+      generateVerticesState, pHV, generateVerticesPerHost));
 
   auto [partEdges, renamePerHost] =
       internal::partitionEdgesParallely(pHV, std::move(localReadEdges), hostLocalV2PM);
 
-  galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       partEdges, +[](pando::GlobalRef<pando::Vector<pando::Vector<ELEdge>>> edge_vectors) {
         pando::Vector<pando::Vector<ELEdge>> evs_tmp = edge_vectors;
-        galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+        galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
             evs_tmp, +[](pando::GlobalRef<pando::Vector<ELEdge>> src_ev) {
               pando::Vector<ELEdge> tmp = src_ev;
               std::sort(tmp.begin(), tmp.end());

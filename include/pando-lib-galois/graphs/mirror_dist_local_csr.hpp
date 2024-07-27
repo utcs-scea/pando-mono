@@ -386,7 +386,7 @@ public:
    * @brief reset the master bit sets of all hosts
    */
   void resetMasterBitSets() {
-    galois::doAll(
+    galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         masterBitSets, +[](pando::GlobalRef<pando::Array<bool>> masterBitSet) {
           fmapVoid(masterBitSet, fill, false);
         });
@@ -395,7 +395,7 @@ public:
    * @brief reset the mirror bit sets of all hosts
    */
   void resetMirrorBitSets() {
-    galois::doAll(
+    galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         mirrorBitSets, +[](pando::GlobalRef<pando::Array<bool>> mirrorBitSet) {
           fmapVoid(mirrorBitSet, fill, false);
         });
@@ -576,7 +576,7 @@ public:
     auto thisMDLCSR = *this;
     auto state = galois::make_tpl(thisMDLCSR, func, wgh);
 
-    PANDO_CHECK(galois::doAll(
+    PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         wgh, state, localMirrorToRemoteMasterOrderedTable,
         +[](decltype(state) state,
             pando::Array<MirrorToMasterMap> localMirrorToRemoteMasterOrderedMap) {
@@ -636,7 +636,7 @@ public:
     auto thisMDLCSR = *this;
     auto state = galois::make_tpl(thisMDLCSR, wgh);
 
-    PANDO_CHECK(galois::doAll(
+    PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         wgh, state, localMasterToRemoteMirrorTable,
         +[](decltype(state) state,
             pando::Vector<pando::Vector<MirrorToMasterMap>> localMasterToRemoteMirrorMap) {
@@ -795,7 +795,7 @@ public:
     PANDO_CHECK_RETURN(mirrorBitSets.initialize());
     PANDO_CHECK_RETURN(masterBitSets.initialize());
     auto state = galois::make_tpl(masterRange, mirrorRange, mirrorBitSets);
-    PANDO_CHECK(galois::doAll(
+    PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         wgh, state, masterBitSets,
         +[](decltype(state) state, pando::GlobalRef<pando::Array<bool>> globalMasterBitSet) {
           auto [masterRange, mirrorRange, mirrorBitSets] = state;
@@ -839,7 +839,7 @@ public:
     // each host traverses its own localMirrorToRemoteMasterOrderedTable and send out the mapping to
     // the corresponding remote host append to the vector of vector where each vector is the mapping
     // from a specific host
-    galois::doAll(
+    galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         state, localMirrorToRemoteMasterOrderedTable,
         +[](decltype(state) state,
             pando::Array<MirrorToMasterMap> localMirrorToRemoteMasterOrderedMap) {

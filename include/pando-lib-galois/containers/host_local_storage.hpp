@@ -287,7 +287,7 @@ template <typename T>
 [[nodiscard]] pando::Expected<galois::HostLocalStorage<T>> copyToAllHosts(T&& cont) {
   galois::HostLocalStorage<T> ret{};
   PANDO_CHECK_RETURN(ret.initialize());
-  PANDO_CHECK_RETURN(galois::doAll(
+  PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       cont, ret, +[](T cont, pando::GlobalRef<T> refcopy) {
         T copy;
         if (galois::localityOf(cont).node.id != pando::getCurrentPlace().node.id) {

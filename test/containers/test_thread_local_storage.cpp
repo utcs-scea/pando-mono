@@ -83,7 +83,7 @@ TEST(ThreadLocalStorage, DoAll) {
     val = threadIdx;
   };
 
-  err = galois::doAll(tls, g);
+  err = galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(tls, g);
 
   EXPECT_EQ(err, pando::Status::Success);
 
