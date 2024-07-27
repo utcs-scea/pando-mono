@@ -22,7 +22,7 @@ usage: preprun -n <n> prog [program args]
 "
 }
 
-HOST_THREADS="${HOST_THREADS:-16}"
+HOST_THREADS="${HOST_THREADS:-1}"
 HOSTS="${HOSTS:-1}"
 PROCS="${PROCS:-2}"
 CORES="${CORES:-8}"
@@ -72,7 +72,7 @@ shift
 ${DBG} sst -n ${HOST_THREADS} \
     "${LAUNCH_SCRIPT}" -- \
     --with-command-processor="${PROG}" \
-    --num-pxn=${PROCS} \
+    --num-pxn=${HOSTS} \
     --pod-cores=${CORES} \
     --core-threads=${HARTS} \
     --drvx-stack-in-l1sp \

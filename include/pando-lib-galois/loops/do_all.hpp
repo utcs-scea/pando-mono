@@ -53,9 +53,15 @@ enum SchedulerPolicy {
   UNSAFE_STRIPE,
   CORE_STRIPE,
   NODE_ONLY,
+  NAIVE,
 };
 
+#ifndef PANDO_SCHED
 constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = SchedulerPolicy::RANDOM;
+#else
+constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = PANDO_SCHED;
+#endif
+
 constexpr SchedulerPolicy EVENLY_PARITION_SCHEDULER_POLICY = SchedulerPolicy::CORE_STRIPE;
 
 template <enum SchedulerPolicy>
@@ -92,6 +98,11 @@ pando::Place schedulerImpl(pando::Place preferredLocality,
         pando::Place(preferredLocality.node, pando::anyPod, pando::CoreIndex(coreIdx, 0));
   } else if constexpr (Policy == NODE_ONLY) {
     preferredLocality = pando::Place(preferredLocality.node, pando::anyPod, pando::anyCore);
+  } else if constexpr (Policy == NAIVE) {
+    auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
+    assert(coreIdx < pando::getCoreDims().x);
+    preferredLocality =
+        pando::Place(pando::getCurrentNode(), pando::anyPod, pando::CoreIndex(coreIdx, 0));
   } else {
     PANDO_ABORT("SCHEDULER POLICY NOT IMPLEMENTED");
   }
@@ -180,7 +191,6 @@ public:
                              const L& localityFunc) {
     counter::HighResolutionCount<DOALL_TIMER_ENABLE> doAllTimer;
     doAllTimer.start();
-    LoopLocalSchedulerStruct<CURRENT_SCHEDULER_POLICY> loopLocal{};
     pando::Status err = pando::Status::Success;
 
     const auto end = range.end();
@@ -191,7 +201,7 @@ public:
 
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
-      auto nodePlace = scheduler(localityFunc(s, *curr), loopLocal);
+      auto nodePlace = localityFunc(s, *curr);
       err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
                              wgh);
       if (err != pando::Status::Success) {
@@ -249,6 +259,37 @@ public:
     return err;
   }
 
+  template <SchedulerPolicy POLICY, typename State, typename R, typename F>
+  static pando::Status doAllExplicitPolicy(WaitGroup::HandleType wgh, State s, R& range,
+                                           const F& func) {
+    counter::HighResolutionCount<DOALL_TIMER_ENABLE> doAllTimer;
+    doAllTimer.start();
+    LoopLocalSchedulerStruct<POLICY> loopLocal{};
+    pando::Status err = pando::Status::Success;
+
+    const auto end = range.end();
+
+    std::uint64_t iter = 0;
+    std::uint64_t size = range.size();
+    wgh.add(size);
+
+    for (auto curr = range.begin(); curr != end; curr++) {
+      // Required hack without workstealing
+      auto nodePlace = schedulerImpl<POLICY>(localityOf(curr), loopLocal);
+      err = pando::executeOn(nodePlace, &notifyFunc<F, State, typename R::iterator>, func, s, curr,
+                             wgh);
+      if (err != pando::Status::Success) {
+        for (std::uint64_t i = iter; i < size; i++) {
+          wgh.done();
+        }
+        return err;
+      }
+      iter++;
+    }
+    counter::recordHighResolutionEvent(doAllCount, doAllTimer);
+    return err;
+  }
+
   /**
    * @brief This is the do_all loop from galois which takes a rang and lifts a function to it, and
    * adds a barrier afterwards.
@@ -278,6 +319,35 @@ public:
     for (auto curr = range.begin(); curr != end; curr++) {
       // Required hack without workstealing
       auto nodePlace = scheduler(localityOf(curr), loopLocal);
+      err = pando::executeOn(nodePlace, &notifyFunc<F, typename R::iterator>, func, curr, wgh);
+      if (err != pando::Status::Success) {
+        for (std::uint64_t i = iter; i < size; i++) {
+          wgh.done();
+        }
+        return err;
+      }
+      iter++;
+    }
+    counter::recordHighResolutionEvent(doAllCount, doAllTimer);
+    return err;
+  }
+
+  template <SchedulerPolicy POLICY, typename R, typename F>
+  static pando::Status doAllExplicitPolicy(WaitGroup::HandleType wgh, R& range, const F& func) {
+    counter::HighResolutionCount<DOALL_TIMER_ENABLE> doAllTimer;
+    doAllTimer.start();
+    LoopLocalSchedulerStruct<POLICY> loopLocal{};
+    pando::Status err = pando::Status::Success;
+
+    const auto end = range.end();
+
+    std::uint64_t iter = 0;
+    const std::uint64_t size = range.size();
+    wgh.add(size);
+
+    for (auto curr = range.begin(); curr != end; curr++) {
+      // Required hack without workstealing
+      auto nodePlace = schedulerImpl<POLICY>(localityOf(curr), loopLocal);
       err = pando::executeOn(nodePlace, &notifyFunc<F, typename R::iterator>, func, curr, wgh);
       if (err != pando::Status::Success) {
         for (std::uint64_t i = iter; i < size; i++) {
@@ -342,6 +412,20 @@ public:
     return err;
   }
 
+  template <SchedulerPolicy POLICY, typename State, typename R, typename F>
+  static pando::Status doAllExplicitPolicy(State s, R& range, const F& func) {
+    pando::Status err;
+    WaitGroup wg;
+    err = wg.initialize(0);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    doAllExplicitPolicy<POLICY, State, R, F>(wg.getHandle(), s, range, func);
+    err = wg.wait();
+    wg.deinitialize();
+    return err;
+  }
+
   /**
    * @brief This is the do_all loop from galois which takes a range and lifts a function to it, and
    * adds a barrier afterwards.
@@ -360,6 +444,21 @@ public:
       return err;
     }
     doAll<R, F>(wg.getHandle(), range, func);
+
+    err = wg.wait();
+    wg.deinitialize();
+    return err;
+  }
+
+  template <SchedulerPolicy POLICY, typename R, typename F>
+  static pando::Status doAllExplicitPolicy(R& range, const F& func) {
+    pando::Status err;
+    WaitGroup wg;
+    err = wg.initialize(0);
+    if (err != pando::Status::Success) {
+      return err;
+    }
+    doAllExplicitPolicy<POLICY, R, F>(wg.getHandle(), range, func);
 
     err = wg.wait();
     wg.deinitialize();
@@ -498,9 +597,17 @@ template <typename State, typename R, typename F>
 pando::Status doAll(WaitGroup::HandleType wgh, State s, R range, const F& func) {
   return DoAll::doAll<State, R, F>(wgh, s, range, func);
 }
+template <SchedulerPolicy POLICY, typename State, typename R, typename F>
+pando::Status doAllExplicitPolicy(WaitGroup::HandleType wgh, State s, R range, const F& func) {
+  return DoAll::doAllExplicitPolicy<POLICY, State, R, F>(wgh, s, range, func);
+}
 template <typename R, typename F>
 pando::Status doAll(WaitGroup::HandleType wgh, R range, const F& func) {
   return DoAll::doAll<R, F>(wgh, range, func);
+}
+template <SchedulerPolicy POLICY, typename R, typename F>
+pando::Status doAllExplicitPolicy(WaitGroup::HandleType wgh, R range, const F& func) {
+  return DoAll::doAllExplicitPolicy<POLICY, R, F>(wgh, range, func);
 }
 template <typename State, typename R, typename F, typename L>
 pando::Status doAll(State s, R range, const F& func, const L& localityFunc) {
@@ -510,11 +617,18 @@ template <typename State, typename R, typename F>
 pando::Status doAll(State s, R range, const F& func) {
   return DoAll::doAll<State, R, F>(s, range, func);
 }
+template <SchedulerPolicy POLICY, typename State, typename R, typename F>
+pando::Status doAllExplicitPolicy(State s, R range, const F& func) {
+  return DoAll::doAllExplicitPolicy<POLICY, State, R, F>(s, range, func);
+}
 template <typename R, typename F>
 pando::Status doAll(R range, const F& func) {
   return DoAll::doAll<R, F>(range, func);
 }
-
+template <SchedulerPolicy POLICY, typename R, typename F>
+pando::Status doAllExplicitPolicy(R range, const F& func) {
+  return DoAll::doAllExplicitPolicy<POLICY, R, F>(range, func);
+}
 template <typename State, typename F>
 pando::Status doAllEvenlyPartition(WaitGroup::HandleType wgh, State s, uint64_t workItems,
                                    const F& func) {

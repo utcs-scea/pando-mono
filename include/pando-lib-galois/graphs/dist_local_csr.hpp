@@ -854,7 +854,7 @@ public:
     galois::HostLocalStorage<pando::Vector<VertexType>> pHV{};
     PANDO_CHECK_RETURN(pHV.initialize());
 
-    PANDO_CHECK_RETURN(galois::doAll(
+    PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
         partEdges, pHV,
         +[](HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partEdges,
             pando::GlobalRef<pando::Vector<VertexType>> pHV) {

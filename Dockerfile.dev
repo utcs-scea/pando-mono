@@ -82,6 +82,8 @@ RUN cd /dependencies && \
 
 RUN  ln -s /dependencies/install /dependencies/pando-drv/install
 
+RUN ln -s /pando/pando-drv/tests /dependencies/pando-drv/tests
+
 FROM ${DRIVEX_IMAGE} AS drivex_wrapper
 
 # Base ci image
@@ -132,7 +134,6 @@ RUN if [ "${IS_CI}" != "true" ] ; then \
     powerline \
     zsh \
     valgrind \
-    sudo \
     doxygen \
     texlive-latex-extra \
     texlive-font-utils \
@@ -147,7 +148,7 @@ ARG UID
 ARG GID
 
 RUN if [ "${UNAME}" != "root" ] ; then groupadd -g ${GID} ${UNAME} \
-      &&  useradd -ms /bin/bash  -u "${UID}" -g "${GID}" ${UNAME} ; fi
+      &&  useradd -ms /bin/bash  -u "${UID}" -g "${GID}" ${UNAME}; fi
 
 RUN mkdir -p /home/${UNAME} \
       && chown ${UNAME}:${UNAME} /home/${UNAME}
