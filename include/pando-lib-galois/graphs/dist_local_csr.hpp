@@ -854,7 +854,7 @@ public:
     galois::HostLocalStorage<pando::Vector<VertexType>> pHV{};
     PANDO_CHECK_RETURN(pHV.initialize());
 
-    PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+    PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         partEdges, pHV,
         +[](HostLocalStorage<pando::Vector<pando::Vector<EdgeType>>> partEdges,
             pando::GlobalRef<pando::Vector<VertexType>> pHV) {
@@ -1206,7 +1206,7 @@ public:
    * @brief create CSR Caches
    */
   pando::Status generateCache() {
-    return galois::doAll(
+    return galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         arrayOfCSRs, arrayOfCSRs,
         +[](decltype(arrayOfCSRs) arrayOfCSRs, HostIndexedMap<CSR> localCSRs) {
           for (std::uint64_t i = 0; i < localCSRs.size(); i++) {

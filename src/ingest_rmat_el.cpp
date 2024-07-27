@@ -92,7 +92,7 @@ pando::Vector<pando::Vector<galois::ELEdge>> galois::reduceLocalEdges(
     }
   }
 
-  galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       reducedEL, +[](pando::Vector<galois::ELEdge> src_ev) {
         std::sort(src_ev.begin(), src_ev.end());
       });

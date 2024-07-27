@@ -34,6 +34,7 @@
 
 counter::Record<std::minstd_rand> perCoreRNG;
 counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
+counter::Record<std::uniform_int_distribution<std::int64_t>> nodeSizeDist;
 counter::Record<std::int64_t> schedulerCount = counter::Record<std::int64_t>();
 counter::Record<std::int64_t> doAllCount = counter::Record<std::int64_t>();
 
@@ -50,13 +51,16 @@ void initialize() {
     // initialization
     // this is called from the CP so no yield is necessary
 
+    auto nodeNum = pando::getNodeDims().id;
     auto coreDims = pando::getCoreDims();
     for(std::int8_t i = 0; i < coreDims.x; i++) {
       perCoreRNG.get(false, i, coreDims.x) = std::minstd_rand(i);
       perCoreDist.get(false, i, coreDims.x) = std::uniform_int_distribution<std::int8_t> (0, coreDims.x - 1);
+      nodeSizeDist.get(false, i, coreDims.x) = std::uniform_int_distribution<std::int64_t> (0, nodeNum - 1);
     }
     perCoreRNG.get(true, 0, coreDims.x) = std::minstd_rand(-1);
     perCoreDist.get(true, 0, coreDims.x) = std::uniform_int_distribution<std::int8_t>(0, coreDims.x - 1);
+    nodeSizeDist.get(true, 0, coreDims.x) = std::uniform_int_distribution<std::int64_t> (0, nodeNum - 1);
 
     Nodes::barrier();
   }
@@ -67,13 +71,17 @@ void initialize() {
     if (auto status = CommandProcessor::initialize(); status != Status::Success) {
       PANDO_ABORT("CP was not initialized");
     }
+
+    auto nodeNum = pando::getNodeDims().id;
     auto coreDims = pando::getCoreDims();
     for(std::int8_t i = 0; i < coreDims.x; i++) {
       perCoreRNG.get(false, i, coreDims.x) = std::minstd_rand(i);
       perCoreDist.get(false, i, coreDims.x) = std::uniform_int_distribution<std::int8_t> (0, coreDims.x - 1);
+      nodeSizeDist.get(false, i, coreDims.x) = std::uniform_int_distribution<std::int64_t>(0, nodeNum - 1);
     }
     perCoreRNG.get(true, 0, coreDims.x) = std::minstd_rand(-1);
     perCoreDist.get(true, 0, coreDims.x) = std::uniform_int_distribution<std::int8_t>(0, coreDims.x - 1);
+    nodeSizeDist.get(true, 0, coreDims.x) = std::uniform_int_distribution<std::int64_t>(0, nodeNum - 1);
   } else {
     Cores::initializeQueues();
   }

@@ -209,7 +209,7 @@ TEST_P(DLCSRInitEdgeList, initializeEL) {
   // Iterate over vertices
   std::uint64_t vid = 0;
 
-  PANDO_CHECK(galois::doAll(
+  PANDO_CHECK(galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
       graph.vertices(), +[](typename Graph::VertexTopologyID vert) {
         EXPECT_EQ(static_cast<std::uint64_t>(localityOf(vert).node.id),
                   pando::getCurrentPlace().node.id);

@@ -197,9 +197,9 @@ TEST(ThreadLocalVector, HostLocalStorageVector) {
 
   galois::HostLocalStorage<std::uint64_t> phu{};
 
-  galois::doAll(
+  galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
       ptv, phu, +[](galois::ThreadLocalVector<std::uint64_t> ptv, std::uint64_t) {
-        galois::doAll(
+        galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
             ptv, galois::IotaRange(0, size),
             +[](galois::ThreadLocalVector<std::uint64_t> ptv, std::uint64_t i) {
               pando::Status err;

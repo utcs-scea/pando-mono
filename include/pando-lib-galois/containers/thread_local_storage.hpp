@@ -44,7 +44,7 @@ public:
 
   [[nodiscard]] pando::Status initialize() {
     PANDO_CHECK_RETURN(m_items.initialize());
-    PANDO_CHECK_RETURN(galois::doAll(
+    PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         m_items, +[](pando::GlobalRef<pando::GlobalPtr<T>> ref) {
           const auto placeDims = pando::getPlaceDims();
           const auto threadDims = pando::getThreadDims();
@@ -60,7 +60,7 @@ public:
   }
 
   void deinitialize() {
-    PANDO_CHECK(galois::doAll(
+    PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         m_items, +[](pando::GlobalRef<pando::GlobalPtr<T>> ptr) {
           const auto placeDims = pando::getPlaceDims();
           const auto threadDims = pando::getThreadDims();
@@ -275,7 +275,7 @@ template <typename T>
 [[nodiscard]] pando::Expected<galois::ThreadLocalStorage<T>> copyToAllThreads(T& cont) {
   galois::ThreadLocalStorage<T> ret{};
   PANDO_CHECK_RETURN(ret.initialize());
-  PANDO_CHECK_RETURN(galois::doAll(
+  PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       cont, ret, +[](T cont, pando::GlobalRef<T> refcopy) {
         T copy;
         const std::uint64_t size = cont.size();
