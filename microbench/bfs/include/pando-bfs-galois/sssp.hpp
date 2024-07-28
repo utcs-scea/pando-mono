@@ -146,8 +146,6 @@ pando::Status SSSP_DLCSR(
       }));
   PANDO_CHECK(wg.wait());
 #endif
-  PANDO_DRV_SET_STAGE_EXEC_COMP();
-  PANDO_DRV_CLEAR_BYPASS_FLAG();
 
   while (!IsactiveIterationEmpty(phbfs)) {
 #ifdef DEBUG_PRINTS
@@ -323,8 +321,6 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
       }));
   PANDO_CHECK(wg.wait());
 #endif
-  PANDO_DRV_SET_STAGE_EXEC_COMP();
-  PANDO_DRV_CLEAR_BYPASS_FLAG();
 
   *active = true;
   while (*active) {
