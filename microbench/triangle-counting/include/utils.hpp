@@ -63,7 +63,7 @@ void printUsage(char* argv0);
 //                        CONNECTION KERNELS
 // #####################################################################
 template <typename GraphType>
-void intersect_dag_merge(galois::WaitGroup::HandleType wgh, pando::GlobalPtr<GraphType> graph_ptr,
+void intersect_dag_merge(pando::GlobalPtr<GraphType> graph_ptr,
                          typename GraphType::VertexTopologyID v0,
                          typename GraphType::VertexTopologyID v1,
                          galois::DAccumulator<uint64_t> final_tri_count) {
@@ -90,7 +90,6 @@ void intersect_dag_merge(galois::WaitGroup::HandleType wgh, pando::GlobalPtr<Gra
       count++;
   }
   final_tri_count.add(count);
-  wgh.done();
 }
 
 template <typename GraphType>
