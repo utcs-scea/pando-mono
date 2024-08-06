@@ -264,17 +264,27 @@ extern "C" __attribute__((visibility("default"))) int __drv_api_main(int argc, c
   if(rc != 0) {PANDO_ABORT("GETRUSAGE FAILED");}
   auto thisPlace = pando::getCurrentPlace();
   auto dims = pando::getPlaceDims();
-  SPDLOG_WARN("Total time on node: {}, was {}ns",
-      thisPlace.node.id,
-      end.ru_utime.tv_sec * 1000000000 + end.ru_utime.tv_usec * 1000 -
-      (start.ru_utime.tv_sec * 1000000000 + start.ru_utime.tv_usec * 1000) +
-      end.ru_stime.tv_sec * 1000000000 + end.ru_stime.tv_usec * 1000 -
-      (start.ru_stime.tv_sec * 1000000000 + start.ru_stime.tv_usec * 1000));
-  for(std::uint64_t i = 0; i < std::uint64_t(dims.core.x + 2); i++) {
-    SPDLOG_WARN("Idle time on node: {}, core: {} was {}",
-        thisPlace.node.id,
-        std::int8_t((i == std::uint64_t(dims.core.x + 1)) ? -1 : i),
-        idleCount.get(i));
+
+
+  if (pando::isOnCP()) {
+    for (std::int64_t j = 0; j < std::int64_t(dims.node.id); j++) {
+      if (j == thisPlace.node.id) {
+        SPDLOG_WARN("Total time on node: {}, was {}ns",
+            thisPlace.node.id,
+            end.ru_utime.tv_sec * 1000000000 + end.ru_utime.tv_usec * 1000 -
+            (start.ru_utime.tv_sec * 1000000000 + start.ru_utime.tv_usec * 1000) +
+            end.ru_stime.tv_sec * 1000000000 + end.ru_stime.tv_usec * 1000 -
+            (start.ru_stime.tv_sec * 1000000000 + start.ru_stime.tv_usec * 1000));
+        for(std::uint64_t i = 0; i < std::uint64_t(dims.core.x + 1); i++) {
+          SPDLOG_WARN("Idle time on node: {}, core: {} was {}",
+              thisPlace.node.id,
+              std::int8_t((i == std::uint64_t(dims.core.x)) ? -1 : i),
+              idleCount.get(i));
+        }
+      }
+  
+      pando::CommandProcessor::barrier();
+    }
   }
 
   return ret;
