@@ -53,6 +53,7 @@ parser.add_argument("--pxn-dram-banks", type=int, default=8, help="number of dra
 parser.add_argument("--pxn-dram-size", type=int, default=1024**3, help="size of main memory per pxn (max {} bytes)".format(8*1024*1024*1024))
 parser.add_argument("--pxn-dram-interleave", type=int, default=0, help="interleave size of dram addresses (defaults to no  interleaving)")
 
+parser.add_argument("--network-base-bw", type=str, default="1GB/s", help="on chip network base bandwidth")
 parser.add_argument("--network-onchip-buffer-size", type=str, default="1MB", help="on chip network input / output buffer size")
 parser.add_argument("--network-offchip-buffer-size", type=str, default="64MB", help="off chip network input / output buffer size")
 
@@ -302,7 +303,7 @@ class CommandProcessor(object):
         self.core_nic = self.core_iface.setSubComponent("memlink", "memHierarchy.MemNIC")
         self.core_nic.addParams({
             "group" : 0,
-            "network_bw" : "1024GB/s",
+            "network_bw" : arguments.network_base_bw,
             "network_input_buffer_size" : arguments.network_onchip_buffer_size,
             "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             "destinations" : "0,1,2",

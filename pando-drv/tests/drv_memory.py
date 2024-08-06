@@ -45,7 +45,7 @@ class SharedMemoryBank(object):
         self.nic = self.memctrl.setSubComponent("cpulink", "memHierarchy.MemNIC")
         self.nic.addParams({
             "group" : 2,
-            "network_bw" : "256GB/s",
+            "network_bw" : arguments.network_base_bw,
             "network_input_buffer_size" : arguments.network_onchip_buffer_size,
             "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             "verbose_level": arguments.verbose_memory,
@@ -59,8 +59,8 @@ class SharedMemoryBank(object):
             "num_ports" : 2,
             "topology" : "merlin.singlerouter",
             # performance models
-            "xbar_bw" : "1024GB/s",
-            "link_bw" : "1024GB/s",
+            "xbar_bw" : arguments.network_base_bw,
+            "link_bw" : arguments.network_base_bw,
             "flit_size" : "8B",
             "input_buf_size" : arguments.network_onchip_buffer_size,
             "output_buf_size" : arguments.network_onchip_buffer_size,
