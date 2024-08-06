@@ -14,12 +14,9 @@
  * @param[in] final_tri_count Thread-safe counter
  */
 template <typename Graph>
-void edge_tc_counting(pando::GlobalPtr<Graph> graph_ptr, typename Graph::VertexTopologyID v0,
-                      typename Graph::EdgeRange edge_range,
+void edge_tc_counting(galois::WaitGroup::HandleType wgh, pando::GlobalPtr<Graph> graph_ptr,
+                      typename Graph::VertexTopologyID v0, typename Graph::EdgeRange edge_range,
                       galois::DAccumulator<uint64_t> final_tri_count) {
-  galois::WaitGroup wg;
-  PANDO_CHECK(wg.initialize(0));
-  auto wgh = wg.getHandle();
   auto innerState = galois::make_tpl(graph_ptr, v0, wgh, final_tri_count);
   Graph graph = *graph_ptr;
   galois::doAll(
@@ -28,8 +25,7 @@ void edge_tc_counting(pando::GlobalPtr<Graph> graph_ptr, typename Graph::VertexT
         auto [graph_ptr, v0, wgh, final_tri_count] = innerState;
         Graph g = *graph_ptr;
         typename Graph::VertexTopologyID v1 = fmap(g, getEdgeDst, eh);
-        wgh.addOne();
-        intersect_dag_merge<Graph>(wgh, graph_ptr, v0, v1, final_tri_count);
+        intersect_dag_merge<Graph>(graph_ptr, v0, v1, final_tri_count);
       },
       [&graph](decltype(innerState) innerState, typename Graph::EdgeHandle eh) -> pando::Place {
         auto v0 = std::get<1>(innerState);
@@ -39,7 +35,6 @@ void edge_tc_counting(pando::GlobalPtr<Graph> graph_ptr, typename Graph::VertexT
                                                  : fmap(graph, getLocalityVertex, v1);
         return locality;
       });
-  PANDO_CHECK(wg.wait());
 }
 
 // #####################################################################
@@ -55,10 +50,16 @@ template <typename GraphType>
 void tc_no_chunk(pando::GlobalPtr<GraphType> graph_ptr,
                  galois::DAccumulator<uint64_t> final_tri_count) {
   GraphType graph = *graph_ptr;
-  auto state = galois::make_tpl(graph_ptr, final_tri_count);
+
+  galois::WaitGroup wg;
+  PANDO_CHECK(wg.initialize(0));
+  auto wgh = wg.getHandle();
+  auto state = galois::make_tpl(graph_ptr, final_tri_count, wgh);
+
   galois::doAll(
-      state, graph.vertices(), +[](decltype(state) state, typename GraphType::VertexTopologyID v0) {
-        auto [graph_ptr, final_tri_count] = state;
+      wgh, state, graph.vertices(),
+      +[](decltype(state) state, typename GraphType::VertexTopologyID v0) {
+        auto [graph_ptr, final_tri_count, wgh] = state;
         GraphType graph = *graph_ptr;
 
         // Degree Filtering Optimization
@@ -66,8 +67,10 @@ void tc_no_chunk(pando::GlobalPtr<GraphType> graph_ptr,
         if (v0_degree < (TC_EMBEDDING_SZ - 1))
           return;
 
-        edge_tc_counting<GraphType>(graph_ptr, v0, graph.edges(v0), final_tri_count);
+        edge_tc_counting<GraphType>(wgh, graph_ptr, v0, graph.edges(v0), final_tri_count);
       });
+  PANDO_CHECK(wg.wait());
+  wg.deinitialize();
 }
 
 /**
@@ -159,11 +162,14 @@ void tc_chunk_vertices(pando::GlobalPtr<GraphDL> graph_ptr,
           auto lcsr = graph.getLocalCSR();
           uint64_t host_vertex_iter_offset = host_vertex_iter_offset_ref;
 
-          auto inner_state = galois::make_tpl(graph_ptr, final_tri_count);
+          galois::WaitGroup wg;
+          PANDO_CHECK(wg.initialize(0));
+          auto wgh = wg.getHandle();
+          auto inner_state = galois::make_tpl(graph_ptr, final_tri_count, wgh);
           galois::doAll(
               inner_state, fmap(lcsr, vertices, host_vertex_iter_offset, query_sz),
               +[](decltype(inner_state) inner_state, typename GraphDL::VertexTopologyID v0) {
-                auto [graph_ptr, final_tri_count] = inner_state;
+                auto [graph_ptr, final_tri_count, wgh] = inner_state;
                 GraphDL graph = *graph_ptr;
 
                 // Degree Filtering Optimization
@@ -171,8 +177,9 @@ void tc_chunk_vertices(pando::GlobalPtr<GraphDL> graph_ptr,
                 if (v0_degree < (TC_EMBEDDING_SZ - 1))
                   return;
 
-                edge_tc_counting<GraphDL>(graph_ptr, v0, graph.edges(v0), final_tri_count);
+                edge_tc_counting<GraphDL>(wgh, graph_ptr, v0, graph.edges(v0), final_tri_count);
               });
+          PANDO_CHECK(wg.wait());
 
           // Move iter offset
           uint64_t lcsr_num_vertices = fmap(lcsr, size);
@@ -180,6 +187,7 @@ void tc_chunk_vertices(pando::GlobalPtr<GraphDL> graph_ptr,
           if (host_vertex_iter_offset < lcsr_num_vertices)
             work_remaining.increment();
           host_vertex_iter_offset_ref = host_vertex_iter_offset;
+          wg.deinitialize();
         });
 
     uint64_t current_count = final_tri_count.reduce();
