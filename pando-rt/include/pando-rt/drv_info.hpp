@@ -5,6 +5,7 @@
 #define PANDO_RT_DRV_INFO_HPP_
 
 #ifdef PANDO_RT_USE_BACKEND_DRVX
+#include "DrvAPIInfo.hpp"
 
 namespace DrvAPI {
 void setStageInit();
