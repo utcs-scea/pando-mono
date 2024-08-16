@@ -23,7 +23,7 @@ int pandoMain(int argc, char** argv) {
     PANDO_CHECK(final_tri_count.initialize());
 
     HBMainTC(filename, opts->num_vertices, opts->load_balanced_graph, opts->tc_chunk,
-             final_tri_count);
+             opts->binary_search, final_tri_count);
     std::cout << "*** FINAL TRI COUNT = " << final_tri_count.reduce() << "\n";
 
 #if BENCHMARK

@@ -42,6 +42,7 @@ struct CommandLineOptions {
   int64_t num_vertices = 0;
   bool load_balanced_graph = false;
   TC_CHUNK tc_chunk = TC_CHUNK::NO_CHUNK;
+  bool binary_search = false;
 
   void print() {
     printf("******** CommandLineOptions ******** \n");
@@ -49,11 +50,16 @@ struct CommandLineOptions {
     std::cout << "num_vertices = " << num_vertices << '\n';
     std::cout << "load_balanced_graph = " << load_balanced_graph << '\n';
     std::cout << "tc_chunk = " << tc_chunk << '\n';
+    std::cout << "binary_search = " << binary_search << '\n';
     printf("******** END CommandLineOptions ******** \n");
   }
 
   CommandLineOptions()
-      : elFile(""), num_vertices(0), load_balanced_graph(false), tc_chunk(TC_CHUNK::NO_CHUNK) {}
+      : elFile(""),
+        num_vertices(0),
+        load_balanced_graph(false),
+        tc_chunk(TC_CHUNK::NO_CHUNK),
+        binary_search(false) {}
 };
 
 std::unique_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv);
@@ -93,8 +99,7 @@ void intersect_dag_merge(pando::GlobalPtr<GraphType> graph_ptr,
 }
 
 template <typename GraphType>
-void intersect_dag_merge_double_binary(galois::WaitGroup::HandleType wgh,
-                                       pando::GlobalPtr<GraphType> graph_ptr,
+void intersect_dag_merge_double_binary(pando::GlobalPtr<GraphType> graph_ptr,
                                        typename GraphType::VertexTopologyID v0,
                                        typename GraphType::VertexTopologyID v1,
                                        galois::DAccumulator<uint64_t> final_tri_count) {
@@ -143,7 +148,6 @@ void intersect_dag_merge_double_binary(galois::WaitGroup::HandleType wgh,
     }
   }
   final_tri_count.add(count);
-  wgh.done();
 }
 
 // #####################################################################

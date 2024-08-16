@@ -13,10 +13,10 @@ uint64_t get_expected_TC(const std::string okFile) {
 }
 
 void e2e_tc_test(uint64_t expected_tc, pando::Array<char> filename, uint64_t num_vertices,
-                 bool load_balanced_graph, TC_CHUNK tc_chunk) {
+                 bool load_balanced_graph, bool binary_search, TC_CHUNK tc_chunk) {
   galois::DAccumulator<uint64_t> final_tri_count;
   EXPECT_EQ(final_tri_count.initialize(), pando::Status::Success);
-  HBMainTC(filename, num_vertices, load_balanced_graph, tc_chunk, final_tri_count);
+  HBMainTC(filename, num_vertices, load_balanced_graph, tc_chunk, binary_search, final_tri_count);
   EXPECT_EQ(final_tri_count.reduce(), expected_tc);
   final_tri_count.deinitialize();
 }
@@ -34,7 +34,7 @@ TEST_P(TriangleCountChunking, BasicDL) {
   for (uint64_t i = 0; i < elFile.size(); i++)
     filename[i] = elFile[i];
 
-  e2e_tc_test(expected_tc, filename, num_vertices, true, tc_chunk);
+  e2e_tc_test(expected_tc, filename, num_vertices, true, false, tc_chunk);
 
   filename.deinitialize();
 }
@@ -61,7 +61,7 @@ TEST_P(TriangleCountDACSR, BasicDA) {
   for (uint64_t i = 0; i < elFile.size(); i++)
     filename[i] = elFile[i];
 
-  e2e_tc_test(expected_tc, filename, num_vertices, false, TC_CHUNK::NO_CHUNK);
+  e2e_tc_test(expected_tc, filename, num_vertices, false, false, TC_CHUNK::NO_CHUNK);
 
   filename.deinitialize();
 }

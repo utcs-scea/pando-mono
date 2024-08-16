@@ -13,7 +13,7 @@ std::unique_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
   int32_t flag = 0;
   int32_t num_vertices = 0;
   int32_t tc_chunk = NO_CHUNK;
-  while ((flag = getopt(argc, argv, "v:i:c:l")) != -1) {
+  while ((flag = getopt(argc, argv, "v:i:c:lb")) != -1) {
     switch (flag) {
       case 'v':
         sscanf(optarg, "%d", &num_vertices);
@@ -24,6 +24,9 @@ std::unique_ptr<CommandLineOptions> read_cmd_line_args(int argc, char** argv) {
         break;
       case 'l':
         opts_ptr->load_balanced_graph = true;
+        break;
+      case 'b':
+        opts_ptr->binary_search = true;
         break;
       case 'c':
         sscanf(optarg, "%d", &tc_chunk);
@@ -65,6 +68,7 @@ void printUsage(char* argv0) {
   std::cerr << "Usage: " << argv0 << " -i filepath -v numVertices" << std::endl;
   std::cerr << "\n Can specify runtime algorithm with -c. Valid options: [0 (NO_CHUNK), 1 "
                "(CHUNK_EDGES), 2 (CHUNK_VERTICES)]\n";
+  std::cerr << "Can use double binary search counting with -b. Defaults to linear search\n";
 }
 
 void printUsageExit(char* argv0) {
