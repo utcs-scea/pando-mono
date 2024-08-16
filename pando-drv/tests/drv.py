@@ -167,21 +167,24 @@ CHIPRTR_ID = 1024*1024
 ###################
 # Bandwidth Numbers #
 ###################
-COMMAND_BW = format_bw(arguments.network_issue_rate * freq_str_to_hz(arguments.command_clock))
-CORE_BW = format_bw(arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock))
+COMMAND_BW_NUM = arguments.network_issue_rate * freq_str_to_hz(arguments.command_clock)
+COMMAND_BW = format_bw(COMMAND_BW_NUM)
+CORE_BW_NUM = arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
+CORE_BW = format_bw(CORE_BW_NUM)
 SCRATCHPAD_BW = format_bw(arguments.network_issue_rate * freq_str_to_hz(arguments.mem_clock))
 L2_MEM_BANK_BW = format_bw(arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock) / arguments.pod_l2sp_banks)
-L2_MEM_BW = format_bw(arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock))
+L2_MEM_BW_NUM = arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
+L2_MEM_BW = format_bw(L2_MEM_BW_NUM)
 MAIN_MEM_BANK_BW = format_bw(arguments.pxn_pods * arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock) / arguments.pxn_dram_banks)
-MAIN_MEM_BW = format_bw(arguments.pxn_pods * arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock))
+MAIN_MEM_BW_NUM = arguments.pxn_pods * arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
+MAIN_MEM_BW = format_bw(MAIN_MEM_BW_NUM)
 if arguments.network_bw_config == "manual":
     ONCHIP_RTR_BW = arguments.network_onchip_bw
-else:
-    ONCHIP_RTR_BW = 2 * (COMMAND_BW + arguments.pxn_pods*arguments.pod_cores*CORE_BW + arguments.pxn_pods*L2_MEM_BW + MAIN_MEM_BW)
-if arguments.network_bw_config == "manual":
     OFFCHIP_RTR_BW = arguments.network_offchip_bw
 else:
-    OFFCHIP_RTR_BW = arguments.num_pxn * ONCHIP_RTR_BW
+    ONCHIP_RTR_BW_NUM = 2 * (COMMAND_BW_NUM + arguments.pxn_pods*arguments.pod_cores*CORE_BW_NUM + arguments.pxn_pods*L2_MEM_BW_NUM + MAIN_MEM_BW_NUM)
+    ONCHIP_RTR_BW = format_bw(ONCHIP_RTR_BW_NUM)
+    OFFCHIP_RTR_BW = format_bw(arguments.num_pxn * ONCHIP_RTR_BW_NUM)
 
 SYSCONFIG = {
     "sys_num_pxn" : 1,
