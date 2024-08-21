@@ -93,7 +93,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
 
 #ifdef DEBUG_PRINTS
 #ifdef PANDO_RT_USE_BACKEND_DRVX
-  std::cout << "Cycle before graph construction: " << DrvAPI::cycle() << std::endl;
+  std::cerr << "Cycle before graph construction: " << DrvAPI::cycle() << std::endl;
 #endif
 #endif
 
@@ -102,7 +102,7 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
 
 #ifdef DEBUG_PRINTS
 #ifdef PANDO_RT_USE_BACKEND_DRVX
-  std::cout << "Cycle after graph construction: " << DrvAPI::cycle() << std::endl;
+  std::cerr << "Cycle after graph construction: " << DrvAPI::cycle() << std::endl;
 #endif
 #endif
 
