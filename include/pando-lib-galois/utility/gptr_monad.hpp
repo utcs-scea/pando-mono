@@ -4,6 +4,8 @@
 #ifndef PANDO_LIB_GALOIS_UTILITY_GPTR_MONAD_HPP_
 #define PANDO_LIB_GALOIS_UTILITY_GPTR_MONAD_HPP_
 
+#include <utility>
+
 /**
  * @brief lifts a function with no arguments to work on references
  */
@@ -69,5 +71,46 @@ auto applyFunc(pando::GlobalRef<T> ref, F func) {
   T obj = ref;
   return func(obj);
 }
+
+#if 1
+#define apply(ref, func, ...)                                                         \
+  __extension__({                                                                     \
+    auto ptrComputed##__LINE__ = &(ref);                                              \
+    typename std::pointer_traits<decltype(ptrComputed##__LINE__)>::element_type tmp = \
+        *ptrComputed##__LINE__;                                                       \
+    auto ret = tmp.func(__VA_ARGS__);                                                 \
+    ret;                                                                              \
+  })
+
+#elif 0
+
+/* F is a method pointer */
+template <typename T, typename F, typename... Args>
+auto apply(pando::GlobalRef<T> ref, F func, Args... args) {
+  T obj = ref;
+  return (obj.*func)(args...);
+}
+
+/* F is a method pointer */
+template <typename T, typename F, typename... Args>
+auto apply(T& ref, F func, Args... args) {
+  T obj = ref;
+  return (obj.*func)(args...);
+}
+#else
+
+template <typename R, typename... As, typename T>
+R apply(pando::GlobalRef<T> ref, R (T::*func)(As...), As... args) {
+  T obj = ref;
+  return (obj.*func)(args...);
+}
+
+template <typename R, typename... As, typename T>
+R apply(T& ref, R (T::*func)(As...), As... args) {
+  T obj = ref;
+  return (obj.*func)(args...);
+}
+
+#endif
 
 #endif // PANDO_LIB_GALOIS_UTILITY_GPTR_MONAD_HPP_

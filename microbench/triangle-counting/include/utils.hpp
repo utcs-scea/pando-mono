@@ -215,7 +215,7 @@ void vertexset_intersection(pando::GlobalPtr<GraphType> graph_ptr,
     auto [graph_ptr, v1, final_tri_count, connection_kernel, v1_token] = state;
     GraphType g = *graph_ptr;
     (void)eh; // Required to prevent -Werror=unused-parameter
-    return fmap(g, getLocalityVertex, v1);
+    return apply(g, getLocalityVertex, v1);
   };
 
   galois::doAll(
@@ -223,9 +223,9 @@ void vertexset_intersection(pando::GlobalPtr<GraphType> graph_ptr,
       +[](decltype(state) state, typename GraphType::EdgeHandle eh) {
         auto [graph_ptr, v1, final_tri_count, connection_kernel, v1_token] = state;
         GraphType g = *graph_ptr;
-        typename GraphType::VertexTopologyID neighbor_of_v0 = fmap(g, getEdgeDst, eh);
+        typename GraphType::VertexTopologyID neighbor_of_v0 = apply(g, getEdgeDst, eh);
         typename GraphType::VertexTokenID neighbor_of_v0_token =
-            fmap(g, getTokenID, neighbor_of_v0);
+            apply(g, getTokenID, neighbor_of_v0);
 
         // Because of DAG optimization
         if (neighbor_of_v0_token <= v1_token)

@@ -2,6 +2,7 @@
 // Copyright (c) 2023. University of Texas at Austin. All rights reserved.
 
 #include <tc_algos.hpp>
+#include <type_traits>
 
 // #####################################################################
 //                            TC UTILS
@@ -24,7 +25,7 @@ void edge_tc_counting(galois::WaitGroup::HandleType wgh, pando::GlobalPtr<Graph>
       +[](decltype(innerState) innerState, typename Graph::EdgeHandle eh) {
         auto [graph_ptr, v0, wgh, final_tri_count] = innerState;
         Graph g = *graph_ptr;
-        typename Graph::VertexTopologyID v1 = fmap(g, getEdgeDst, eh);
+        typename Graph::VertexTopologyID v1 = apply(g, getEdgeDst, eh);
         if (binary_search)
           intersect_dag_merge_double_binary<Graph>(graph_ptr, v0, v1, final_tri_count);
         else
@@ -32,10 +33,10 @@ void edge_tc_counting(galois::WaitGroup::HandleType wgh, pando::GlobalPtr<Graph>
       },
       [&graph](decltype(innerState) innerState, typename Graph::EdgeHandle eh) -> pando::Place {
         auto v0 = std::get<1>(innerState);
-        typename Graph::VertexTopologyID v1 = fmap(graph, getEdgeDst, eh);
-        bool v0_higher_degree = fmap(graph, getNumEdges, v0) >= fmap(graph, getNumEdges, v1);
-        pando::Place locality = v0_higher_degree ? fmap(graph, getLocalityVertex, v0)
-                                                 : fmap(graph, getLocalityVertex, v1);
+        typename Graph::VertexTopologyID v1 = apply(graph, getEdgeDst, eh);
+        bool v0_higher_degree = apply(graph, getNumEdges, v0) >= apply(graph, getNumEdges, v1);
+        pando::Place locality = v0_higher_degree ? apply(graph, getLocalityVertex, v0)
+                                                 : apply(graph, getLocalityVertex, v1);
         return locality;
       });
 }
@@ -141,6 +142,8 @@ void tc_chunk_edges(pando::GlobalPtr<GraphDL> graph_ptr,
 template <bool binary_search>
 void tc_chunk_vertices(pando::GlobalPtr<GraphDL> graph_ptr,
                        galois::DAccumulator<uint64_t> final_tri_count) {
+  using LCSR = galois::LCSR<VT, ET>;
+
   GraphDL graph = *graph_ptr;
   uint64_t query_sz = 1;
   uint64_t iters = 0;
@@ -172,7 +175,7 @@ void tc_chunk_vertices(pando::GlobalPtr<GraphDL> graph_ptr,
           auto wgh = wg.getHandle();
           auto inner_state = galois::make_tpl(graph_ptr, final_tri_count, wgh);
           galois::doAll(
-              inner_state, fmap(lcsr, vertices, host_vertex_iter_offset, query_sz),
+              inner_state, apply(lcsr, vertices, host_vertex_iter_offset, query_sz),
               +[](decltype(inner_state) inner_state, typename GraphDL::VertexTopologyID v0) {
                 auto [graph_ptr, final_tri_count, wgh] = inner_state;
                 GraphDL graph = *graph_ptr;
@@ -188,7 +191,7 @@ void tc_chunk_vertices(pando::GlobalPtr<GraphDL> graph_ptr,
           PANDO_CHECK(wg.wait());
 
           // Move iter offset
-          uint64_t lcsr_num_vertices = fmap(lcsr, size);
+          uint64_t lcsr_num_vertices = apply(lcsr, size);
           host_vertex_iter_offset += query_sz;
           if (host_vertex_iter_offset < lcsr_num_vertices)
             work_remaining.increment();
