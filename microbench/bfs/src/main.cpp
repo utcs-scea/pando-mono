@@ -91,8 +91,20 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
   PANDO_DRV_SET_STAGE_INIT();
   PANDO_DRV_SET_BYPASS_FLAG();
 
+#ifdef DEBUG_PRINTS
+#ifdef PANDO_RT_USE_BACKEND_DRVX
+  std::cerr << "Cycle before graph construction: " << DrvAPI::cycle() << std::endl;
+#endif
+#endif
+
   Graph graph = galois::initializeELDLCSR<Graph, VT, ET>(filename, numVertices);
   filename.deinitialize();
+
+#ifdef DEBUG_PRINTS
+#ifdef PANDO_RT_USE_BACKEND_DRVX
+  std::cerr << "Cycle after graph construction: " << DrvAPI::cycle() << std::endl;
+#endif
+#endif
 
 #ifdef DEBUG_PRINTS
   for (std::uint64_t i = 0; i < numVertices; i++) {
