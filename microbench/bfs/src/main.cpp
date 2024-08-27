@@ -70,11 +70,15 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
 
     PANDO_CHECK(bfs::SSSP_DLCSR(graph, srcVertex, next, phbfs));
 
+#ifdef VALIDATION_PRINT
     // Print Result
     for (std::uint64_t i = 0; i < numVertices; i++) {
       std::uint64_t val = graph.getData(graph.getTopologyID(i));
       std::cout << val << std::endl;
     }
+#else
+    std::cout << "SSSP for source vertex " << srcVertex << " is done!" << std::endl;
+#endif
   }
 }
 
