@@ -22,7 +22,7 @@ class SharedMemoryBank(object):
         self.name = self.make_name(*args, **kwargs)
         self.memctrl = sst.Component("{}_memctrl_{}".format(self.name,self.id), "memHierarchy.MemController")
         self.memctrl.addParams({
-            "clock" : arguments.mem_clock,
+            "request_width" : arguments.mem_request_width,
             "addr_range_start" : self.address_range.start,
             "addr_range_end"   : self.address_range.end,
             "interleave_size" :  str(self.address_range.interleave_size) + 'B',
@@ -116,6 +116,10 @@ class L2MemoryBank(SharedMemoryBank):
     def __init__(self, bank, pod=0, pxn=0):
         super().__init__(bank, pod, pxn)
 
+        self.memctrl.addParams({
+            "clock" : L2_MEM_CLK,
+        })
+
         self.nic.addParams({
             "network_bw" : L2_MEM_BANK_BW,
         })
@@ -160,6 +164,10 @@ class L2MemoryBank(SharedMemoryBank):
 class MainMemoryBank(SharedMemoryBank):
     def __init__(self, bank, pod=0, pxn=0):
         super().__init__(bank, pod, pxn)
+
+        self.memctrl.addParams({
+            "clock" : MAIN_MEM_CLK,
+        })
 
         self.nic.addParams({
             "network_bw" : MAIN_MEM_BANK_BW,

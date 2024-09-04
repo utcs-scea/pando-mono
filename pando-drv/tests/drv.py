@@ -54,6 +54,17 @@ def format_bw(bandwidth):
     else:
         return f"{bandwidth:.2f}B/s"
 
+# Function to format clock with appropriate units
+def format_clk(clock):
+    if clock >= 1e9:
+        return f"{clock / 1e9:.2f}GHz"
+    elif clock >= 1e6:
+        return f"{clock / 1e6:.2f}MHz"
+    elif clock >= 1e3:
+        return f"{clock / 1e3:.2f}KHz"
+    else:
+        return f"{clock:.2f}Hz"
+
 ################################
 # parse command line arguments #
 ################################
@@ -80,12 +91,13 @@ parser.add_argument("--core-threads", type=int, default=16, help="number of thre
 parser.add_argument("--core-clock", type=str, default="1GHz", help="clock frequency of cores")
 parser.add_argument("--core-max-idle", type=int, default=1, help="max idle time of cores")
 parser.add_argument("--command-clock", type=str, default="2GHz", help="clock frequency of command processors")
-parser.add_argument("--mem-clock", type=str, default="1GHz", help="clock frequency of memory components")
 
-parser.add_argument("--pod-l2sp-banks", type=int, default=8, help="number of l2sp banks per pod")
+parser.add_argument("--mem-request-width", type=int, default=64, help="memory max request width")
+
+parser.add_argument("--pod-l2sp-banks", type=int, default=1, help="number of l2sp banks per pod")
 parser.add_argument("--pod-l2sp-interleave", type=int, default=0, help="interleave size of l2sp addresses (defaults to no  interleaving)")
 
-parser.add_argument("--pxn-dram-banks", type=int, default=8, help="number of dram banks per pxn")
+parser.add_argument("--pxn-dram-banks", type=int, default=1, help="number of dram banks per pxn")
 parser.add_argument("--pxn-dram-size", type=int, default=1024**3, help="size of main memory per pxn (max {} bytes)".format(8*1024*1024*1024))
 parser.add_argument("--pxn-dram-interleave", type=int, default=0, help="interleave size of dram addresses (defaults to no  interleaving)")
 
@@ -171,13 +183,19 @@ COMMAND_BW_NUM = arguments.network_issue_rate * freq_str_to_hz(arguments.command
 COMMAND_BW = format_bw(COMMAND_BW_NUM)
 CORE_BW_NUM = arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
 CORE_BW = format_bw(CORE_BW_NUM)
-SCRATCHPAD_BW = format_bw(arguments.network_issue_rate * freq_str_to_hz(arguments.mem_clock))
-L2_MEM_BANK_BW = format_bw(arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock) / arguments.pod_l2sp_banks)
+SCRATCHPAD_BW_NUM = arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
+SCRATCHPAD_BW = format_bw(SCRATCHPAD_BW_NUM)
+SCRATCHPAD_CLK = format_clk(SCRATCHPAD_BW_NUM / arguments.mem_request_width)
 L2_MEM_BW_NUM = arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
 L2_MEM_BW = format_bw(L2_MEM_BW_NUM)
-MAIN_MEM_BANK_BW = format_bw(arguments.pxn_pods * arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock) / arguments.pxn_dram_banks)
+L2_MEM_BANK_BW_NUM = L2_MEM_BW_NUM / arguments.pod_l2sp_banks
+L2_MEM_BANK_BW = format_bw(L2_MEM_BANK_BW_NUM)
+L2_MEM_CLK = format_clk(L2_MEM_BANK_BW_NUM / arguments.mem_request_width)
 MAIN_MEM_BW_NUM = arguments.pxn_pods * arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
 MAIN_MEM_BW = format_bw(MAIN_MEM_BW_NUM)
+MAIN_MEM_BANK_BW_NUM = arguments.pxn_pods * arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock) / arguments.pxn_dram_banks
+MAIN_MEM_BANK_BW = format_bw(MAIN_MEM_BANK_BW_NUM)
+MAIN_MEM_CLK = format_clk(MAIN_MEM_BANK_BW_NUM / arguments.mem_request_width)
 if arguments.network_bw_config == "manual":
     ONCHIP_RTR_BW = arguments.network_onchip_bw
     OFFCHIP_RTR_BW = arguments.network_offchip_bw
@@ -261,8 +279,11 @@ class L2SPRange(object):
     L2SP_POD_BANKS = SYSCONFIG['sys_pod_l2sp_banks']
     L2SP_SIZE = SYSCONFIG['sys_pod_l2sp_size']
     L2SP_BANK_SIZE = L2SP_SIZE // L2SP_POD_BANKS
-    L2SP_SIZE_STR = "16MiB"
-    L2SP_BANK_SIZE_STR = "4MiB"
+    #L2SP_SIZE_STR = "16MiB"
+    #L2SP_BANK_SIZE_STR = "4MiB"
+    # size strings
+    L2SP_SIZE_STR = "{}GiB".format(L2SP_SIZE // 1024**3)
+    L2SP_BANK_SIZE_STR = "{}MiB".format(L2SP_SIZE // 1024**2)
     # interleave
     L2SP_INTERLEAVE_SIZE = SYSCONFIG['sys_pod_l2sp_interleave_size']
     L2SP_INTERLEAVE_SIZE_STR = "{}B".format(L2SP_INTERLEAVE_SIZE)

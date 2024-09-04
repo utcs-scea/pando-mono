@@ -34,7 +34,8 @@ class Tile(object):
             "debug" : 0,
             "debug_level" : 0,
             "verbose" : 0,
-            "clock" : arguments.mem_clock,
+            "clock" : SCRATCHPAD_CLK,
+            "request_width" : arguments.mem_request_width,
             "addr_range_start" : self.l1sp_start(),
             "addr_range_end" :   self.l1sp_end(),
         })
