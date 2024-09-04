@@ -84,7 +84,7 @@ ${DBG} sst -n ${HOST_THREADS} \
     --verbose \
     "${LAUNCH_SCRIPT}" -- \
     --with-command-processor="${PROG}" \
-    --num-pxn=${PROCS} \
+    --num-pxn=${HOSTS} \
     --pod-cores=${CORES} \
     --core-threads=${HARTS} \
     --drvx-stack-in-l1sp \

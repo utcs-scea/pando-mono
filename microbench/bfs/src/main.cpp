@@ -64,6 +64,9 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
 
   PANDO_CHECK(next.initialize());
 
+  PANDO_DRV_SET_STAGE_EXEC_COMP();
+  PANDO_DRV_CLEAR_BYPASS_FLAG();
+
   // Run BFS
   for (std::uint64_t srcVertex : srcVertices) {
     std::cout << "Source Vertex is " << srcVertex << std::endl;
@@ -152,6 +155,10 @@ void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVer
           PANDO_CHECK(fmap(fmap(toWriteLocal, operator[], i), initialize, 0));
         }
       }));
+
+  PANDO_DRV_SET_STAGE_EXEC_COMP();
+  PANDO_DRV_CLEAR_BYPASS_FLAG();
+
   // Run BFS
   for (std::uint64_t srcVertex : srcVertices) {
     std::cout << "Source Vertex is " << srcVertex << std::endl;

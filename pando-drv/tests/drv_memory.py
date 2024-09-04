@@ -22,7 +22,7 @@ class SharedMemoryBank(object):
         self.name = self.make_name(*args, **kwargs)
         self.memctrl = sst.Component("{}_memctrl_{}".format(self.name,self.id), "memHierarchy.MemController")
         self.memctrl.addParams({
-            "clock" : "1GHz",
+            "request_width" : arguments.mem_request_width,
             "addr_range_start" : self.address_range.start,
             "addr_range_end"   : self.address_range.end,
             "interleave_size" :  str(self.address_range.interleave_size) + 'B',
@@ -45,7 +45,6 @@ class SharedMemoryBank(object):
         self.nic = self.memctrl.setSubComponent("cpulink", "memHierarchy.MemNIC")
         self.nic.addParams({
             "group" : 2,
-            "network_bw" : "256GB/s",
             "network_input_buffer_size" : arguments.network_onchip_buffer_size,
             "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             "verbose_level": arguments.verbose_memory,
@@ -59,8 +58,6 @@ class SharedMemoryBank(object):
             "num_ports" : 2,
             "topology" : "merlin.singlerouter",
             # performance models
-            "xbar_bw" : "1024GB/s",
-            "link_bw" : "1024GB/s",
             "flit_size" : "8B",
             "input_buf_size" : arguments.network_onchip_buffer_size,
             "output_buf_size" : arguments.network_onchip_buffer_size,
@@ -119,6 +116,19 @@ class L2MemoryBank(SharedMemoryBank):
     def __init__(self, bank, pod=0, pxn=0):
         super().__init__(bank, pod, pxn)
 
+        self.memctrl.addParams({
+            "clock" : L2_MEM_CLK,
+        })
+
+        self.nic.addParams({
+            "network_bw" : L2_MEM_BANK_BW,
+        })
+
+        self.mem_rtr.addParams({
+            "xbar_bw" : L2_MEM_BANK_BW,
+            "link_bw" : L2_MEM_BANK_BW,
+        })
+
     def make_id(self, bank, pod=0, pxn=0):
         """
         @brief return a unique integer
@@ -154,6 +164,19 @@ class L2MemoryBank(SharedMemoryBank):
 class MainMemoryBank(SharedMemoryBank):
     def __init__(self, bank, pod=0, pxn=0):
         super().__init__(bank, pod, pxn)
+
+        self.memctrl.addParams({
+            "clock" : MAIN_MEM_CLK,
+        })
+
+        self.nic.addParams({
+            "network_bw" : MAIN_MEM_BANK_BW,
+        })
+
+        self.mem_rtr.addParams({
+            "xbar_bw" : MAIN_MEM_BANK_BW,
+            "link_bw" : MAIN_MEM_BANK_BW,
+        })
 
     def make_id(self, bank, pod=0, pxn=0):
         """

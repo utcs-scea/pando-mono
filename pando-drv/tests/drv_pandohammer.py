@@ -39,8 +39,8 @@ def MakePANDOHammer(make_tile):
             "num_ports" : PODS * (CORES + POD_L2_BANKS) + (1 if arguments.with_command_processor else 0) + PXN_MAINMEM_BANKS + PXNS - 1, # If number of PXNS is equal to 1 we do not need additional port. Hence -1
             "topology" : "merlin.singlerouter",
             # performance models
-            "xbar_bw" : "256GB/s",
-            "link_bw" : "256GB/s",
+            "xbar_bw" : ONCHIP_RTR_BW,
+            "link_bw" : ONCHIP_RTR_BW,
             "flit_size" : "8B",
             "input_buf_size" : arguments.network_onchip_buffer_size,
             "output_buf_size" : arguments.network_onchip_buffer_size,
@@ -72,7 +72,7 @@ def MakePANDOHammer(make_tile):
                     "translator" : "memHierarchy.MemNetBridge",
                     "debug" : 1,
                     "debug_level" : 10,
-                    "network_bw" : "256GB/s",
+                    "network_bw" : CORE_BW,
                     "network_input_buffer_size" : arguments.network_onchip_buffer_size,
                     "network_output_buffer_size" : arguments.network_onchip_buffer_size,
                 })
@@ -95,7 +95,7 @@ def MakePANDOHammer(make_tile):
                     "translator" : "memHierarchy.MemNetBridge",
                     "debug" : 1,
                     "debug_level" : 10,
-                    "network_bw" : "256GB/s",
+                    "network_bw" : L2_MEM_BANK_BW,
                     "network_input_buffer_size" : arguments.network_onchip_buffer_size,
                     "network_output_buffer_size" : arguments.network_onchip_buffer_size,
                 })
@@ -118,7 +118,7 @@ def MakePANDOHammer(make_tile):
                 "translator" : "memHierarchy.MemNetBridge",
                 "debug" : 1,
                 "debug_level" : 10,
-                "network_bw" : "256GB/s",
+                "network_bw" : MAIN_MEM_BANK_BW,
                 "network_input_buffer_size" : arguments.network_onchip_buffer_size,
                 "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             })
@@ -151,8 +151,8 @@ def MakePANDOHammer(make_tile):
             "num_ports" : PXNS,
             "topology" : "merlin.singlerouter",
             # performance models
-            "xbar_bw" : "256GB/s",
-            "link_bw" : "256GB/s",
+            "xbar_bw" : OFFCHIP_RTR_BW,
+            "link_bw" : OFFCHIP_RTR_BW,
             "flit_size" : "8B",
             "input_buf_size" : arguments.network_offchip_buffer_size,
             "output_buf_size" : arguments.network_offchip_buffer_size,
@@ -169,7 +169,7 @@ def MakePANDOHammer(make_tile):
                 "translator" : "memHierarchy.MemNetBridge",
                 "debug" : 1,
                 "debug_level" : 10,
-                "network_bw" : "256GB/s",
+                "network_bw" : ONCHIP_RTR_BW,
                 "network_input_buffer_size" : arguments.network_offchip_buffer_size,
                 "network_output_buffer_size" : arguments.network_offchip_buffer_size,
             })

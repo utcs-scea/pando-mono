@@ -2,6 +2,7 @@
 # Copyright (c) 2023 University of Washington
 import sst
 import argparse
+import re
 
 # common functions
 ADDR_TYPE_HI,ADDR_TYPE_LO     = (63, 58)
@@ -19,6 +20,50 @@ def set_bits(word, hi, lo, value):
     word &= ~(mask << lo)
     word |= (value & mask) << lo
     return word
+
+# Function to convert frequency string to Hz
+def freq_str_to_hz(frequency_str):
+    # Regular expression to match frequency and its unit
+    match = re.match(r"(\d+)([GMK]Hz)", frequency_str)
+    if not match:
+        raise ValueError("Invalid frequency format")
+
+    value = int(match.group(1))
+    unit = match.group(2)
+
+    # Convert value to Hz based on unit
+    if unit == "GHz":
+        return value * 1e9
+    elif unit == "MHz":
+        return value * 1e6
+    elif unit == "KHz":
+        return value * 1e3
+    else:
+        raise ValueError("Unsupported frequency unit")
+
+# Function to format bandwidth with appropriate units
+def format_bw(bandwidth):
+    if bandwidth >= 1e12:
+        return f"{bandwidth / 1e12:.2f}TB/s"
+    elif bandwidth >= 1e9:
+        return f"{bandwidth / 1e9:.2f}GB/s"
+    elif bandwidth >= 1e6:
+        return f"{bandwidth / 1e6:.2f}MB/s"
+    elif bandwidth >= 1e3:
+        return f"{bandwidth / 1e3:.2f}KB/s"
+    else:
+        return f"{bandwidth:.2f}B/s"
+
+# Function to format clock with appropriate units
+def format_clk(clock):
+    if clock >= 1e9:
+        return f"{clock / 1e9:.2f}GHz"
+    elif clock >= 1e6:
+        return f"{clock / 1e6:.2f}MHz"
+    elif clock >= 1e3:
+        return f"{clock / 1e3:.2f}KHz"
+    else:
+        return f"{clock:.2f}Hz"
 
 ################################
 # parse command line arguments #
@@ -45,14 +90,21 @@ parser.add_argument("--num-pxn", type=int, default=1, help="number of pxns")
 parser.add_argument("--core-threads", type=int, default=16, help="number of threads per core")
 parser.add_argument("--core-clock", type=str, default="1GHz", help="clock frequency of cores")
 parser.add_argument("--core-max-idle", type=int, default=1, help="max idle time of cores")
+parser.add_argument("--command-clock", type=str, default="2GHz", help="clock frequency of command processors")
 
-parser.add_argument("--pod-l2sp-banks", type=int, default=8, help="number of l2sp banks per pod")
+parser.add_argument("--mem-request-width", type=int, default=64, help="memory max request width")
+
+parser.add_argument("--pod-l2sp-banks", type=int, default=1, help="number of l2sp banks per pod")
 parser.add_argument("--pod-l2sp-interleave", type=int, default=0, help="interleave size of l2sp addresses (defaults to no  interleaving)")
 
-parser.add_argument("--pxn-dram-banks", type=int, default=8, help="number of dram banks per pxn")
+parser.add_argument("--pxn-dram-banks", type=int, default=1, help="number of dram banks per pxn")
 parser.add_argument("--pxn-dram-size", type=int, default=1024**3, help="size of main memory per pxn (max {} bytes)".format(8*1024*1024*1024))
 parser.add_argument("--pxn-dram-interleave", type=int, default=0, help="interleave size of dram addresses (defaults to no  interleaving)")
 
+parser.add_argument("--network-issue-rate", type=int, default=8, help="core memory operation issue rate in bytes")
+parser.add_argument("--network-bw-config", type=str, default="auto", choices=['auto', 'manual'], help="network bandwidth configuration type")
+parser.add_argument("--network-onchip-bw", type=str, default="1GB/s", help="network on chip router bandwidth")
+parser.add_argument("--network-offchip-bw", type=str, default="4GB/s", help="network off chip router bandwidth")
 parser.add_argument("--network-onchip-buffer-size", type=str, default="1MB", help="on chip network input / output buffer size")
 parser.add_argument("--network-offchip-buffer-size", type=str, default="64MB", help="off chip network input / output buffer size")
 
@@ -123,6 +175,34 @@ CORE_L1SP_SIZE = (1<<17)
 COMPUTETILE_RTR_ID = 0
 SHAREDMEM_RTR_ID = 1024
 CHIPRTR_ID = 1024*1024
+
+###################
+# Bandwidth Numbers #
+###################
+COMMAND_BW_NUM = arguments.network_issue_rate * freq_str_to_hz(arguments.command_clock)
+COMMAND_BW = format_bw(COMMAND_BW_NUM)
+CORE_BW_NUM = arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
+CORE_BW = format_bw(CORE_BW_NUM)
+SCRATCHPAD_BW_NUM = arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
+SCRATCHPAD_BW = format_bw(SCRATCHPAD_BW_NUM)
+SCRATCHPAD_CLK = format_clk(SCRATCHPAD_BW_NUM / arguments.mem_request_width)
+L2_MEM_BW_NUM = arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
+L2_MEM_BW = format_bw(L2_MEM_BW_NUM)
+L2_MEM_BANK_BW_NUM = L2_MEM_BW_NUM / arguments.pod_l2sp_banks
+L2_MEM_BANK_BW = format_bw(L2_MEM_BANK_BW_NUM)
+L2_MEM_CLK = format_clk(L2_MEM_BANK_BW_NUM / arguments.mem_request_width)
+MAIN_MEM_BW_NUM = arguments.pxn_pods * arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock)
+MAIN_MEM_BW = format_bw(MAIN_MEM_BW_NUM)
+MAIN_MEM_BANK_BW_NUM = arguments.pxn_pods * arguments.pod_cores * arguments.network_issue_rate * freq_str_to_hz(arguments.core_clock) / arguments.pxn_dram_banks
+MAIN_MEM_BANK_BW = format_bw(MAIN_MEM_BANK_BW_NUM)
+MAIN_MEM_CLK = format_clk(MAIN_MEM_BANK_BW_NUM / arguments.mem_request_width)
+if arguments.network_bw_config == "manual":
+    ONCHIP_RTR_BW = arguments.network_onchip_bw
+    OFFCHIP_RTR_BW = arguments.network_offchip_bw
+else:
+    ONCHIP_RTR_BW_NUM = 2 * (COMMAND_BW_NUM + arguments.pxn_pods*arguments.pod_cores*CORE_BW_NUM + arguments.pxn_pods*L2_MEM_BW_NUM + MAIN_MEM_BW_NUM)
+    ONCHIP_RTR_BW = format_bw(ONCHIP_RTR_BW_NUM)
+    OFFCHIP_RTR_BW = format_bw(arguments.num_pxn * ONCHIP_RTR_BW_NUM)
 
 SYSCONFIG = {
     "sys_num_pxn" : 1,
@@ -199,8 +279,11 @@ class L2SPRange(object):
     L2SP_POD_BANKS = SYSCONFIG['sys_pod_l2sp_banks']
     L2SP_SIZE = SYSCONFIG['sys_pod_l2sp_size']
     L2SP_BANK_SIZE = L2SP_SIZE // L2SP_POD_BANKS
-    L2SP_SIZE_STR = "16MiB"
-    L2SP_BANK_SIZE_STR = "4MiB"
+    #L2SP_SIZE_STR = "16MiB"
+    #L2SP_BANK_SIZE_STR = "4MiB"
+    # size strings
+    L2SP_SIZE_STR = "{}GiB".format(L2SP_SIZE // 1024**3)
+    L2SP_BANK_SIZE_STR = "{}MiB".format(L2SP_SIZE // 1024**2)
     # interleave
     L2SP_INTERLEAVE_SIZE = SYSCONFIG['sys_pod_l2sp_interleave_size']
     L2SP_INTERLEAVE_SIZE_STR = "{}B".format(L2SP_INTERLEAVE_SIZE)
@@ -275,7 +358,7 @@ class CommandProcessor(object):
         self.core.addParams({
             "verbose"   : arguments.verbose,
             "threads"   : 1,
-            "clock"     : "2GHz",
+            "clock"     : arguments.command_clock,
             "executable": arguments.with_command_processor,
             "argv" : ' '.join(argv), # cp its own exe as first arg, then same argv as the main program
             "max_idle" : 100//8, # turn clock offf after idle for 1 us
@@ -302,7 +385,7 @@ class CommandProcessor(object):
         self.core_nic = self.core_iface.setSubComponent("memlink", "memHierarchy.MemNIC")
         self.core_nic.addParams({
             "group" : 0,
-            "network_bw" : "1024GB/s",
+            "network_bw" : COMMAND_BW,
             "network_input_buffer_size" : arguments.network_onchip_buffer_size,
             "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             "destinations" : "0,1,2",

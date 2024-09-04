@@ -34,7 +34,8 @@ class Tile(object):
             "debug" : 0,
             "debug_level" : 0,
             "verbose" : 0,
-            "clock" : "1GHz",
+            "clock" : SCRATCHPAD_CLK,
+            "request_width" : arguments.mem_request_width,
             "addr_range_start" : self.l1sp_start(),
             "addr_range_end" :   self.l1sp_end(),
         })
@@ -57,7 +58,7 @@ class Tile(object):
         self.scratchpad_nic = self.scratchpad_mectrl.setSubComponent("cpulink", "memHierarchy.MemNIC")
         self.scratchpad_nic.addParams({
             "group" : 1,
-            "network_bw" : "1024GB/s",
+            "network_bw" : SCRATCHPAD_BW,
             "network_input_buffer_size" : arguments.network_onchip_buffer_size,
             "network_output_buffer_size" : arguments.network_onchip_buffer_size,
         })
@@ -74,8 +75,8 @@ class Tile(object):
             "num_ports" : 3,
             "topology" : "merlin.singlerouter",
             # performance models
-            "xbar_bw" : "1024GB/s",
-            "link_bw" : "1024GB/s",
+            "xbar_bw" : CORE_BW,
+            "link_bw" : CORE_BW,
             "flit_size" : "8B",
             "input_buf_size" : arguments.network_onchip_buffer_size,
             "output_buf_size" : arguments.network_onchip_buffer_size,
@@ -164,12 +165,8 @@ class DrvXTile(Tile):
             "pxn" : self.pxn,
             "phase_max" : arguments.stats_preallocated_phase,
             "stack_in_l1sp" : arguments.drvx_stack_in_l1sp,
+            "clock" : arguments.core_clock,
         })
-
-        if SYSCONFIG["sys_core_clock"]:
-            self.core.addParams({
-                "clock" : SYSCONFIG["sys_core_clock"],
-            })
 
         self.core.addParams(SYSCONFIG)
         self.core.addParams(CORE_DEBUG)
@@ -189,7 +186,7 @@ class DrvXTile(Tile):
         self.core_nic = self.core_iface.setSubComponent("memlink", "memHierarchy.MemNIC")
         self.core_nic.addParams({
             "group" : 0,
-            "network_bw" : "1024GB/s",
+            "network_bw" : CORE_BW,
             "network_input_buffer_size" : arguments.network_onchip_buffer_size,
             "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             "destinations" : "0,1,2",
@@ -225,12 +222,8 @@ class DrvRTile(Tile):
             "core": self.id,
             "pod" : self.pod,
             "pxn" : self.pxn,
+            "clock" : arguments.core_clock,
         })
-
-        if SYSCONFIG["sys_core_clock"]:
-            self.core.addParams({
-                "clock" : SYSCONFIG["sys_core_clock"],
-            })
 
         self.core.addParams(SYSCONFIG)
         self.core.addParams(CORE_DEBUG)
@@ -241,7 +234,7 @@ class DrvRTile(Tile):
         self.core_nic = self.core_iface.setSubComponent("memlink", "memHierarchy.MemNIC")
         self.core_nic.addParams({
             "group" : 0,
-            "network_bw" : "1024GB/s",
+            "network_bw" : CORE_BW,
             "network_input_buffer_size" : arguments.network_onchip_buffer_size,
             "network_output_buffer_size" : arguments.network_onchip_buffer_size,
             "destinations" : "0,1,2",
