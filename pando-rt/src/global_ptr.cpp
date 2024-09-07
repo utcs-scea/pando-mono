@@ -5,6 +5,8 @@
 #include "pando-rt/memory/global_ptr.hpp"
 
 #include <atomic>
+#include <iostream>
+#include <execinfo.h>
 #include <cstring>
 #include <type_traits>
 
@@ -27,7 +29,7 @@
 #include "drvx/drvx.hpp"
 #endif // PANDO_RT_USE_BACKEND_PREP
 
-constexpr bool POINTER_TIMER_ENABLE = false;
+constexpr bool POINTER_TIMER_ENABLE = true;
 counter::Record<std::int64_t> pointerCount = counter::Record<std::int64_t>();
 
 namespace pando {
@@ -138,9 +140,10 @@ void load(GlobalAddress srcGlobalAddr, std::size_t n, void* dstNativePtr) {
     // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
     MemTraceLogger::log("LOAD", nodeIdx, nodeIdx, n, dstNativePtr, srcGlobalAddr);
 #endif
-    counter::recordHighResolutionEvent(pointerCount, pointerTimer);
   } else {
     // remote load; send remote load request and wait for it to finish
+    counter::recordHighResolutioncount(pointerCount, n);
+
     Nodes::LoadHandle handle(dstNativePtr);
     if (auto status = Nodes::load(nodeIdx, srcGlobalAddr, n, handle); status != Status::Success) {
       SPDLOG_ERROR("Load error: {}", status);
@@ -211,9 +214,10 @@ void store(GlobalAddress dstGlobalAddr, std::size_t n, const void* srcNativePtr)
     // if the level of mem-tracing is ALL (2), log intra-pxn memory operations
     MemTraceLogger::log("STORE", nodeIdx, nodeIdx, n, dstNativePtr, dstGlobalAddr);
 #endif
-    counter::recordHighResolutionEvent(pointerCount, pointerTimer);
   } else {
     // remote store; send remote store request and wait for it to finish
+    counter::recordHighResolutioncount(pointerCount, n);
+
     Nodes::AckHandle handle;
     if (auto status = Nodes::store(nodeIdx, dstGlobalAddr, n, srcNativePtr, handle);
         status != Status::Success) {

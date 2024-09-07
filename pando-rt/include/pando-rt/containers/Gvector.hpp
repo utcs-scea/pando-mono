@@ -2,8 +2,8 @@
 /* Copyright (c) 2023. University of Texas at Austin. All rights reserved. */
 /* Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved. */
 
-#ifndef PANDO_RT_CONTAINERS_VECTOR_HPP_
-#define PANDO_RT_CONTAINERS_VECTOR_HPP_
+#ifndef PANDO_RT_CONTAINERS_GVECTOR_HPP_
+#define PANDO_RT_CONTAINERS_GVECTOR_HPP_
 
 #include <cstdint>
 #include <iterator>
@@ -12,7 +12,6 @@
 #include "../memory/allocate_memory.hpp"
 #include "../memory/global_ptr.hpp"
 #include "../utility/math.hpp"
-#include "../utility/check.hpp"
 #include "array.hpp"
 
 namespace pando {
@@ -21,16 +20,15 @@ namespace pando {
  * @brief Sequence container that stores elements of type @p T contiguously and can change size
  *        dynamically.
  *
- * @note A @c Vector object is empty upon construction. One of the `Vector::initialize()` functions
+ * @note A @c Gvector object is empty upon construction. One of the `Gvector::initialize()` functions
  *       needs to be called to allocate space.
  */
 template <typename T>
-class Vector {
+class Gvector {
   /// @brief The length of the vector
-public:
   std::uint64_t m_size = 0;
   /// @brief An array that holds the data
-  Array<T> m_buf;
+  GlobalPtr<pando::Vector<T>> vec_ptr{nullptr};
 
 public:
   using iterator = GlobalPtr<T>;
@@ -38,22 +36,24 @@ public:
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  constexpr Vector() noexcept = default;
+  constexpr Gvector() noexcept = default;
 
   // TODO(ypapadop-amd) These are not the intented copy/move constructors/assignment operators.
   // However, due to deficiencies in the GlobalRef, the pattern
-  //    Vector<T> copy = *globalPtr;
+  //    Gvector<T> copy = *globalPtr;
   //    mutate(copy);
   //    *globalPtr = copy;
-  // is used, which requires Vector<T> to be a trivially copyable object.
+  // is used, which requires Gvector<T> to be a trivially copyable object.
 
-  constexpr Vector(Vector&&) noexcept = default;
-  constexpr Vector(const Vector&) noexcept = default;
+  constexpr Gvector(Gvector&&) noexcept = default;
+  constexpr Gvector(const Gvector&) noexcept = default;
 
-  ~Vector() = default;
+  ~Gvector() = default;
 
-  constexpr Vector& operator=(const Vector&) noexcept = default;
-  constexpr Vector& operator=(Vector&&) noexcept = default;
+  constexpr Gvector& operator=(const Gvector&) noexcept = default;
+  constexpr Gvector& operator=(Gvector&&) noexcept = default;
+
+  constexpr Gvector(GlobalPtr<pando::Vector<T>> vec) noexcept : vec_ptr(vec) {}
 
   /**
    * @copydoc initialize(std::uint64_t)
@@ -62,14 +62,8 @@ public:
    * @param[in] memoryType memory to allocate from
    */
   [[nodiscard]] Status initialize(std::uint64_t size, Place place, MemoryType memoryType) {
-    const auto status = m_buf.initialize(size, place, memoryType);
-    if (status == Status::Success) {
-      m_size = size;
-
-      // default initialize elements
-      m_buf.fill(T{});
-    }
-    return status;
+    vec_ptr = PANDO_EXPECT_RETURN(allocateMemory<pando::Vector<T>>(1, place, memoryType));
+    return fmap(vec_ptr, initialize, size, place, memoryType);
   }
 
   /**
@@ -80,22 +74,22 @@ public:
    * @param[in] size size of vector in elements
    */
   [[nodiscard]] Status initialize(std::uint64_t size) {
-    return initialize(size, getCurrentPlace(), MemoryType::Main);
+    vec_ptr = PANDO_EXPECT_RETURN(allocateMemory<pando::Vector<T>>(1, getCurrentPlace(), MemoryType::Main));
+    return vec_ptr->initialize(size,getCurrentPlace(),MemoryType::Main);
   }
 
   /**
    * @brief Deinitializes the container.
    */
   void deinitialize() {
-    m_buf.deinitialize();
-    m_size = 0;
+    lift(vec_ptr, deinitialize);
   }
 
   /**
    * @brief Returns the memory this vector is allocated in.
    */
   MemoryType getMemoryType() const noexcept {
-    return m_buf.getMemoryType();
+    return lift(vec_ptr, getMemoryType);
   }
 
   /**
@@ -109,96 +103,93 @@ public:
    * @param[in] nextCapacity new capacity of the container in elements
    */
   [[nodiscard]] Status reserve(std::uint64_t nextCapacity) {
-    if (nextCapacity <= capacity()) {
-      return Status::Success;
-    }
-
-    Array<T> newArray;
-    auto status = newArray.initialize(nextCapacity, pando::localityOf(m_buf.data()), getMemoryType());
-    if (status != Status::Success) {
-      return Status::BadAlloc;
-    }
-
-    for (std::uint64_t i = 0; i < size(); i++) {
-      newArray[i] = std::move<T>(m_buf[i]);
-    }
-
-    std::swap(m_buf, newArray);
-    newArray.deinitialize();
-
-    return Status::Success;
-  }
-
-  /**
-   * @brief this function resizes the array
-   *
-   * @note the implementation is simple because T must be trivially copyable.
-   *
-   * @param[in] newSize the new desired size
-   **/
-  [[nodiscard]] Status resize(std::uint64_t newSize) {
-    if(capacity() >= newSize){
-      m_size = newSize;
-      return Status::Success;
-    }
-    PANDO_CHECK_RETURN(growPow2(newSize - 1));
-    //Subtract one here because we want to be at size or larger
-    assert(capacity() >= newSize);
-    m_size = newSize;
-    return Status::Success;
+    return fmap(vec_ptr, reserve, nextCapacity);
   }
 
   /**
    * @brief Reserves the next power of 2 higher than the current size.
    */
-  [[nodiscard]] Status growPow2(std::uint64_t biggerThan) {
-    if (m_buf.data() == nullptr && biggerThan == 0) {
-      return reserve(1);
-    }
-    if (m_buf.size() != 0 && log2floor(m_buf.size()) >= (sizeof(std::uint64_t) * 8 - 1)) {
-      return Status::OutOfBounds;
-    }
-    const auto nextCapacity = up2(biggerThan);
-    return reserve(nextCapacity);
+  [[nodiscard]] Status growPow2() {
+    return lift(vec_ptr, growPow2);
   }
 
   /**
    * @brief clear the vector
    */
   void clear() {
-    m_size = 0;
+    return lift(vec_ptr, clear);
   }
 
   constexpr std::uint64_t capacity() const noexcept {
-    return m_buf.size();
+    pando::GlobalPtr<void> vvec = static_cast<pando::GlobalPtr<void>>(vec_ptr);  
+    pando::GlobalPtr<std::byte> bvec = static_cast<pando::GlobalPtr<std::byte>>(vvec); 
+    auto offsetVec = bvec + offsetof(pando::Vector<T>,m_size); 
+    auto offsetVVec = static_cast<pando::GlobalPtr<void>>(offsetVec); 
+    std::uint64_t desired = *static_cast<pando::GlobalPtr<std::uint64_t>> (offsetVVec); 
+    return desired; 
+
   }
 
   constexpr bool empty() const noexcept {
-    return m_size == 0;
+    return capacity() == 0;
   }
 
   constexpr auto get(std::uint64_t pos) {
-    return m_buf[pos];
+    return vec_ptr->get(pos);
   }
 
   constexpr auto operator[](std::uint64_t pos) {
-    return m_buf[pos];
+    return vec_ptr->get(pos);
   }
 
   constexpr auto operator[](std::uint64_t pos) const {
-    return m_buf[pos];
+    return vec_ptr->get(pos);
   }
 
   constexpr GlobalPtr<T> data() noexcept {
-    return m_buf.data();
+    return vec_ptr->data();
   }
 
   constexpr GlobalPtr<const T> data() const noexcept {
-    return m_buf.data();
+    return vec_ptr->data();
+  }
+  constexpr T at(std::uint64_t pos) {
+      // Step 1: Cast vec_ptr to void* and then to std::byte*
+      GlobalPtr<void> voidPtr = static_cast<GlobalPtr<void>>(vec_ptr);
+      GlobalPtr<std::byte> bytePtr = static_cast<GlobalPtr<std::byte>>(voidPtr);
+
+      // Step 2: Calculate offset to m_buf within Vector<T>
+      auto bufOffset = bytePtr + offsetof(Vector<T>, m_buf);
+
+      // Step 3: Cast to void* and then to std::byte* again for the next calculation
+      voidPtr = static_cast<GlobalPtr<void>>(bufOffset);
+      bytePtr = static_cast<GlobalPtr<std::byte>>(voidPtr);
+
+      // Step 4: Calculate offset to m_data within Array<T>
+      auto dataOffset = bytePtr + offsetof(Array<T>, m_data);
+
+      // Step 5: Dereference to get GlobalPtr<T> from m_data
+      auto globalPtrOffset = static_cast<GlobalPtr<void>>(dataOffset);
+      GlobalPtr<T> dataPtr = *static_cast<GlobalPtr<GlobalPtr<T>>>(globalPtrOffset);
+
+      // Step 6: Calculate the final offset using the provided position
+      voidPtr = static_cast<GlobalPtr<void>>(dataPtr);
+      bytePtr = static_cast<GlobalPtr<std::byte>>(voidPtr);
+      auto elementOffset = bytePtr + pos * sizeof(T);
+
+      // Step 7: Dereference to get the desired element
+      auto elementGlobalPtr = static_cast<GlobalPtr<void>>(elementOffset);
+      T desiredElement = *static_cast<GlobalPtr<T>>(elementGlobalPtr);
+      return desiredElement;
   }
 
   constexpr std::uint64_t size() const noexcept {
-    return m_size;
+    pando::GlobalPtr<void> vvec = static_cast<pando::GlobalPtr<void>>(vec_ptr);  
+    pando::GlobalPtr<std::byte> bvec = static_cast<pando::GlobalPtr<std::byte>>(vvec); 
+    auto offsetVec = bvec + offsetof(pando::Vector<T>,m_size); 
+    auto offsetVVec = static_cast<pando::GlobalPtr<void>>(offsetVec); 
+    std::uint64_t desired = *static_cast<pando::GlobalPtr<std::uint64_t>> (offsetVVec); 
+    return desired;
   }
 
   /**
@@ -210,30 +201,14 @@ public:
    * @param[in] value element to append
    */
   [[nodiscard]] Status pushBack(const T& value) {
-    if (m_size == capacity()) {
-      auto status = growPow2(m_size);
-      if (Status::Success != status) {
-        return status;
-      }
-    }
-    m_buf[m_size] = value;
-    m_size++;
-    return Status::Success;
+    return vec_ptr->pushBack(value);
   }
 
   /**
    * @copydoc pushBack(const T&)
    */
   [[nodiscard]] Status pushBack(T&& value) {
-    if (m_size == capacity()) {
-      auto status = growPow2(m_size);
-      if (Status::Success != status) {
-        return status;
-      }
-    }
-    m_buf[m_size] = std::move(value);
-    m_size++;
-    return Status::Success;
+    return fmap(vec_ptr, pushBack, std::move(value));
   }
 
   // TODO(AdityaAtulTewari) Whenever it is time for performance counters they need to be encoded
@@ -247,15 +222,8 @@ public:
    *
    * @param from this is the vector we are copying from
    */
-  [[nodiscard]] Status assign(GlobalPtr<Vector<T>> from) {
-    Vector<T> tfrom = *from;
-    const auto size = tfrom.size();
-    auto err = initialize(size);
-    if (err != Status::Success) {
-      return err;
-    }
-    detail::bulkMemcpy(tfrom.data().address, sizeof(T) * size, data().address);
-    return Status::Success;
+  [[nodiscard]] Status assign(GlobalPtr<Gvector<T>> from) {
+    return fmap(vec_ptr, assign, from);
   }
 
   // TODO(AdityaAtulTewari) Whenever it is time for performance counters they need to be encoded
@@ -267,13 +235,8 @@ public:
    *
    * @param from this is the vector we are copying from
    */
-  [[nodiscard]] Status append(GlobalPtr<Vector<T>> from) {
-    Vector<T> tfrom = *from;
-    const auto originalSize = size();
-    const auto appendSize = tfrom.size();
-    PANDO_CHECK_RETURN(resize(originalSize + appendSize));
-    detail::bulkMemcpy(tfrom.data().address, sizeof(T) * appendSize, (&get(originalSize)).address);
-    return Status::Success;
+  [[nodiscard]] Status append(GlobalPtr<Gvector<T>> from) {
+    return fmap(vec_ptr, append, from);
   }
 
   iterator begin() noexcept {
@@ -345,13 +308,13 @@ public:
 
 /// @ingroup ROOT
 template <typename T>
-bool operator==(const Vector<T>& lhs, const Vector<T>& rhs) noexcept {
+bool operator==(const Gvector<T>& lhs, const Gvector<T>& rhs) noexcept {
   return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
 }
 
 /// @ingroup ROOT
 template <typename T>
-bool operator!=(const Vector<T>& lhs, const Vector<T>& rhs) noexcept {
+bool operator!=(const Gvector<T>& lhs, const Gvector<T>& rhs) noexcept {
   return !(lhs == rhs);
 }
 

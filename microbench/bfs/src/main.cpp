@@ -14,7 +14,7 @@
 #include <pando-lib-galois/graphs/edge_list_importer.hpp>
 #include <pando-lib-galois/graphs/mirror_dist_local_csr.hpp>
 #include <pando-lib-galois/import/ingest_rmat_el.hpp>
-#include <pando-rt/containers/vector.hpp>
+#include <pando-rt/containers/Gvector.hpp>
 #include <pando-rt/drv_info.hpp>
 #include <pando-rt/memory/allocate_memory.hpp>
 #include <pando-rt/memory/memory_guard.hpp>
@@ -27,7 +27,7 @@ void printUsageExit(char* argv0) {
   std::exit(EXIT_FAILURE);
 }
 
-void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVertices,
+void HBMainDLCSR(pando::Gvector<std::uint64_t> srcVertices, std::uint64_t numVertices,
                  pando::Array<char>&& filename) {
 #ifdef DEBUG_PRINTS
   std::cerr << "Construct Graph Begin" << std::endl;
@@ -85,7 +85,7 @@ void HBMainDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVert
   }
 }
 
-void HBMainMDLCSR(pando::Vector<std::uint64_t> srcVertices, std::uint64_t numVertices,
+void HBMainMDLCSR(pando::Gvector<std::uint64_t> srcVertices, std::uint64_t numVertices,
                   pando::Array<char>&& filename) {
 #ifdef DEBUG_PRINTS
   std::cerr << "Construct Graph Begin" << std::endl;
@@ -185,7 +185,7 @@ int pandoMain(int argc, char** argv) {
     enum GraphMode { DLCSR, MDLCSR } graphMode{MDLCSR};
     std::uint64_t numVertices = 0;
     std::uint64_t srcVertex = 0;
-    pando::Vector<std::uint64_t> srcVertices;
+    pando::Gvector<std::uint64_t> srcVertices;
     PANDO_CHECK(srcVertices.initialize(0));
     char* filePath = nullptr;
 

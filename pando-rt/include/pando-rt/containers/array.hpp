@@ -28,11 +28,12 @@ namespace pando {
  */
 template <typename T>
 class Array {
+public:  
+
   GlobalPtr<T> m_data{nullptr};
   std::uint64_t m_size{0};
   MemoryType m_memoryType{MemoryType::Unknown};
 
-public:
   using iterator = GlobalPtr<T>;
   using const_iterator = GlobalPtr<const T>;
   using reverse_iterator = std::reverse_iterator<iterator>;

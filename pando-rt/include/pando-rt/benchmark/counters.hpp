@@ -122,6 +122,12 @@ namespace counter {
     });
   }
 
+  inline static void recordHighResolutioncount(Record<std::int64_t>& r, int64_t c) {
+    r.record(c, [](const int64_t c){
+        return c;
+    });
+  }
+
   inline static void recordHighResolutionEvent(Record<std::int64_t>& r, HighResolutionCount<false> c) {
     UNUSED(r);
     UNUSED(c);
