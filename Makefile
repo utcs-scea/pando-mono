@@ -46,6 +46,7 @@ DRV_ROOT ?=
 # Developer variables that should be set as env vars in startup files like .profile
 PANDO_CONTAINER_MOUNTS ?=
 PANDO_CONTAINER_ENV ?=
+PANDO_TACC_DEPENDENCY_DIR ?= ${WORK}/mono-install
 
 .PHONY: docker docker-image-dependencies
 
@@ -178,6 +179,25 @@ cmake-mpi:
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
 
+cmake-tacc:
+	@cmake \
+  -S ${SRC_DIR} \
+  -B ${BUILD_DIR} \
+  -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+	-DCMAKE_CXX_FLAGS=${PANDO_EXTRA_CXX_FLAGS} \
+	-DPANDO_PREP_GASNET_CONDUIT=ibv \
+  -DCMAKE_INSTALL_PREFIX=${WORK}/mono-install \
+	-DBUILD_EXAMPLES=${BUILD_EXAMPLES} \
+	-DBUILD_WORKFLOWS=${BUILD_WORKFLOWS} \
+	-DBUILD_MICROBENCH=${BUILD_MICROBENCH} \
+	-DENABLE_ROOT_TESTS=${ROOT_TESTS} \
+	-DENABLE_GALOIS_TESTS=${GALOIS_TESTS} \
+	-DENABLE_INFLUENCE_MAX_TESTS=${WF4_TESTS} \
+	-DENABLE_BFS_TESTS=${BFS_TESTS} \
+	-DENABLE_TC_TESTS=${TC_TESTS} \
+  -DBUILD_DOCS=${PANDO_BUILD_DOCS} \
+	-DPANDO_TEST_DISCOVERY_TIMEOUT=${PANDO_TEST_DISCOVERY_TIMEOUT}
+
 cmake-smp:
 	@echo "Must be run from inside the dev Docker container"
 	@. /dependencies/spack/share/spack/setup-env.sh && \
@@ -224,6 +244,17 @@ cmake-drv:
 	-DBUILD_DOCS=OFF \
 	-DCMAKE_CXX_COMPILER=g++-12 \
   -DCMAKE_C_COMPILER=gcc-12
+
+setup-tacc:
+	module load gcc/12.2.0
+	test -d ${WORK}/gasnet || git clone https://bitbucket.org/berkeleylab/gasnet.git ${WORK}/gasnet -b stable
+	test -d ${WORK}/qthreads || git clone https://github.com/sandialabs/qthreads.git ${WORK}/qthreads -b 1.19
+	cd ${WORK}/qthreads && bash autogen.sh \
+	&& ./configure --prefix=${PANDO_TACC_DEPENDENCY_DIR} \
+	&& make -j16 install
+	cd ${WORK}/gasnet && ./Bootstrap \
+		&& ./configure --enable-ibv --enable-par --prefix=${PANDO_TACC_DEPENDENCY_DIR} \
+	&& make -j16 install
 
 setup-ci: cmake-mpi
 
