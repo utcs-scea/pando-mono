@@ -104,7 +104,7 @@ galois::DistLocalCSR<VertexType, EdgeType> initializeWMDDLCSR(pando::Array<char>
   galois::WaitGroup freeWaiter;
   PANDO_CHECK(freeWaiter.initialize(0));
   auto freeWGH = freeWaiter.getHandle();
-  galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       freeWGH, perThreadRename, +[](galois::HashTable<std::uint64_t, std::uint64_t> hash) {
         hash.deinitialize();
       });

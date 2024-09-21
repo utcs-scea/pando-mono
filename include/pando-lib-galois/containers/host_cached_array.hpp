@@ -55,7 +55,7 @@ public:
     assert(range.size() == m_data.size());
     size_ = 0;
     PANDO_CHECK_RETURN(m_data.initialize());
-    PANDO_CHECK_RETURN(galois::doAll(
+    PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         range, m_data,
         +[](Range range, pando::GlobalRef<galois::HostIndexedMap<pando::Array<T>>> data) {
           PANDO_CHECK(lift(data, initialize));
@@ -64,7 +64,7 @@ public:
               ref, initialize,
               *(range.begin() + static_cast<std::uint64_t>(pando::getCurrentPlace().node.id))));
         }));
-    PANDO_CHECK_RETURN(galois::doAll(
+    PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         m_data, m_data,
         +[](decltype(m_data) complete, galois::HostIndexedMap<pando::Array<T>> data) {
           for (std::uint64_t i = 0; i < data.size(); i++) {
@@ -79,7 +79,7 @@ public:
   }
 
   void deinitialize() {
-    PANDO_CHECK(galois::doAll(
+    PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
         m_data, +[](galois::HostIndexedMap<pando::Array<T>> data) {
           const std::uint64_t i = static_cast<std::uint64_t>(pando::getCurrentPlace().node.id);
           auto ref = data[i];

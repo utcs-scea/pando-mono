@@ -88,7 +88,7 @@ TEST(PerThreadVector, Parallel) {
   static const uint64_t workItems = 1000;
   pando::Vector<uint64_t> work;
   EXPECT_EQ(work.initialize(workItems), pando::Status::Success);
-  galois::doAll(
+  galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
       perThreadVec, work, +[](galois::PerThreadVector<uint64_t>& perThreadVec, uint64_t x) {
         uint64_t originalID = pando::getCurrentThread().id;
         EXPECT_GE(originalID, 0);
@@ -209,9 +209,9 @@ TEST(PerThreadVector, HostLocalStorageVector) {
 
   galois::HostLocalStorage<std::uint64_t> phu{};
 
-  galois::doAll(
+  galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
       ptv, phu, +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t) {
-        galois::doAll(
+        galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
             ptv, galois::IotaRange(0, size),
             +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t i) {
               pando::Status err;
@@ -249,9 +249,9 @@ TEST(PerThreadVector, HostLocalStorageVectorAppend) {
 
   galois::HostLocalStorage<std::uint64_t> phu{};
 
-  galois::doAll(
+  galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
       ptv, phu, +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t) {
-        galois::doAll(
+        galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
             ptv, galois::IotaRange(0, size),
             +[](galois::PerThreadVector<std::uint64_t> ptv, std::uint64_t i) {
               pando::Status err;

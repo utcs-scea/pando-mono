@@ -140,7 +140,7 @@ pando::Status SSSP_DLCSR(
   state.dist = 0;
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
         PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
       }));
@@ -172,7 +172,7 @@ pando::Status SSSP_DLCSR(
   }
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       wgh, phbfs, +[](pando::Vector<typename G::VertexTopologyID>) {
         PANDO_MEM_STAT_NEW_KERNEL("BFS END");
       }));
@@ -315,7 +315,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
 #endif
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  PANDO_CHECK(galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
       wgh, toRead, +[](MDWorkList<G>) {
         PANDO_MEM_STAT_NEW_KERNEL("BFS Start");
       }));
@@ -330,7 +330,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
     *active = false;
 
     auto state = galois::make_tpl(graph, toWrite);
-    PANDO_CHECK_RETURN(galois::doAll(
+    PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
         wgh, state, toRead, +[](decltype(state) state, MDWorkList<G> toRead) {
           auto [graph, toWrite] = state;
           MDLCSRLocal<G>(graph, toRead, toWrite.getLocalRef());
@@ -362,7 +362,7 @@ pando::Status SSSPMDLCSR(G& graph, std::uint64_t src, HostLocalStorage<MDWorkLis
   }
 
 #ifdef PANDO_STAT_TRACE_ENABLE
-  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::RANDOM>(
+  PANDO_CHECK(galois::doAllExplicitPolicy<galois::SchedulerPolicy::INFER_RANDOM_CORE>(
       wgh, toRead, +[](MDWorkList<G>) {
         PANDO_MEM_STAT_NEW_KERNEL("BFS END");
       }));

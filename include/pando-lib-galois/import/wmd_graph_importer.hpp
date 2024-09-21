@@ -70,7 +70,7 @@ buildEdgeCountToSend(std::uint64_t numVirtualHosts,
     sumArray[i] = p;
   }
 
-  PANDO_CHECK_RETURN(galois::doAll(
+  PANDO_CHECK_RETURN(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       sumArray, localEdges,
       +[](pando::Array<galois::Pair<std::uint64_t, std::uint64_t>> counts,
           pando::Vector<pando::Vector<EdgeType>> localEdges) {
@@ -111,10 +111,10 @@ buildEdgeCountToSend(std::uint64_t numVirtualHosts,
   const uint64_t pairOffset = offsetof(UPair, first);
 
   auto state = galois::make_tpl(wgh, sumArray);
-  PANDO_CHECK(galois::doAll(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       wgh, state, localEdges, +[](decltype(state) state, pando::Vector<EdgeType> localEdges) {
         auto [wgh, sumArray] = state;
-        PANDO_CHECK(galois::doAll(
+        PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
             wgh, sumArray, localEdges, +[](decltype(sumArray) counts, EdgeType localEdge) {
               pando::GlobalPtr<char> toAdd = static_cast<pando::GlobalPtr<char>>(
                   static_cast<pando::GlobalPtr<void>>(&counts[localEdge.src % counts.size()]));
@@ -179,7 +179,7 @@ partitionEdgesParallely(HostLocalStorage<pando::Vector<VertexType>> partitionedV
   // Insert into hashmap
   // ToDo: Parallelize this (Divija)
 
-  PANDO_CHECK(galois::doAll(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       partitionedVertices, renamePerHost,
       +[](HostLocalStorage<pando::Vector<VertexType>> partitionedVertices,
           pando::GlobalRef<galois::HashTable<std::uint64_t, std::uint64_t>> hashRef) {
@@ -386,7 +386,7 @@ template <typename VertexType>
 
   auto tpl = galois::make_tpl(numVerticesPerHostPerThread, prefixArrPerHostPerThread,
                               perThreadVerticesPartition);
-  galois::doAll(
+  galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       tpl, perThreadVerticesPartition,
       +[](decltype(tpl) tpl,
           pando::GlobalRef<HostIndexedMap<pando::Vector<VertexType>>> perThreadVerticesPartition) {
@@ -432,7 +432,7 @@ template <typename VertexType>
   using SRC_Val = uint64_t;
   using DST_Val = uint64_t;
 
-  PANDO_CHECK(galois::doAll(
+  PANDO_CHECK(galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       numVerticesPerHostPerThread, prefixArrPerHostPerThread,
       +[](HostLocalStorage<Array<std::uint64_t>> numVerticesPerHostPerThread,
           Array<std::uint64_t> prefixArr) {
@@ -452,7 +452,7 @@ template <typename VertexType>
   WaitGroup freeWaiter;
   PANDO_CHECK(freeWaiter.initialize());
   auto freeWGH = freeWaiter.getHandle();
-  PANDO_CHECK(doAll(
+  PANDO_CHECK(doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       freeWGH, numVerticesPerHostPerThread, +[](galois::Array<std::uint64_t> arr) {
         arr.deinitialize();
       }));
@@ -461,7 +461,7 @@ template <typename VertexType>
   galois::HostLocalStorage<pando::Vector<VertexType>> pHV{};
   PANDO_CHECK(pHV.initialize());
 
-  PANDO_CHECK(doAll(
+  PANDO_CHECK(doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       pHV, prefixArrPerHostPerThread, +[](decltype(pHV) pHV, galois::Array<uint64_t> prefixArr) {
         const std::uint64_t nodeIdx = pando::getCurrentPlace().node.id;
         const std::uint64_t numThreads = galois::getNumThreads();
@@ -494,7 +494,7 @@ template <typename VertexType>
 
 #if FREE
   auto tpl = galois::make_tpl(prefixArrPerHostPerThread, perThreadVerticesPartition);
-  galois::doAll(
+  galois::doAllExplicitPolicy<SchedulerPolicy::INFER_RANDOM_CORE>(
       freeWGH, tpl, perThreadVerticesPartition,
       +[](decltype(tpl) tpl,
           pando::GlobalRef<HostIndexedMap<pando::Vector<VertexType>>> perThreadVerticesPartition) {

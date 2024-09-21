@@ -22,6 +22,7 @@ constexpr bool DOALL_TIMER_ENABLE = false;
 
 extern counter::Record<std::minstd_rand> perCoreRNG;
 extern counter::Record<std::uniform_int_distribution<std::int8_t>> perCoreDist;
+extern counter::Record<std::uniform_int_distribution<std::int64_t>> nodeSizeDist;
 extern counter::Record<std::int64_t> schedulerCount;
 extern counter::Record<std::int64_t> doAllCount;
 
@@ -49,15 +50,16 @@ static inline uint64_t getTotalThreads() {
 }
 
 enum SchedulerPolicy {
-  RANDOM,
+  INFER_RANDOM_CORE,
   UNSAFE_STRIPE,
   CORE_STRIPE,
   NODE_ONLY,
+  NODE_RANDOM,
   NAIVE,
 };
 
 #ifndef PANDO_SCHED
-constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = SchedulerPolicy::RANDOM;
+constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = SchedulerPolicy::INFER_RANDOM_CORE;
 #else
 constexpr SchedulerPolicy CURRENT_SCHEDULER_POLICY = PANDO_SCHED;
 #endif
@@ -82,7 +84,7 @@ pando::Place schedulerImpl(pando::Place preferredLocality,
                            [[maybe_unused]] LoopLocalSchedulerStruct<Policy>& loopLocal) noexcept {
   counter::HighResolutionCount<SCHEDULER_TIMER_ENABLE> schedulerTimer;
   schedulerTimer.start();
-  if constexpr (Policy == RANDOM) {
+  if constexpr (Policy == INFER_RANDOM_CORE) {
     auto coreIdx = perCoreDist.getLocal()(perCoreRNG.getLocal());
     assert(coreIdx < pando::getCoreDims().x);
     preferredLocality =
@@ -103,6 +105,10 @@ pando::Place schedulerImpl(pando::Place preferredLocality,
     assert(coreIdx < pando::getCoreDims().x);
     preferredLocality =
         pando::Place(pando::getCurrentNode(), pando::anyPod, pando::CoreIndex(coreIdx, 0));
+  } else if constexpr (Policy == NODE_RANDOM) {
+    auto nodeIdx = nodeSizeDist.getLocal()(perCoreRNG.getLocal());
+    assert(nodeIdx < pando::getNodeDims().id);
+    preferredLocality = pando::Place(pando::NodeIndex(nodeIdx), pando::anyPod, pando::anyCore);
   } else {
     PANDO_ABORT("SCHEDULER POLICY NOT IMPLEMENTED");
   }
